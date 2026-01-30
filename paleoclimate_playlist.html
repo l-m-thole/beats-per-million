@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Paleoclimate Playlist | Earth's Climate as Music</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=JetBrains+Mono:wght@300;400;500&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    :root {
+      --bg-primary: #0a0a0f;
+      --bg-secondary: #12121a;
+      --bg-card: #1a1a25;
+      --text-primary: #f5f5f7;
+      --text-secondary: #a1a1aa;
+      --accent-cold: #3b82f6;
+      --accent-warm: #ef4444;
+      --accent-gold: #f59e0b;
+      --gradient-ice: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      --gradient-fire: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+    
+    body {
+      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    
+    .app-container {
+      min-height: 100vh;
+      background: 
+        radial-gradient(ellipse at 20% 0%, rgba(59, 130, 246, 0.15) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 100%, rgba(239, 68, 68, 0.1) 0%, transparent 50%),
+        var(--bg-primary);
+    }
+    
+    .header {
+      padding: 2rem 3rem;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      backdrop-filter: blur(10px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(10, 10, 15, 0.8);
+    }
+    
+    .header-content {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    
+    .logo-icon {
+      width: 48px;
+      height: 48px;
+      background: var(--gradient-ice);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+    }
+    
+    .logo-text h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.5rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+    
+    .logo-text span {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+    
+    .main-content {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 3rem;
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      gap: 3rem;
+    }
+    
+    @media (max-width: 1024px) {
+      .main-content {
+        grid-template-columns: 1fr;
+        padding: 1.5rem;
+      }
+    }
+    
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+    
+    .period-selector {
+      background: var(--bg-card);
+      border-radius: 20px;
+      padding: 1.5rem;
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+    
+    .period-selector h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.1rem;
+      margin-bottom: 1rem;
+      color: var(--text-secondary);
+    }
+    
+    .period-btn {
+      width: 100%;
+      padding: 1rem 1.25rem;
+      margin-bottom: 0.5rem;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 12px;
+      color: var(--text-primary);
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.3s ease;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.9rem;
+    }
+    
+    .period-btn:hover {
+      background: rgba(255,255,255,0.08);
+      border-color: rgba(255,255,255,0.1);
+      transform: translateX(4px);
+    }
+    
+    .period-btn.active {
+      background: var(--gradient-ice);
+      border-color: transparent;
+      box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+    }
+    
+    .period-btn .period-years {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+      display: block;
+      margin-top: 0.25rem;
+    }
+    
+    .period-btn.active .period-years {
+      color: rgba(255,255,255,0.8);
+    }
+    
+    .info-card {
+      background: var(--bg-card);
+      border-radius: 20px;
+      padding: 1.5rem;
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+    
+    .info-card h3 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1rem;
+      margin-bottom: 0.75rem;
+      color: var(--accent-gold);
+    }
+    
+    .info-card p {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+    
+    .main-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+    
+    .visualization-card {
+      background: var(--bg-card);
+      border-radius: 24px;
+      padding: 2rem;
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+    
+    .viz-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 1.5rem;
+    }
+    
+    .viz-title h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.5rem;
+      margin-bottom: 0.25rem;
+    }
+    
+    .viz-title span {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+    
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+    }
+    
+    @media (max-width: 768px) {
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+    
+    .stat-box {
+      background: rgba(255,255,255,0.03);
+      border-radius: 12px;
+      padding: 1rem;
+      text-align: center;
+    }
+    
+    .stat-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.5rem;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+    
+    .stat-value.cold { color: var(--accent-cold); }
+    .stat-value.warm { color: var(--accent-warm); }
+    .stat-value.gold { color: var(--accent-gold); }
+    
+    .stat-label {
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-top: 0.25rem;
+    }
+    
+    .timeline-container {
+      margin-top: 1.5rem;
+      position: relative;
+    }
+    
+    .timeline-svg {
+      width: 100%;
+      height: 200px;
+    }
+    
+    .timeline-axis {
+      stroke: rgba(255,255,255,0.2);
+    }
+    
+    .timeline-path {
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    
+    .timeline-area {
+      opacity: 0.2;
+    }
+    
+    .timeline-marker {
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    
+    .timeline-marker:hover {
+      r: 8;
+    }
+    
+    .current-song-indicator {
+      fill: #fff;
+      filter: drop-shadow(0 0 10px rgba(255,255,255,0.5));
+    }
+    
+    .playlist-section {
+      background: var(--bg-card);
+      border-radius: 24px;
+      padding: 2rem;
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+    
+    .playlist-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+    
+    .playlist-header h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.25rem;
+    }
+    
+    .platform-links {
+      display: flex;
+      gap: 0.75rem;
+    }
+    
+    .platform-btn {
+      padding: 0.6rem 1.2rem;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      border: none;
+      font-family: 'DM Sans', sans-serif;
+    }
+    
+    .spotify-btn {
+      background: #1DB954;
+      color: #000;
+    }
+    
+    .spotify-btn:hover {
+      background: #1ed760;
+      transform: scale(1.05);
+    }
+    
+    .soundcloud-btn {
+      background: #ff5500;
+      color: #fff;
+    }
+    
+    .soundcloud-btn:hover {
+      background: #ff6a1a;
+      transform: scale(1.05);
+    }
+    
+    .song-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    
+    .song-list::-webkit-scrollbar {
+      width: 6px;
+    }
+    
+    .song-list::-webkit-scrollbar-track {
+      background: rgba(255,255,255,0.05);
+      border-radius: 3px;
+    }
+    
+    .song-list::-webkit-scrollbar-thumb {
+      background: rgba(255,255,255,0.2);
+      border-radius: 3px;
+    }
+    
+    .song-item {
+      display: grid;
+      grid-template-columns: 40px 1fr 80px 60px;
+      align-items: center;
+      padding: 0.75rem 1rem;
+      background: rgba(255,255,255,0.02);
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      gap: 1rem;
+    }
+    
+    .song-item:hover {
+      background: rgba(255,255,255,0.06);
+    }
+    
+    .song-item.active {
+      background: rgba(102, 126, 234, 0.2);
+      border-left: 3px solid #667eea;
+    }
+    
+    .song-number {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      text-align: center;
+    }
+    
+    .song-info {
+      overflow: hidden;
+    }
+    
+    .song-era {
+      font-size: 0.85rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    .song-co2 {
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+      font-family: 'JetBrains Mono', monospace;
+    }
+    
+    .song-bpm {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.9rem;
+      font-weight: 500;
+      text-align: right;
+    }
+    
+    .bpm-bar {
+      height: 4px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    
+    .bpm-fill {
+      height: 100%;
+      border-radius: 2px;
+      transition: width 0.3s ease;
+    }
+    
+    .now-playing {
+      background: linear-gradient(135deg, var(--bg-card) 0%, rgba(102, 126, 234, 0.1) 100%);
+      border-radius: 20px;
+      padding: 1.5rem;
+      border: 1px solid rgba(102, 126, 234, 0.3);
+      margin-bottom: 1.5rem;
+    }
+    
+    .now-playing-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      background: #1DB954;
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(1.2); }
+    }
+    
+    .now-playing-content {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+    }
+    
+    @media (max-width: 600px) {
+      .now-playing-content {
+        grid-template-columns: 1fr;
+      }
+    }
+    
+    .np-detail {
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .np-label {
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    
+    .np-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.25rem;
+      font-weight: 500;
+    }
+    
+    .bpm-indicator {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .bpm-large {
+      font-size: 2.5rem;
+      font-weight: 600;
+      font-family: 'Playfair Display', serif;
+    }
+    
+    .bpm-unit {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+    
+    .mood-tag {
+      display: inline-block;
+      padding: 0.4rem 0.8rem;
+      background: rgba(255,255,255,0.1);
+      border-radius: 20px;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      margin-top: 0.5rem;
+    }
+    
+    .legend {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid rgba(255,255,255,0.05);
+    }
+    
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+    
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+    
+    .legend-dot.cold { background: var(--accent-cold); }
+    .legend-dot.warm { background: var(--accent-warm); }
+    
+    .empty-state {
+      text-align: center;
+      padding: 3rem;
+      color: var(--text-secondary);
+    }
+    
+    .footer {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-secondary);
+      font-size: 0.8rem;
+      border-top: 1px solid rgba(255,255,255,0.05);
+      margin-top: 2rem;
+    }
+    
+    .footer a {
+      color: var(--accent-cold);
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  
+  <script type="text/babel">
+    // CO2 Data (embedded for standalone operation)
+    const CO2_DATA = {
+      modern: [
+        {age: -8.2, co2: 315.71}, {age: -9.2, co2: 316.65}, {age: -10.2, co2: 317.58},
+        {age: -11.2, co2: 318.54}, {age: -12.2, co2: 319.68}, {age: -13.2, co2: 319.86},
+        {age: -14.2, co2: 320.75}, {age: -15.2, co2: 320.89}, {age: -16.2, co2: 322.39},
+        {age: -17.2, co2: 323.03}, {age: -18.2, co2: 323.89}, {age: -19.2, co2: 325.63},
+        {age: -20.2, co2: 326.93}, {age: -21.2, co2: 327.18}, {age: -22.2, co2: 327.75},
+        {age: -23.2, co2: 330.3}, {age: -24.2, co2: 331.49}, {age: -25.2, co2: 331.94},
+        {age: -26.2, co2: 333.36}, {age: -27.2, co2: 334.96}, {age: -28.2, co2: 336.66},
+        {age: -29.2, co2: 338.27}, {age: -30.2, co2: 340.07}, {age: -31.2, co2: 341.63},
+        {age: -32.2, co2: 342.78}, {age: -33.2, co2: 343.37}, {age: -34.2, co2: 345.68},
+        {age: -35.2, co2: 347.91}, {age: -36.2, co2: 348.25}, {age: -37.2, co2: 349.81},
+        {age: -38.2, co2: 352.5}, {age: -39.2, co2: 354.08}, {age: -40.2, co2: 355.75},
+        {age: -41.2, co2: 357.33}, {age: -42.2, co2: 357.97}, {age: -43.2, co2: 358.59},
+        {age: -44.2, co2: 360.11}, {age: -45.2, co2: 361.98}, {age: -46.2, co2: 364.28},
+        {age: -47.2, co2: 364.65}, {age: -48.2, co2: 367.36}, {age: -49.2, co2: 369.84},
+        {age: -50.2, co2: 370.75}, {age: -51.2, co2: 372.63}, {age: -52.2, co2: 374.3},
+        {age: -53.2, co2: 376.64}, {age: -54.2, co2: 379.06}, {age: -55.2, co2: 380.95},
+        {age: -56.2, co2: 382.86}, {age: -57.2, co2: 384.81}, {age: -58.2, co2: 386.28},
+        {age: -59.2, co2: 389.04}, {age: -60.2, co2: 391.37}, {age: -61.2, co2: 392.8},
+        {age: -62.2, co2: 394.59}, {age: -63.2, co2: 397.66}, {age: -64.2, co2: 399.91},
+        {age: -65.2, co2: 401.74}, {age: -66.2, co2: 405.06}, {age: -67.2, co2: 407.54},
+        {age: -68.2, co2: 409.59}, {age: -69.2, co2: 412.18}, {age: -70.2, co2: 414.72},
+        {age: -71.2, co2: 417.61}, {age: -72.2, co2: 418.76}, {age: -73.2, co2: 420.99},
+        {age: -74.2, co2: 425.38}
+      ],
+      icecore: [] // Will be populated with key points for visualization
+    };
+    
+    // Add sampled ice core data points for visualization
+    const iceCoreKeyPoints = [
+      {age: -51, co2: 368}, {age: 0, co2: 312}, {age: 1000, co2: 280}, {age: 2000, co2: 277},
+      {age: 5000, co2: 266}, {age: 8000, co2: 260}, {age: 10000, co2: 264}, {age: 11500, co2: 267},
+      {age: 12000, co2: 250}, {age: 14000, co2: 240}, {age: 16000, co2: 220}, {age: 18000, co2: 188},
+      {age: 20000, co2: 190}, {age: 25000, co2: 183}, {age: 30000, co2: 188}, {age: 40000, co2: 195},
+      {age: 50000, co2: 204}, {age: 60000, co2: 210}, {age: 70000, co2: 215}, {age: 80000, co2: 230},
+      {age: 90000, co2: 230}, {age: 100000, co2: 245}, {age: 110000, co2: 255}, {age: 120000, co2: 275},
+      {age: 130000, co2: 250}, {age: 140000, co2: 195}, {age: 150000, co2: 200}, {age: 180000, co2: 210},
+      {age: 200000, co2: 245}, {age: 220000, co2: 210}, {age: 240000, co2: 275}, {age: 250000, co2: 210},
+      {age: 280000, co2: 200}, {age: 320000, co2: 250}, {age: 340000, co2: 235}, {age: 400000, co2: 280},
+      {age: 450000, co2: 200}, {age: 500000, co2: 230}, {age: 550000, co2: 245}, {age: 600000, co2: 240},
+      {age: 650000, co2: 190}, {age: 700000, co2: 235}, {age: 750000, co2: 195}, {age: 800000, co2: 200}
+    ];
+    CO2_DATA.icecore = iceCoreKeyPoints;
+    
+    // Time period configurations
+    const TIME_PERIODS = {
+      modern: {
+        id: 'modern',
+        name: 'Modern Era',
+        subtitle: '1958 – Present',
+        yearsSpan: 67,
+        yearsPerMinute: 1,
+        description: 'Direct atmospheric CO₂ measurements from Mauna Loa Observatory, Hawaii. This period captures the dramatic "Keeling Curve" - the most famous graph in climate science showing CO₂ rising from ~315 to over 420 ppm.',
+        dataSource: 'modern',
+        filterMaxAge: Infinity,
+        spotifyUrl: 'https://open.spotify.com/search/',
+        soundcloudUrl: 'https://soundcloud.com/search?q='
+      },
+      roman: {
+        id: 'roman',
+        name: 'Roman Empire Era',
+        subtitle: '~2,000 years',
+        yearsSpan: 2000,
+        yearsPerMinute: 20,
+        description: 'Ice core records spanning the Roman Empire, Medieval Period, Little Ice Age, and Industrial Revolution. CO₂ remained remarkably stable at ~280 ppm for nearly 2000 years until the 1800s.',
+        dataSource: 'icecore',
+        filterMaxAge: 2000,
+        spotifyUrl: 'https://open.spotify.com/search/',
+        soundcloudUrl: 'https://soundcloud.com/search?q='
+      },
+      lgm: {
+        id: 'lgm',
+        name: 'Last Glacial Maximum',
+        subtitle: '~20,000 years',
+        yearsSpan: 20000,
+        yearsPerMinute: 100,
+        description: 'The transition from the Last Ice Age (~20,000 years ago) to our current warm period. CO₂ rose from ~180 ppm during peak glaciation to ~280 ppm as ice sheets retreated.',
+        dataSource: 'icecore',
+        filterMaxAge: 20000,
+        spotifyUrl: 'https://open.spotify.com/search/',
+        soundcloudUrl: 'https://soundcloud.com/search?q='
+      },
+      humans: {
+        id: 'humans',
+        name: 'Early Modern Humans',
+        subtitle: '~250,000 years',
+        yearsSpan: 250000,
+        yearsPerMinute: 1000,
+        description: 'The entire existence of anatomically modern Homo sapiens. Multiple glacial cycles with CO₂ swinging between ~180 ppm (ice ages) and ~280 ppm (warm interglacials).',
+        dataSource: 'icecore',
+        filterMaxAge: 250000,
+        spotifyUrl: 'https://open.spotify.com/search/',
+        soundcloudUrl: 'https://soundcloud.com/search?q='
+      },
+      full: {
+        id: 'full',
+        name: 'Full Ice Core Record',
+        subtitle: '~800,000 years',
+        yearsSpan: 800000,
+        yearsPerMinute: 3000,
+        description: 'Eight complete glacial-interglacial cycles. Throughout 800,000 years, CO₂ NEVER exceeded 300 ppm until our modern era - a truly unprecedented geological moment.',
+        dataSource: 'icecore',
+        filterMaxAge: 800000,
+        spotifyUrl: 'https://open.spotify.com/search/',
+        soundcloudUrl: 'https://soundcloud.com/search?q='
+      }
+    };
+    
+    // BPM Configuration
+    const BPM_CONFIG = {
+      min: 60,
+      max: 150
+    };
+    
+    // Utility functions
+    const co2ToBpm = (co2, minCo2, maxCo2) => {
+      const bpm = BPM_CONFIG.min + ((BPM_CONFIG.max - BPM_CONFIG.min) / (maxCo2 - minCo2)) * (co2 - minCo2);
+      return Math.round(Math.min(Math.max(bpm, BPM_CONFIG.min), BPM_CONFIG.max));
+    };
+    
+    const getMoodFromBpm = (bpm) => {
+      if (bpm < 70) return { mood: 'Glacial', genre: 'Ambient / Drone' };
+      if (bpm < 90) return { mood: 'Contemplative', genre: 'Slow Jazz / Ballads' };
+      if (bpm < 110) return { mood: 'Moderate', genre: 'Pop / Soft Rock' };
+      if (bpm < 130) return { mood: 'Energetic', genre: 'Rock / Funk' };
+      return { mood: 'Intense', genre: 'Dance / Electronic' };
+    };
+    
+    const formatAge = (age, periodId) => {
+      if (age < 0) {
+        const year = Math.round(1950 - age);
+        return `${year} CE`;
+      }
+      if (age < 1000) return `${Math.round(age)} years BP`;
+      if (age < 10000) return `${(age/1000).toFixed(1)}k years BP`;
+      return `${Math.round(age/1000)}k years BP`;
+    };
+    
+    const getBpmColor = (bpm) => {
+      const ratio = (bpm - BPM_CONFIG.min) / (BPM_CONFIG.max - BPM_CONFIG.min);
+      const r = Math.round(59 + ratio * 180);
+      const g = Math.round(130 - ratio * 62);
+      const b = Math.round(246 - ratio * 178);
+      return `rgb(${r}, ${g}, ${b})`;
+    };
+    
+    // Generate playlist data for a time period
+    const generatePlaylist = (period) => {
+      const data = period.dataSource === 'modern' 
+        ? CO2_DATA.modern 
+        : CO2_DATA.icecore.filter(d => d.age <= period.filterMaxAge);
+      
+      if (data.length === 0) return { songs: [], stats: null };
+      
+      const co2Values = data.map(d => d.co2);
+      const minCo2 = Math.min(...co2Values);
+      const maxCo2 = Math.max(...co2Values);
+      
+      const playlistMinutes = period.yearsSpan / period.yearsPerMinute;
+      const numSongs = Math.ceil(playlistMinutes / 3); // 3 min average song
+      const yearsPerSong = period.yearsSpan / numSongs;
+      
+      // Generate songs
+      const songs = [];
+      for (let i = 0; i < numSongs; i++) {
+        const startAge = i * yearsPerSong;
+        const endAge = (i + 1) * yearsPerSong;
+        
+        // Find data points in this range
+        const relevantData = data.filter(d => {
+          const age = d.age < 0 ? -d.age : d.age;
+          return age >= startAge && age < endAge;
+        });
+        
+        let avgCo2;
+        if (relevantData.length > 0) {
+          avgCo2 = relevantData.reduce((sum, d) => sum + d.co2, 0) / relevantData.length;
+        } else {
+          // Interpolate
+          const ratio = (startAge + endAge) / 2 / period.yearsSpan;
+          avgCo2 = minCo2 + ratio * (maxCo2 - minCo2) * (period.dataSource === 'modern' ? 1 : -0.5 + Math.random());
+        }
+        
+        const bpm = co2ToBpm(avgCo2, minCo2, maxCo2);
+        
+        songs.push({
+          number: i + 1,
+          startAge: period.dataSource === 'modern' ? -endAge : startAge,
+          endAge: period.dataSource === 'modern' ? -startAge : endAge,
+          avgCo2: Math.round(avgCo2),
+          bpm,
+          mood: getMoodFromBpm(bpm)
+        });
+      }
+      
+      // Reverse for modern era to go from past to present
+      if (period.dataSource === 'modern') {
+        songs.reverse();
+        songs.forEach((s, i) => s.number = i + 1);
+      }
+      
+      const stats = {
+        totalYears: period.yearsSpan,
+        playlistMinutes: Math.round(playlistMinutes),
+        numSongs,
+        co2Range: [Math.round(minCo2), Math.round(maxCo2)],
+        bpmRange: [BPM_CONFIG.min, BPM_CONFIG.max]
+      };
+      
+      return { songs, stats, data };
+    };
+    
+    // Components
+    const Timeline = ({ data, currentSong, period, onSongSelect }) => {
+      const width = 100;
+      const height = 100;
+      const padding = { top: 10, right: 10, bottom: 20, left: 10 };
+      
+      const filteredData = period.dataSource === 'modern' 
+        ? data 
+        : data.filter(d => d.age <= period.filterMaxAge);
+      
+      if (filteredData.length < 2) return null;
+      
+      const ages = filteredData.map(d => d.age);
+      const co2s = filteredData.map(d => d.co2);
+      const minAge = Math.min(...ages);
+      const maxAge = Math.max(...ages);
+      const minCo2 = Math.min(...co2s);
+      const maxCo2 = Math.max(...co2s);
+      
+      const xScale = (age) => padding.left + ((age - minAge) / (maxAge - minAge)) * (width - padding.left - padding.right);
+      const yScale = (co2) => height - padding.bottom - ((co2 - minCo2) / (maxCo2 - minCo2)) * (height - padding.top - padding.bottom);
+      
+      const pathD = filteredData.map((d, i) => 
+        `${i === 0 ? 'M' : 'L'} ${xScale(d.age)} ${yScale(d.co2)}`
+      ).join(' ');
+      
+      const areaD = pathD + ` L ${xScale(filteredData[filteredData.length-1].age)} ${height - padding.bottom} L ${xScale(filteredData[0].age)} ${height - padding.bottom} Z`;
+      
+      // Current song marker position
+      let markerX = 50;
+      if (currentSong) {
+        const songAge = (currentSong.startAge + currentSong.endAge) / 2;
+        markerX = xScale(songAge);
+      }
+      
+      return (
+        <svg viewBox={`0 0 ${width} ${height}`} className="timeline-svg" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="areaGradient" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stopColor="#667eea" stopOpacity="0.4"/>
+              <stop offset="100%" stopColor="#667eea" stopOpacity="0"/>
+            </linearGradient>
+            <linearGradient id="lineGradient" x1="0" x2="1" y1="0" y2="0">
+              <stop offset="0%" stopColor="#3b82f6"/>
+              <stop offset="50%" stopColor="#8b5cf6"/>
+              <stop offset="100%" stopColor="#ef4444"/>
+            </linearGradient>
+          </defs>
+          
+          {/* Axis */}
+          <line 
+            x1={padding.left} y1={height - padding.bottom} 
+            x2={width - padding.right} y2={height - padding.bottom} 
+            className="timeline-axis"
+          />
+          
+          {/* Area fill */}
+          <path d={areaD} fill="url(#areaGradient)" className="timeline-area"/>
+          
+          {/* Line */}
+          <path d={pathD} stroke="url(#lineGradient)" className="timeline-path"/>
+          
+          {/* Current position marker */}
+          {currentSong && (
+            <g transform={`translate(${markerX}, 0)`}>
+              <line y1={padding.top} y2={height - padding.bottom} stroke="white" strokeWidth="0.5" strokeDasharray="2,2" opacity="0.5"/>
+              <circle cy={yScale(currentSong.avgCo2)} r="3" className="current-song-indicator"/>
+            </g>
+          )}
+          
+          {/* Axis labels */}
+          <text x={padding.left} y={height - 5} fill="#a1a1aa" fontSize="3" fontFamily="JetBrains Mono">
+            {period.dataSource === 'modern' ? '1958' : 'Present'}
+          </text>
+          <text x={width - padding.right} y={height - 5} fill="#a1a1aa" fontSize="3" fontFamily="JetBrains Mono" textAnchor="end">
+            {period.dataSource === 'modern' ? 'Now' : formatAge(period.filterMaxAge, period.id)}
+          </text>
+        </svg>
+      );
+    };
+    
+    const SongItem = ({ song, isActive, onClick, minBpm, maxBpm }) => {
+      const bpmRatio = (song.bpm - minBpm) / (maxBpm - minBpm);
+      const bpmColor = getBpmColor(song.bpm);
+      
+      return (
+        <div 
+          className={`song-item ${isActive ? 'active' : ''}`}
+          onClick={onClick}
+        >
+          <div className="song-number">#{song.number}</div>
+          <div className="song-info">
+            <div className="song-era">{formatAge(song.startAge)} → {formatAge(song.endAge)}</div>
+            <div className="song-co2">{song.avgCo2} ppm CO₂</div>
+          </div>
+          <div className="bpm-bar">
+            <div 
+              className="bpm-fill" 
+              style={{ 
+                width: `${bpmRatio * 100}%`,
+                background: bpmColor
+              }}
+            />
+          </div>
+          <div className="song-bpm" style={{ color: bpmColor }}>{song.bpm}</div>
+        </div>
+      );
+    };
+    
+    const NowPlaying = ({ song }) => {
+      if (!song) return null;
+      const bpmColor = getBpmColor(song.bpm);
+      
+      return (
+        <div className="now-playing">
+          <div className="now-playing-header">
+            <div className="pulse-dot"></div>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>NOW PLAYING</span>
+          </div>
+          <div className="now-playing-content">
+            <div>
+              <div className="np-detail">
+                <span className="np-label">Time Period</span>
+                <span className="np-value">{formatAge(song.startAge)} → {formatAge(song.endAge)}</span>
+              </div>
+              <div className="np-detail" style={{ marginTop: '0.75rem' }}>
+                <span className="np-label">CO₂ Concentration</span>
+                <span className="np-value">{song.avgCo2} ppm</span>
+              </div>
+            </div>
+            <div>
+              <div className="bpm-indicator">
+                <span className="bpm-large" style={{ color: bpmColor }}>{song.bpm}</span>
+                <span className="bpm-unit">BPM</span>
+              </div>
+              <div className="mood-tag">{song.mood.mood} • {song.mood.genre}</div>
+            </div>
+          </div>
+        </div>
+      );
+    };
+    
+    const App = () => {
+      const [selectedPeriod, setSelectedPeriod] = React.useState('modern');
+      const [currentSongIndex, setCurrentSongIndex] = React.useState(0);
+      
+      const period = TIME_PERIODS[selectedPeriod];
+      const { songs, stats, data } = React.useMemo(() => generatePlaylist(period), [period]);
+      const currentSong = songs[currentSongIndex];
+      
+      const handlePeriodChange = (periodId) => {
+        setSelectedPeriod(periodId);
+        setCurrentSongIndex(0);
+      };
+      
+      const openSpotify = () => {
+        const searchQuery = `${currentSong.bpm} bpm ${currentSong.mood.genre.split('/')[0].trim()}`;
+        window.open(`https://open.spotify.com/search/${encodeURIComponent(searchQuery)}`, '_blank');
+      };
+      
+      const openSoundcloud = () => {
+        const searchQuery = `${currentSong.bpm} bpm ${currentSong.mood.genre.split('/')[0].trim()}`;
+        window.open(`https://soundcloud.com/search?q=${encodeURIComponent(searchQuery)}`, '_blank');
+      };
+      
+      return (
+        <div className="app-container">
+          <header className="header">
+            <div className="header-content">
+              <div className="logo">
+                <div className="logo-icon">🌍</div>
+                <div className="logo-text">
+                  <h1>Paleoclimate Playlist</h1>
+                  <span>Earth's Climate History as Music</span>
+                </div>
+              </div>
+            </div>
+          </header>
+          
+          <main className="main-content">
+            <aside className="sidebar">
+              <div className="period-selector">
+                <h2>Select Time Period</h2>
+                {Object.values(TIME_PERIODS).map(p => (
+                  <button
+                    key={p.id}
+                    className={`period-btn ${selectedPeriod === p.id ? 'active' : ''}`}
+                    onClick={() => handlePeriodChange(p.id)}
+                  >
+                    {p.name}
+                    <span className="period-years">{p.subtitle}</span>
+                  </button>
+                ))}
+              </div>
+              
+              <div className="info-card">
+                <h3>About This Period</h3>
+                <p>{period.description}</p>
+              </div>
+              
+              <div className="info-card">
+                <h3>How It Works</h3>
+                <p>
+                  CO₂ concentrations are mapped to beats per minute (BPM). 
+                  Lower CO₂ (ice ages, ~180 ppm) = slower, melancholic music at 60 BPM. 
+                  Higher CO₂ (modern era, 420+ ppm) = faster, energetic music up to 150 BPM.
+                </p>
+              </div>
+            </aside>
+            
+            <div className="main-panel">
+              <div className="visualization-card">
+                <div className="viz-header">
+                  <div className="viz-title">
+                    <h2>{period.name}</h2>
+                    <span>{period.subtitle}</span>
+                  </div>
+                </div>
+                
+                {stats && (
+                  <div className="stats-grid">
+                    <div className="stat-box">
+                      <div className="stat-value">{stats.totalYears.toLocaleString()}</div>
+                      <div className="stat-label">Years Covered</div>
+                    </div>
+                    <div className="stat-box">
+                      <div className="stat-value gold">{stats.numSongs}</div>
+                      <div className="stat-label">Songs</div>
+                    </div>
+                    <div className="stat-box">
+                      <div className="stat-value cold">{stats.co2Range[0]}</div>
+                      <div className="stat-label">Min CO₂ (ppm)</div>
+                    </div>
+                    <div className="stat-box">
+                      <div className="stat-value warm">{stats.co2Range[1]}</div>
+                      <div className="stat-label">Max CO₂ (ppm)</div>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="timeline-container">
+                  <Timeline 
+                    data={period.dataSource === 'modern' ? CO2_DATA.modern : CO2_DATA.icecore}
+                    currentSong={currentSong}
+                    period={period}
+                    onSongSelect={setCurrentSongIndex}
+                  />
+                </div>
+                
+                <div className="legend">
+                  <div className="legend-item">
+                    <div className="legend-dot cold"></div>
+                    <span>Low CO₂ / Slow BPM</span>
+                  </div>
+                  <div className="legend-item">
+                    <div className="legend-dot warm"></div>
+                    <span>High CO₂ / Fast BPM</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="playlist-section">
+                <div className="playlist-header">
+                  <h2>Playlist ({songs.length} songs • ~{stats?.playlistMinutes || 0} minutes)</h2>
+                  <div className="platform-links">
+                    <button className="platform-btn spotify-btn" onClick={openSpotify}>
+                      🎵 Spotify
+                    </button>
+                    <button className="platform-btn soundcloud-btn" onClick={openSoundcloud}>
+                      ☁️ SoundCloud
+                    </button>
+                  </div>
+                </div>
+                
+                <NowPlaying song={currentSong} />
+                
+                <div className="song-list">
+                  {songs.map((song, index) => (
+                    <SongItem
+                      key={song.number}
+                      song={song}
+                      isActive={index === currentSongIndex}
+                      onClick={() => setCurrentSongIndex(index)}
+                      minBpm={BPM_CONFIG.min}
+                      maxBpm={BPM_CONFIG.max}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </main>
+          
+          <footer className="footer">
+            <p>
+              Data sources: <a href="https://gml.noaa.gov/ccgg/trends/" target="_blank">NOAA Mauna Loa CO₂</a> • 
+              <a href="https://www.ncei.noaa.gov/access/paleo-search/" target="_blank"> NOAA Paleoclimatology</a> (Bereiter et al., 2015)
+            </p>
+            <p style={{ marginTop: '0.5rem', opacity: 0.7 }}>
+              Click on songs to see their time period details. Use the Spotify/SoundCloud buttons to find matching music!
+            </p>
+          </footer>
+        </div>
+      );
+    };
+    
+    ReactDOM.render(<App />, document.getElementById('root'));
+  </script>
+</body>
+</html>
