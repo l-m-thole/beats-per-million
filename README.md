@@ -1,4 +1,4 @@
-# 🌍 Climate Playlists
+# 🌍 Beats per Million — Dance While You Can
 
 **Translating Earth's Climate History into Music**
 
@@ -40,24 +40,27 @@ A collaboration between **Martin Wegmann** and **Lena Thöle**.
 install.packages(c(
   "shiny",
   "readxl",
-  "tidyverse",
+  "dplyr",
+  "tibble",
+  "readr",
   "plotly",
   "DT",
-  "writexl"
+  "writexl",
+  "here"
 ))
 ```
 
 ### Run the Shiny App
 
+Open `climate_playlists.Rproj` in RStudio (this sets the working directory to the project root), then:
+
 ```r
-setwd("path/to/climate_playlists")
 shiny::runApp()
 ```
 
 ### Generate Playlist Templates
 
 ```r
-setwd("path/to/climate_playlists")
 source("run_generator.R")
 ```
 
@@ -76,9 +79,11 @@ climate_playlists/
 ├── app.R                 # Shiny application
 ├── run_generator.R       # CLI script for generating templates
 ├── data/
-│   ├── co2_data.xlsx     # Modern + ice core data
-│   └── raw/
-│       └── rae2021co2.xlsx   # Cenozoic proxy data
+│   ├── co2_data.xlsx     # Processed: 'maunaloa' + 'bereiter2014' sheets
+│   └── rawData/
+│       ├── co2_mm_mlo.csv      # Raw monthly Mauna Loa CO2 (NOAA)
+│       ├── rae2021co2.xlsx     # Cenozoic proxy data (Rae et al. 2021)
+│       └── eggleston2016.xlsx  # Antarctic 155 kyr CO2 + isotopes (currently unused)
 ├── output/               # Generated playlist templates
 └── README.md
 ```

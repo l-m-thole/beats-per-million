@@ -28,7 +28,7 @@ REFERENCE_YEAR <- 1950
 # -----------------------------------------------------------------------------
 
 DATA_SOURCE_MODERN   <- "modern"      # Mauna Loa direct measurements
-DATA_SOURCE_ICECORE  <- "icecore"     # Bereiter et al. 2014 ice core composite
+DATA_SOURCE_ICECORE  <- "icecore"     # Bereiter et al. 2015 ice core composite
 DATA_SOURCE_CENOZOIC <- "cenozoic"    # Rae et al. 2021 proxy reconstructions
 
 # -----------------------------------------------------------------------------
@@ -56,7 +56,7 @@ TIME_PERIODS <- list(
   modern = list(
     id = "modern",
     name = "Modern Era (1958–Present)",
-    years_span = 67,
+    years_span = 67,           # Modern span is derived from the data at run time (see generate_playlist)
     years_per_minute = 1,
     data_source = DATA_SOURCE_MODERN,
     filter_min_age = -Inf,
