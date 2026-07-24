@@ -1,5 +1,5 @@
 # =============================================================================
-# CLIMATE PLAYLISTS - SHINY APPLICATION
+# BEATS PER MILLION - SHINY APPLICATION
 # =============================================================================
 #
 # Interactive web application for exploring paleoclimate playlists.
@@ -10,7 +10,7 @@
 #   3. Run: shiny::runApp()
 #
 # Required packages:
-#   install.packages(c("shiny", "readxl", "tidyverse", "plotly", "DT", "writexl"))
+#   install.packages(c("shiny", "readxl", "dplyr", "readr", "plotly", "DT", "here"))
 #
 # =============================================================================
 
@@ -20,18 +20,19 @@
 
 library(shiny)
 library(readxl)
-library(tidyverse)
+library(dplyr)
+library(readr)
 library(plotly)
 library(DT)
-library(writexl)
+library(here)
 
 # -----------------------------------------------------------------------------
 # SOURCE SHARED MODULES
 # -----------------------------------------------------------------------------
 
-source("R/config.R")
-source("R/functions.R")
-source("R/load_data.R")
+source(here::here("R", "config.R"))
+source(here::here("R", "functions.R"))
+source(here::here("R", "load_data.R"))
 
 # -----------------------------------------------------------------------------
 # CSS FUNCTION
@@ -184,6 +185,34 @@ body {
   display: flex;
   gap: 0.5rem;
   margin-top: 1rem;
+  flex-wrap: wrap;
+}
+
+.curated-track {
+  margin-bottom: 0.25rem;
+}
+
+.curated-badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #1DB954;
+  background: rgba(29, 185, 84, 0.12);
+  border: 1px solid rgba(29, 185, 84, 0.3);
+  border-radius: 12px;
+  padding: 0.2rem 0.6rem;
+}
+
+.curated-title {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 1.05rem;
+  margin-top: 0.5rem;
+}
+
+.card iframe {
+  display: block;
+  border: none;
 }
 
 .btn-spotify {
@@ -314,10 +343,18 @@ table.dataTable tbody tr.selected {
 # LOAD DATA AT STARTUP
 # -----------------------------------------------------------------------------
 
-CO2_DATA <- load_co2_data("data")
+CO2_DATA <- load_co2_data(here::here("data"))
+GLOBAL_RANGE <- global_co2_range(CO2_DATA)
 
-# Pre-generate all playlists for faster switching
-ALL_PLAYLISTS <- generate_all_playlists(CO2_DATA)
+# Pre-generate both scaling modes for instant switching
+ALL_PLAYLISTS <- list(
+  per_period = generate_all_playlists(CO2_DATA),
+  global     = generate_all_playlists(CO2_DATA, co2_scale = GLOBAL_RANGE)
+)
+
+# Hand-curated song library (joined to playlist slots by period + song_number).
+# Empty tibble if data/curated_songs.csv hasn't been seeded yet.
+CURATED_SONGS <- load_curated_songs(here::here("data"))
 
 # -----------------------------------------------------------------------------
 # USER INTERFACE
@@ -328,25 +365,14 @@ ui <- fluidPage(
   # Custom CSS
   tags$head(
     tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=JetBrains+Mono:wght@300;400;500&family=DM+Sans:wght@400;500;600&display=swap"),
-    tags$link(rel = "stylesheet", type = "text/css", href = "styles.css"),
-    # Inline styles as fallback
+    # App styles (defined inline in app_css())
     tags$style(HTML(app_css()))
   ),
   
-  # JavaScript for Spotify/SoundCloud links
-  tags$head(tags$script(HTML('
-    Shiny.addCustomMessageHandler("updateSearchLinks", function(data) {
-      var spotifyUrl = "https://open.spotify.com/search/" + encodeURIComponent(data.query);
-      var soundcloudUrl = "https://soundcloud.com/search?q=" + encodeURIComponent(data.query);
-      document.getElementById("spotify_link").href = spotifyUrl;
-      document.getElementById("soundcloud_link").href = soundcloudUrl;
-    });
-  '))),
-  
   # Header
   div(class = "main-header",
-      h1(class = "main-title", "🌍 Climate Playlists"),
-      p(class = "main-subtitle", "Translating Earth's Climate History into Music")
+      h1(class = "main-title", "🌍 Beats per Million"),
+      p(class = "main-subtitle", "Dance While You Can — translating Earth's climate history into music")
   ),
   
   # Main content
@@ -366,7 +392,20 @@ ui <- fluidPage(
                  selected = "modern"
                )
            ),
-           
+
+           div(class = "card",
+               h3(class = "card-title", "BPM Scaling"),
+               radioButtons(
+                 "scaling_mode",
+                 label = NULL,
+                 choices = c(
+                   "Per period (max. contrast)" = "per_period",
+                   "Global (comparable eras)"   = "global"
+                 ),
+                 selected = "per_period"
+               )
+           ),
+
            div(class = "card",
                h3(class = "card-title", "About This Period"),
                uiOutput("period_description")
@@ -424,15 +463,8 @@ ui <- fluidPage(
                     ),
                     
                     div(class = "card",
-                        h3(class = "card-title", "Find Music"),
-                        p(class = "description-text", 
-                          "Search for songs matching the selected BPM:"),
-                        div(class = "button-row",
-                            tags$a(id = "spotify_link", href = "#", target = "_blank",
-                                   class = "btn btn-spotify", "🎵 Spotify"),
-                            tags$a(id = "soundcloud_link", href = "#", target = "_blank",
-                                   class = "btn btn-soundcloud", "☁️ SoundCloud")
-                        )
+                        h3(class = "card-title", "Listen"),
+                        uiOutput("music_panel")
                     )
              ),
              
@@ -471,7 +503,7 @@ server <- function(input, output, session) {
   
   # Get current playlist (pre-computed)
   current_playlist <- reactive({
-    ALL_PLAYLISTS[[input$selected_period]]
+    ALL_PLAYLISTS[[input$scaling_mode]][[input$selected_period]]
   })
   
   # Get current period config
@@ -507,15 +539,19 @@ server <- function(input, output, session) {
     }
   })
   
-  # Update search links when song changes
-  observe({
+  # Curated pick for the currently selected slot, matched by (period, song_number).
+  # Returns a one-row data frame or NULL. The join is on the positional slot, so
+  # it resolves identically in both BPM scaling modes.
+  selected_curated <- reactive({
     song <- selected_song()
-    if (!is.null(song)) {
-      query <- paste(song$bpm, "bpm", gsub(" –.*", "", song$mood))
-      session$sendCustomMessage("updateSearchLinks", list(query = query))
-    }
+    if (is.null(song) || nrow(CURATED_SONGS) == 0) return(NULL)
+    match <- CURATED_SONGS %>%
+      dplyr::filter(period == input$selected_period,
+                    song_number == song$song_number)
+    if (nrow(match) == 0) return(NULL)
+    match[1, ]
   })
-  
+
   # ----- OUTPUTS -----
   
   # Period description
@@ -529,9 +565,9 @@ server <- function(input, output, session) {
     p(class = "description-text",
       "CO₂ concentrations are mapped to beats per minute (BPM):",
       tags$br(), tags$br(),
-      paste0("• Low CO₂ (", s$co2_min, " ppm) → ", BPM_MIN, " BPM (slow, ambient)"),
+      paste0("• Low CO₂ (", s$scale_min, " ppm) → ", BPM_MIN, " BPM (slow, ambient)"),
       tags$br(),
-      paste0("• High CO₂ (", s$co2_max, " ppm) → ", BPM_MAX, " BPM (fast, intense)")
+      paste0("• High CO₂ (", s$scale_max, " ppm) → ", BPM_MAX, " BPM (fast, intense)")
     )
   })
   
@@ -562,22 +598,11 @@ server <- function(input, output, session) {
     if (nrow(data) == 0) return(NULL)
     
     # Determine x-axis based on timescale
-    is_modern <- (period$data_source == DATA_SOURCE_MODERN)
+    ax <- axis_for_period(period)
     
-    if (is_modern) {
-      # Modern: convert negative ages to CE years
-      data <- data %>% mutate(x_val = REFERENCE_YEAR - age)
-      x_title <- "Year (CE)"
-      x_reversed <- FALSE
-    } else if (period$data_source == DATA_SOURCE_CENOZOIC) {
-      data <- data %>% mutate(x_val = age / 1e6)
-      x_title <- "Age (millions of years ago)"
-      x_reversed <- TRUE
-    } else {
-      data <- data %>% mutate(x_val = age / 1000)
-      x_title <- "Age (thousands of years ago)"
-      x_reversed <- TRUE
-    }
+    data <- data %>% mutate(x_val = ax$scale(age))
+    x_title <- ax$title
+    x_reversed <- ax$reversed
     
     # Build plot
     p <- plot_ly() %>%
@@ -615,13 +640,7 @@ server <- function(input, output, session) {
     if (!is.null(song)) {
       mid_age <- (song$start_age + song$end_age) / 2
       
-      if (is_modern) {
-        marker_x <- REFERENCE_YEAR - mid_age
-      } else if (period$data_source == DATA_SOURCE_CENOZOIC) {
-        marker_x <- mid_age / 1e6
-      } else {
-        marker_x <- mid_age / 1000
-      }
+      marker_x <- ax$scale(mid_age)
       
       p <- p %>%
         add_trace(
@@ -667,7 +686,107 @@ server <- function(input, output, session) {
       div(class = "mood-tag", song$mood)
     )
   })
-  
+
+  # Listen panel: embedded player(s) + direct links for a curated slot,
+  # or the BPM/mood search buttons for a slot you haven't filled yet.
+  output$music_panel <- renderUI({
+    song <- selected_song()
+    if (is.null(song)) {
+      return(p("Select a song from the playlist to listen.", class = "muted"))
+    }
+
+    cur <- selected_curated()
+
+    # Build embed URLs (NA if the relevant field is blank/unparseable).
+    sp_embed <- if (!is.null(cur)) spotify_embed_url(cur$spotify_uri) else NA_character_
+    sp_open  <- if (!is.null(cur)) spotify_open_url(cur$spotify_uri)  else NA_character_
+    sc_embed <- if (!is.null(cur)) soundcloud_embed_url(cur$soundcloud_url) else NA_character_
+    sc_open  <- if (!is.null(cur) && !is.na(cur$soundcloud_url) &&
+                    nzchar(trimws(cur$soundcloud_url %||% ""))) {
+      trimws(cur$soundcloud_url)
+    } else {
+      NA_character_
+    }
+
+    has_track <- (!is.na(sp_embed)) || (!is.na(sc_embed))
+
+    if (has_track) {
+      # ----- Curated slot: show players + direct links -----
+      title_txt  <- if (!is.null(cur) && !is.na(cur$song_title) &&
+                        nzchar(trimws(cur$song_title))) trimws(cur$song_title) else NULL
+      artist_txt <- if (!is.null(cur) && !is.na(cur$artist) &&
+                        nzchar(trimws(cur$artist))) trimws(cur$artist) else NULL
+
+      header <- if (!is.null(title_txt) || !is.null(artist_txt)) {
+        div(class = "curated-track",
+            span(class = "curated-badge", "🎵 Curated pick"),
+            div(class = "curated-title",
+                tags$strong(title_txt %||% "Untitled"),
+                if (!is.null(artist_txt)) span(class = "muted", paste0("  ·  ", artist_txt))
+            )
+        )
+      } else {
+        div(class = "curated-track",
+            span(class = "curated-badge", "🎵 Curated pick"))
+      }
+
+      spotify_iframe <- if (!is.na(sp_embed)) {
+        tags$iframe(
+          src = sp_embed,
+          width = "100%", height = "152",
+          frameborder = "0",
+          allow = "autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture",
+          loading = "lazy",
+          style = "border-radius:12px; margin-top:0.75rem;"
+        )
+      }
+
+      soundcloud_iframe <- if (!is.na(sc_embed)) {
+        tags$iframe(
+          src = sc_embed,
+          width = "100%", height = "166",
+          frameborder = "no", scrolling = "no",
+          allow = "autoplay",
+          style = "margin-top:0.75rem;"
+        )
+      }
+
+      links <- div(class = "button-row",
+        if (!is.na(sp_open)) {
+          tags$a(href = sp_open, target = "_blank",
+                 class = "btn btn-spotify", "🎵 Open in Spotify")
+        },
+        if (!is.na(sc_open)) {
+          tags$a(href = sc_open, target = "_blank",
+                 class = "btn btn-soundcloud", "☁️ Open in SoundCloud")
+        }
+      )
+
+      tagList(header, spotify_iframe, soundcloud_iframe, links)
+
+    } else {
+      # ----- Blank slot: keep the BPM/mood search buttons -----
+      query <- paste(song$bpm, "bpm", gsub(" –.*", "", song$mood))
+      spotify_search    <- paste0("https://open.spotify.com/search/",
+                                  utils::URLencode(query, reserved = TRUE))
+      soundcloud_search <- paste0("https://soundcloud.com/search?q=",
+                                  utils::URLencode(query, reserved = TRUE))
+
+      tagList(
+        p(class = "description-text",
+          "No track picked for this slot yet. Add one in ",
+          tags$code("data/curated_songs.csv"),
+          " to play it here — or search for a song near this BPM:"),
+        div(class = "button-row",
+            tags$a(href = spotify_search, target = "_blank",
+                   class = "btn btn-spotify", "🎵 Spotify"),
+            tags$a(href = soundcloud_search, target = "_blank",
+                   class = "btn btn-soundcloud", "☁️ SoundCloud")
+        )
+      )
+    }
+  })
+
   # Playlist table
   output$playlist_table <- renderDT({
     pl <- current_playlist()

@@ -114,24 +114,21 @@ format_age <- function(age, use_ce = TRUE) {
       }
     }
     
+    # Adaptive decimals so neighbouring song edges stay distinct:
+    # >=100 -> 0 dp, 10-100 -> 1 dp (e.g. 20.0k vs 19.7k), <10 -> 2 dp.
+    scaled_label <- function(x, unit) {
+      dp <- if (abs(x) >= 100) 0 else if (abs(x) >= 10) 1 else 2
+      paste0(formatC(x, format = "f", digits = dp), unit)
+    }
+
     # Millions of years
     if (abs(a) >= 1000000) {
-      ma <- a / 1000000
-      if (ma >= 10) {
-        return(paste0(round(ma), " Ma"))
-      } else {
-        return(paste0(round(ma, 1), " Ma"))
-      }
+      return(scaled_label(a / 1000000, " Ma"))
     }
     
     # Thousands of years
-    if (abs(a) >= 10000) {
-      ka <- a / 1000
-      return(paste0(round(ka), "k BP"))
-    }
     if (abs(a) >= 1000) {
-      ka <- a / 1000
-      return(paste0(round(ka, 1), "k BP"))
+      return(scaled_label(a / 1000, "k BP"))
     }
     
     # Plain years
@@ -150,6 +147,41 @@ format_age_range <- function(start_age, end_age) {
 }
 
 # -----------------------------------------------------------------------------
+# TIMELINE AXIS MAPPING
+# -----------------------------------------------------------------------------
+
+#' Map ages to a plot x-axis for a period's timescale
+#'
+#' Returns the scaling function (age in years BP -> display x value), the axis
+#' title, and whether the axis should be reversed. Shared by the timeline trace
+#' and the selected-song marker so the two never drift apart.
+#'
+#' @param period Period configuration list (from TIME_PERIODS)
+#' @return list(scale = function(age), title = character, reversed = logical)
+#'
+axis_for_period <- function(period) {
+  if (period$data_source == DATA_SOURCE_MODERN) {
+    list(
+      scale    = function(age) REFERENCE_YEAR - age,   # negative ages -> CE years
+      title    = "Year (CE)",
+      reversed = FALSE
+    )
+  } else if (period$data_source == DATA_SOURCE_CENOZOIC) {
+    list(
+      scale    = function(age) age / 1e6,
+      title    = "Age (millions of years ago)",
+      reversed = TRUE
+    )
+  } else {
+    list(
+      scale    = function(age) age / 1000,
+      title    = "Age (thousands of years ago)",
+      reversed = TRUE
+    )
+  }
+}
+
+# -----------------------------------------------------------------------------
 # PLAYLIST GENERATION
 # -----------------------------------------------------------------------------
 
@@ -157,9 +189,11 @@ format_age_range <- function(start_age, end_age) {
 #' 
 #' @param period_config Period configuration list (from TIME_PERIODS)
 #' @param co2_data List containing dataframes with 'age' and 'co2' columns
+#' @param co2_scale Optional c(min, max) CO2 range for global BPM scaling;
+#'   NULL (default) scales to this period's own range.
 #' @return List with 'songs' dataframe and 'stats' list
 #' 
-generate_playlist <- function(period_config, co2_data) {
+generate_playlist <- function(period_config, co2_data, co2_scale = NULL) {
   
   # Get the appropriate data source
   source_name <- period_config$data_source
@@ -178,12 +212,16 @@ generate_playlist <- function(period_config, co2_data) {
     # Modern: use all data, ages are negative (e.g., -8 to -75)
     # No filtering needed - use full dataset
     data <- data %>%
-      dplyr::arrange(age)  # Most negative (oldest) first
+      dplyr::arrange(age)  # Most negative age = most recent year, sorted first
   } else {
-    # Ice core / Cenozoic: positive ages, filter by max age
+    # Ice core / Cenozoic: apply BOTH configured age bounds so the data used for
+    # BPM scaling matches the data used for the song windows. Without the lower
+    # bound, post-1950 (negative-age) ice-core points leak into co2_min/co2_max
+    # but fall outside every song window, squashing the BPM scale.
+    min_age <- period_config$filter_min_age %||% 0
     max_age <- period_config$filter_max_age %||% Inf
     data <- data %>%
-      dplyr::filter(age <= max_age) %>%
+      dplyr::filter(age >= min_age, age <= max_age) %>%
       dplyr::arrange(age)
   }
   
@@ -196,12 +234,29 @@ generate_playlist <- function(period_config, co2_data) {
     ))
   }
   
-  # Calculate CO2 range for BPM scaling - SPECIFIC TO THIS PLAYLIST
-  co2_min <- min(data$co2, na.rm = TRUE)
-  co2_max <- max(data$co2, na.rm = TRUE)
+  # CO2 range for BPM scaling.
+  #   Per-period (default): scale to THIS playlist's own min/max (max contrast,
+  #     but BPM not comparable across playlists).
+  #   Global (co2_scale given): scale every playlist to one shared range so
+  #     tempo is comparable across eras.
+  period_co2_min <- min(data$co2, na.rm = TRUE)
+  period_co2_max <- max(data$co2, na.rm = TRUE)
+  if (is.null(co2_scale)) {
+    scale_min <- period_co2_min
+    scale_max <- period_co2_max
+  } else {
+    scale_min <- co2_scale[1]
+    scale_max <- co2_scale[2]
+  }
   
-  # Calculate playlist metrics
-  years_span <- period_config$years_span
+  # Calculate playlist metrics. The Modern span is derived from the actual
+  # record range (so it never drifts as new months are added); geological
+  # periods use their configured span.
+  years_span <- if (is_modern) {
+    round(max(data$age) - min(data$age))
+  } else {
+    period_config$years_span
+  }
   years_per_minute <- period_config$years_per_minute
   playlist_minutes <- years_span / years_per_minute
   num_songs <- ceiling(playlist_minutes / AVG_SONG_LENGTH)
@@ -209,9 +264,11 @@ generate_playlist <- function(period_config, co2_data) {
   
   # Generate song time windows
   if (is_modern) {
-    # Modern: start from oldest (most negative age) to newest
-    age_min <- min(data$age)  # e.g., -75 (oldest, 1958)
-    age_max <- max(data$age)  # e.g., -8 (newest, 2024)
+    # Modern: ages are negative (years after 1950), so the MOST negative age is
+    # the MOST recent year. Build equal-width windows here; the playlist is
+    # reordered oldest -> youngest (past -> present) further below.
+    age_min <- min(data$age)  # most negative = most recent year (e.g., -75 ~ 2025)
+    age_max <- max(data$age)  # least negative = oldest year    (e.g., -8  ~ 1958)
     
     songs <- tibble::tibble(
       song_number = 1:num_songs,
@@ -219,7 +276,8 @@ generate_playlist <- function(period_config, co2_data) {
       end_age = age_min + (1:num_songs) * years_per_song
     )
   } else {
-    # Ice core / Cenozoic: start from 0 (present) going back in time
+    # Ice core / Cenozoic: equal-width windows over [0, span]; the playlist is
+    # reordered oldest -> youngest (past -> present) further below.
     songs <- tibble::tibble(
       song_number = 1:num_songs,
       start_age = (0:(num_songs - 1)) * years_per_song,
@@ -254,28 +312,34 @@ generate_playlist <- function(period_config, co2_data) {
   # Add BPM, color, and mood - using THIS PLAYLIST's CO2 range
   songs <- songs %>%
     dplyr::mutate(
-      bpm = co2_to_bpm(avg_co2, co2_min, co2_max),
+      bpm = co2_to_bpm(avg_co2, scale_min, scale_max),
       bpm_color = get_bpm_colors(bpm),
       mood = get_mood(bpm)
     )
   
-  # Format ages for display
+  # Format ages for display so each song reads oldest edge -> youngest edge.
+  # (end_age is always the larger/older age; start_age the younger.)
   if (is_modern) {
     songs <- songs %>%
       dplyr::mutate(
-        # Convert negative ages to CE years
-        display_start = paste0(round(REFERENCE_YEAR - start_age), " CE"),
-        display_end = paste0(round(REFERENCE_YEAR - end_age), " CE"),
+        display_start = paste0(round(REFERENCE_YEAR - end_age), " CE"),   # older year
+        display_end = paste0(round(REFERENCE_YEAR - start_age), " CE"),   # younger year
         age_range = paste(display_start, "→", display_end)
       )
   } else {
     songs <- songs %>%
       dplyr::mutate(
-        display_start = format_age(start_age),
-        display_end = format_age(end_age),
-        age_range = format_age_range(start_age, end_age)
+        display_start = format_age(end_age),                 # older edge first
+        display_end = format_age(start_age),                 # younger edge
+        age_range = format_age_range(end_age, start_age)
       )
   }
+
+  # Order the whole playlist oldest -> youngest (past -> present) and renumber,
+  # so playback moves forward in time and BPM rises with CO2 toward the present.
+  songs <- songs %>%
+    dplyr::arrange(dplyr::desc(end_age)) %>%
+    dplyr::mutate(song_number = dplyr::row_number())
   
   # Statistics
   stats <- list(
@@ -286,8 +350,10 @@ generate_playlist <- function(period_config, co2_data) {
     playlist_minutes = round(playlist_minutes, 1),
     num_songs = num_songs,
     years_per_song = round(years_per_song, 0),
-    co2_min = round(co2_min, 0),
-    co2_max = round(co2_max, 0),
+    co2_min = round(period_co2_min, 0),
+    co2_max = round(period_co2_max, 0),
+    scale_min = round(scale_min, 0),
+    scale_max = round(scale_max, 0),
     bpm_min = min(songs$bpm),
     bpm_max = max(songs$bpm),
     data_points = nrow(data)
@@ -300,13 +366,23 @@ generate_playlist <- function(period_config, co2_data) {
   ))
 }
 
+#' Global CO2 range across all datasets (for the "global" BPM scaling mode)
+#'
+#' @param co2_data List of CO2 datasets
+#' @return Numeric c(min, max) over every dataset's co2 values
+global_co2_range <- function(co2_data) {
+  all_co2 <- unlist(lapply(co2_data, function(d) d$co2), use.names = FALSE)
+  range(all_co2, na.rm = TRUE)
+}
+
 #' Generate playlists for all time periods
 #' 
 #' @param co2_data List containing all CO2 datasets
 #' @param period_ids Character vector of period IDs to generate (default: all)
+#' @param co2_scale Optional c(min, max) for global BPM scaling; NULL = per-period
 #' @return Named list of playlist results
 #' 
-generate_all_playlists <- function(co2_data, period_ids = NULL) {
+generate_all_playlists <- function(co2_data, period_ids = NULL, co2_scale = NULL) {
   
   if (is.null(period_ids)) {
     period_ids <- names(TIME_PERIODS)
@@ -317,7 +393,7 @@ generate_all_playlists <- function(co2_data, period_ids = NULL) {
   for (id in period_ids) {
     period <- get_period(id)
     cat("  Generating:", period$name, "...\n")
-    playlists[[id]] <- generate_playlist(period, co2_data)
+    playlists[[id]] <- generate_playlist(period, co2_data, co2_scale = co2_scale)
   }
   
   return(playlists)
@@ -343,8 +419,120 @@ create_playlist_template <- function(playlist) {
       song_title = "",
       artist = "",
       spotify_uri = "",
+      soundcloud_url = "",
       notes = ""
     )
+}
+
+# -----------------------------------------------------------------------------
+# CURATED SONGS - SEEDING & EMBED HELPERS
+# -----------------------------------------------------------------------------
+
+#' Seed the persistent curated-songs file (only if it does not already exist)
+#'
+#' Writes ONE row per (period, song_number) slot across every playlist, with the
+#' period, slot number, per-period target BPM and time window pre-filled, and the
+#' track columns (song_title, artist, spotify_uri, soundcloud_url, notes) left
+#' blank for hand-entry. If `data/curated_songs.csv` already exists it is LEFT
+#' UNTOUCHED, so run_generator.R can never clobber your picks.
+#'
+#' NOTE on bpm_target: this is the per-period BPM (max-contrast mode) and is only
+#' a guide for choosing a track of roughly the right tempo. The app joins your
+#' picks by (period, song_number), NOT by BPM, so the pick shows in both scaling
+#' modes regardless of this value.
+#'
+#' CAVEAT: song_number is a positional slot. If you later refresh the Mauna Loa
+#' CSV, the Modern playlist's song count can change and shift its song_numbers,
+#' which would misalign previously-entered Modern rows. Re-check the Modern block
+#' after any data refresh (the other periods are fixed-span and won't shift).
+#'
+#' @param all_playlists Named list of playlists from generate_all_playlists()
+#'   (per-period scaling, i.e. the default), keyed by period id.
+#' @param data_dir Path to the data directory (default: "data").
+#' @return (Invisibly) the path to the curated file.
+seed_curated_songs <- function(all_playlists, data_dir = "data") {
+  curated_file <- file.path(data_dir, "curated_songs.csv")
+
+  if (file.exists(curated_file)) {
+    message("  • curated_songs.csv already exists - leaving your picks untouched.")
+    return(invisible(curated_file))
+  }
+
+  rows <- dplyr::bind_rows(lapply(names(all_playlists), function(pid) {
+    songs <- all_playlists[[pid]]$songs
+    if (is.null(songs) || nrow(songs) == 0) return(NULL)
+    tibble::tibble(
+      period         = pid,
+      song_number    = songs$song_number,
+      bpm_target     = songs$bpm,
+      time_period    = songs$age_range,
+      song_title     = "",
+      artist         = "",
+      spotify_uri    = "",
+      soundcloud_url = "",
+      notes          = ""
+    )
+  }))
+
+  readr::write_csv(rows, curated_file)
+  message("  ✓ Seeded ", curated_file, " with ", nrow(rows),
+          " blank slots across ", length(all_playlists), " periods.")
+  invisible(curated_file)
+}
+
+#' Extract a Spotify track ID from a URI/URL/bare id
+#'
+#' Handles the three common forms:
+#'   spotify:track:4iV5W9uYEdYUVa79Axb7Rh
+#'   https://open.spotify.com/track/4iV5W9uYEdYUVa79Axb7Rh?si=...
+#'   4iV5W9uYEdYUVa79Axb7Rh            (bare base-62 id)
+#'
+#' @param uri A single Spotify URI/URL/id (character; NA or "" allowed).
+#' @return The track id (character) or NA_character_ if none can be parsed.
+parse_spotify_id <- function(uri) {
+  if (is.null(uri) || length(uri) == 0) return(NA_character_)
+  uri <- suppressWarnings(as.character(uri)[1])
+  if (is.na(uri)) return(NA_character_)
+  uri <- trimws(uri)
+  if (!nzchar(uri)) return(NA_character_)
+
+  # "track:ID" or "track/ID" (URI or open.spotify.com URL forms)
+  m <- regmatches(uri, regexec("track[:/]([A-Za-z0-9]+)", uri))[[1]]
+  if (length(m) >= 2 && nzchar(m[2])) return(m[2])
+
+  # Bare id (base-62 token, no scheme/slashes)
+  if (grepl("^[A-Za-z0-9]+$", uri)) return(uri)
+
+  NA_character_
+}
+
+#' Build a Spotify embed-player URL from a stored spotify_uri
+#' @return https://open.spotify.com/embed/track/{id} or NA_character_
+spotify_embed_url <- function(uri) {
+  id <- parse_spotify_id(uri)
+  if (is.na(id)) return(NA_character_)
+  paste0("https://open.spotify.com/embed/track/", id)
+}
+
+#' Build a Spotify "open in app" URL from a stored spotify_uri
+#' @return https://open.spotify.com/track/{id} or NA_character_
+spotify_open_url <- function(uri) {
+  id <- parse_spotify_id(uri)
+  if (is.na(id)) return(NA_character_)
+  paste0("https://open.spotify.com/track/", id)
+}
+
+#' Build a SoundCloud widget-player URL from a stored soundcloud_url
+#' @return https://w.soundcloud.com/player/?url={encoded} or NA_character_
+soundcloud_embed_url <- function(url) {
+  if (is.null(url) || length(url) == 0) return(NA_character_)
+  url <- suppressWarnings(as.character(url)[1])
+  if (is.na(url)) return(NA_character_)
+  url <- trimws(url)
+  if (!nzchar(url)) return(NA_character_)
+  paste0("https://w.soundcloud.com/player/?url=",
+         utils::URLencode(url, reserved = TRUE),
+         "&color=%23ff5500&auto_play=false&show_comments=false")
 }
 
 #' Print a formatted summary of a playlist

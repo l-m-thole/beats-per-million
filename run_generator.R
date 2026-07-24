@@ -1,5 +1,5 @@
 # =============================================================================
-# CLIMATE PLAYLISTS - MAIN GENERATOR SCRIPT
+# BEATS PER MILLION - MAIN GENERATOR SCRIPT
 # =============================================================================
 #
 # Run this script to generate all playlist templates.
@@ -22,20 +22,23 @@
 # -----------------------------------------------------------------------------
 
 # Load required packages
-library(tidyverse)
+library(dplyr)
+library(tibble)
+library(readr)
 library(readxl)
 library(writexl)
+library(here)
 
 # Source shared modules
-source("R/config.R")
-source("R/functions.R")
-source("R/load_data.R")
+source(here::here("R", "config.R"))
+source(here::here("R", "functions.R"))
+source(here::here("R", "load_data.R"))
 
 # -----------------------------------------------------------------------------
 # CONFIGURATION
 # -----------------------------------------------------------------------------
 
-OUTPUT_DIR <- "output"
+OUTPUT_DIR <- here::here("output")
 
 # Create output directory if needed
 if (!dir.exists(OUTPUT_DIR)) {
@@ -48,13 +51,13 @@ if (!dir.exists(OUTPUT_DIR)) {
 
 cat("\n")
 cat("╔═══════════════════════════════════════════════════════════════════╗\n")
-cat("║            CLIMATE PLAYLISTS GENERATOR v3.0                       ║\n")
+cat("║              BEATS PER MILLION - DANCE WHILE YOU CAN              ║\n")
 cat("║         Translating Earth's Climate History into Music            ║\n")
 cat("╚═══════════════════════════════════════════════════════════════════╝\n")
 cat("\n")
 
 # Load all CO2 data
-co2_data <- load_co2_data("data")
+co2_data <- load_co2_data(here::here("data"))
 
 # Validate
 validate_co2_data(co2_data)
@@ -99,6 +102,21 @@ for (id in names(all_playlists)) {
 excel_file <- file.path(OUTPUT_DIR, "all_playlist_templates.xlsx")
 write_xlsx(templates, excel_file)
 cat("\n  ✓", excel_file, "\n")
+
+# -----------------------------------------------------------------------------
+# SEED PERSISTENT CURATED-SONGS FILE (data/curated_songs.csv)
+# -----------------------------------------------------------------------------
+# This is the hand-entered library the app reads for in-app playback. It is
+# seeded ONCE with one blank row per (period, song_number) slot and is NEVER
+# overwritten here on subsequent runs, so your picks are safe.
+
+cat("\n")
+cat("═══════════════════════════════════════════════════════════════════\n")
+cat("  CURATED SONGS LIBRARY\n")
+cat("═══════════════════════════════════════════════════════════════════\n")
+cat("\n")
+
+seed_curated_songs(all_playlists, data_dir = here::here("data"))
 
 # -----------------------------------------------------------------------------
 # EXPORT FULL DATA (with stats)

@@ -13,7 +13,6 @@
 
 library(readxl)
 library(dplyr)
-library(tidyr)
 
 # -----------------------------------------------------------------------------
 # MAIN DATA LOADING FUNCTION
@@ -54,17 +53,19 @@ load_co2_data <- function(data_dir = "data") {
   }
   
   # -------------------------------------------------------------------------
-  # Load Ice Core (Bereiter 2014) data
+  # Load Ice Core (Bereiter et al. 2015) data
   # -------------------------------------------------------------------------
   icecore_file <- file.path(data_dir, "co2_data.xlsx")
-  
+
   if (file.exists(icecore_file)) {
+    # NB: sheet name "bereiter2014" is retained for data compatibility;
+    # the underlying source is Bereiter et al. 2015 (GRL).
     icecore <- read_excel(icecore_file, sheet = "bereiter2014") %>%
       select(age, co2) %>%
       arrange(age)  # Sort by age (smallest = most recent)
-    
+
     co2_data$icecore <- icecore
-    cat("  ✓ Ice Core (Bereiter 2014):", nrow(icecore), "records,",
+    cat("  ✓ Ice Core (Bereiter 2015):", nrow(icecore), "records,",
         round(min(icecore$age)), "–", format(round(max(icecore$age)), big.mark = ","), "years BP\n")
   } else {
     warning("Ice core data file not found: ", icecore_file)
@@ -91,6 +92,64 @@ load_co2_data <- function(data_dir = "data") {
   
   cat("\n")
   return(co2_data)
+}
+
+# -----------------------------------------------------------------------------
+# CURATED SONGS LOADING
+# -----------------------------------------------------------------------------
+
+#' Load the persistent curated-songs library
+#'
+#' Reads `data/curated_songs.csv` (your hand-entered picks). Everything is read
+#' as text so re-saving the file in Excel can't corrupt types; song_number is
+#' then coerced to integer for joining. Missing expected columns are backfilled
+#' as blank, and a missing file returns an empty (but correctly-shaped) tibble so
+#' the app runs fine before the file is seeded.
+#'
+#' @param data_dir Path to the data directory (default: "data").
+#' @return Tibble with columns period, song_number, bpm_target, time_period,
+#'   song_title, artist, spotify_uri, soundcloud_url, notes.
+load_curated_songs <- function(data_dir = "data") {
+
+  needed <- c("period", "song_number", "bpm_target", "time_period",
+              "song_title", "artist", "spotify_uri", "soundcloud_url", "notes")
+
+  empty <- tibble::tibble(
+    period = character(),      song_number = integer(),   bpm_target = double(),
+    time_period = character(), song_title = character(),  artist = character(),
+    spotify_uri = character(), soundcloud_url = character(), notes = character()
+  )
+
+  curated_file <- file.path(data_dir, "curated_songs.csv")
+  if (!file.exists(curated_file)) {
+    cat("  • Curated songs: none yet (", curated_file, " not found) — ",
+        "run run_generator.R to seed it, or add it by hand.\n", sep = "")
+    return(empty)
+  }
+
+  # Read every column as character so Excel re-saves can't mangle types.
+  df <- readr::read_csv(
+    curated_file,
+    col_types = readr::cols(.default = readr::col_character()),
+    show_col_types = FALSE
+  )
+
+  # Backfill any missing expected columns as blank.
+  for (col in needed) {
+    if (!col %in% names(df)) df[[col]] <- NA_character_
+  }
+
+  # Coerce the join/guide numerics.
+  df$song_number <- suppressWarnings(as.integer(df$song_number))
+  df$bpm_target  <- suppressWarnings(as.numeric(df$bpm_target))
+
+  n_filled <- sum(
+    (!is.na(df$spotify_uri)    & nzchar(trimws(df$spotify_uri))) |
+    (!is.na(df$soundcloud_url) & nzchar(trimws(df$soundcloud_url)))
+  )
+  cat("  ✓ Curated songs:", nrow(df), "slots,", n_filled, "with a track filled in\n")
+
+  df[, needed]
 }
 
 # -----------------------------------------------------------------------------
