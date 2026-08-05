@@ -104,19 +104,20 @@ write_xlsx(templates, excel_file)
 cat("\n  ✓", excel_file, "\n")
 
 # -----------------------------------------------------------------------------
-# SEED PERSISTENT CURATED-SONGS FILE (data/curated_songs.csv)
+# SEED PERSISTENT SONG LIBRARY (data/song_library.csv)
 # -----------------------------------------------------------------------------
 # This is the hand-entered library the app reads for in-app playback. It is
-# seeded ONCE with one blank row per (period, song_number) slot and is NEVER
-# overwritten here on subsequent runs, so your picks are safe.
+# seeded ONCE with a header + two example rows and is NEVER overwritten here on
+# subsequent runs, so your library is safe. The app matches songs to playlist
+# slots by BPM at run time, so refreshing the data can never misalign it.
 
 cat("\n")
 cat("═══════════════════════════════════════════════════════════════════\n")
-cat("  CURATED SONGS LIBRARY\n")
+cat("  SONG LIBRARY\n")
 cat("═══════════════════════════════════════════════════════════════════\n")
 cat("\n")
 
-seed_curated_songs(all_playlists, data_dir = here::here("data"))
+seed_song_library(data_dir = here::here("data"))
 
 # -----------------------------------------------------------------------------
 # EXPORT FULL DATA (with stats)

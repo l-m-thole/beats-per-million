@@ -95,41 +95,40 @@ load_co2_data <- function(data_dir = "data") {
 }
 
 # -----------------------------------------------------------------------------
-# CURATED SONGS LOADING
+# SONG LIBRARY LOADING
 # -----------------------------------------------------------------------------
 
-#' Load the persistent curated-songs library
+#' Load the persistent song library
 #'
-#' Reads `data/curated_songs.csv` (your hand-entered picks). Everything is read
-#' as text so re-saving the file in Excel can't corrupt types; song_number is
-#' then coerced to integer for joining. Missing expected columns are backfilled
-#' as blank, and a missing file returns an empty (but correctly-shaped) tibble so
-#' the app runs fine before the file is seeded.
+#' Reads `data/song_library.csv` (your hand-entered songs). Everything is read as
+#' text so re-saving the file in Excel can't corrupt types; `bpm` is then coerced
+#' to numeric for matching. Missing expected columns are backfilled as blank, and
+#' a missing file returns an empty (but correctly-shaped) tibble so the app runs
+#' fine before the library is seeded.
 #'
 #' @param data_dir Path to the data directory (default: "data").
-#' @return Tibble with columns period, song_number, bpm_target, time_period,
-#'   song_title, artist, spotify_uri, soundcloud_url, notes.
-load_curated_songs <- function(data_dir = "data") {
+#' @return Tibble with columns song_title, artist, spotify_uri, soundcloud_url,
+#'   bpm, notes.
+load_song_library <- function(data_dir = "data") {
 
-  needed <- c("period", "song_number", "bpm_target", "time_period",
-              "song_title", "artist", "spotify_uri", "soundcloud_url", "notes")
+  needed <- c("song_title", "artist", "spotify_uri",
+              "soundcloud_url", "bpm", "notes")
 
   empty <- tibble::tibble(
-    period = character(),      song_number = integer(),   bpm_target = double(),
-    time_period = character(), song_title = character(),  artist = character(),
-    spotify_uri = character(), soundcloud_url = character(), notes = character()
+    song_title = character(),  artist = character(),        spotify_uri = character(),
+    soundcloud_url = character(), bpm = double(),           notes = character()
   )
 
-  curated_file <- file.path(data_dir, "curated_songs.csv")
-  if (!file.exists(curated_file)) {
-    cat("  • Curated songs: none yet (", curated_file, " not found) — ",
+  library_file <- file.path(data_dir, "song_library.csv")
+  if (!file.exists(library_file)) {
+    cat("  • Song library: none yet (", library_file, " not found) — ",
         "run run_generator.R to seed it, or add it by hand.\n", sep = "")
     return(empty)
   }
 
   # Read every column as character so Excel re-saves can't mangle types.
   df <- readr::read_csv(
-    curated_file,
+    library_file,
     col_types = readr::cols(.default = readr::col_character()),
     show_col_types = FALSE
   )
@@ -139,15 +138,17 @@ load_curated_songs <- function(data_dir = "data") {
     if (!col %in% names(df)) df[[col]] <- NA_character_
   }
 
-  # Coerce the join/guide numerics.
-  df$song_number <- suppressWarnings(as.integer(df$song_number))
-  df$bpm_target  <- suppressWarnings(as.numeric(df$bpm_target))
+  # Coerce the match key to numeric.
+  df$bpm <- suppressWarnings(as.numeric(df$bpm))
 
-  n_filled <- sum(
-    (!is.na(df$spotify_uri)    & nzchar(trimws(df$spotify_uri))) |
-    (!is.na(df$soundcloud_url) & nzchar(trimws(df$soundcloud_url)))
+  n_playable <- sum(
+    !is.na(df$bpm) & (
+      (!is.na(df$spotify_uri)    & nzchar(trimws(df$spotify_uri))) |
+      (!is.na(df$soundcloud_url) & nzchar(trimws(df$soundcloud_url)))
+    )
   )
-  cat("  ✓ Curated songs:", nrow(df), "slots,", n_filled, "with a track filled in\n")
+  cat("  ✓ Song library:", nrow(df), "songs,", n_playable,
+      "playable (BPM + a Spotify/SoundCloud link)\n")
 
   df[, needed]
 }

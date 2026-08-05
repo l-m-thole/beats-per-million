@@ -77,9 +77,10 @@ climate_playlists/
 │   ├── functions.R       # CO2→BPM conversion, playlist generation
 │   └── load_data.R       # Data loading & normalization
 ├── app.R                 # Shiny application
-├── run_generator.R       # CLI script for generating templates
+├── run_generator.R       # CLI script for generating templates + seeding the library
 ├── data/
 │   ├── co2_data.xlsx     # Processed: 'maunaloa' + 'bereiter2014' sheets
+│   ├── song_library.csv  # Your songs + their real BPM (matched to slots at runtime)
 │   └── rawData/
 │       ├── co2_mm_mlo.csv      # Raw monthly Mauna Loa CO2 (NOAA)
 │       ├── rae2021co2.xlsx     # Cenozoic proxy data (Rae et al. 2021)
@@ -139,19 +140,50 @@ Each playlist compresses geological time into listenable duration:
 
 ---
 
-## 🎧 Using the Playlists
+## 🎧 Using the Song Library
 
-1. **Generate templates:** Run `source("run_generator.R")`
-2. **Open CSVs:** Find them in `output/`
-3. **Find songs:** Use Spotify/SoundCloud to search for songs at each target BPM
-4. **Fill in:** Add song titles, artists, and URIs to the template
-5. **Create playlist:** Import into your music platform
+The app plays songs from a single hand-built library, **matched to each playlist
+slot by tempo** at run time. Because the match is by BPM rather than a fixed
+slot, refreshing the climate data can never misalign your picks.
 
-### BPM Search Tips
+1. **Seed the file (first time):** `source("run_generator.R")` creates
+   `data/song_library.csv` with a header and two example rows. It never
+   overwrites an existing library.
+2. **Add songs:** open `data/song_library.csv` and fill one row per song:
+   - `song_title`, `artist`
+   - `spotify_uri` — any of `spotify:track:<id>`, an `https://open.spotify.com/track/<id>` URL, or the bare id
+   - `soundcloud_url` — the public track URL
+   - `bpm` — the song's **real tempo** (see below)
+   - `notes` — anything you like
 
-- Spotify: Search `bpm:120` or use tools like [Sort Your Music](http://sortyourmusic.playlistmachinery.com/)
-- SoundCloud: Search "120 bpm ambient" or similar
-- Genres often have typical BPM ranges that match the mood suggestions
+   Delete the two example rows once you've added real songs. Saving from Excel is
+   fine: columns can be reordered and extra columns are ignored on load.
+3. **Run the app:** `shiny::runApp()`, pick a period, and click a song in the
+   Playlist. If a library song is near that slot's BPM you get an embedded
+   Spotify/SoundCloud player plus "Open in…" links; if nothing matches yet you
+   get BPM search buttons.
+
+### Finding a song's BPM
+
+- Look it up on [TuneBat](https://tunebat.com) or [songbpm.com](https://songbpm.com).
+- **Watch half-/double-time tags.** These tools sometimes report a track at half
+  or double its felt tempo (e.g. a 70 BPM song listed as 140). Enter the tempo
+  that matches how the song actually *feels*, or the matching will be off — a
+  quick `half-time?` in `notes` helps you remember which ones you second-guessed.
+
+### How matching works
+
+- For each slot the app looks for a library song within **±5 BPM** of the slot's
+  target, then widens to **±10 BPM**, then falls back to the **single nearest**
+  song. Only an empty library leaves a slot with search buttons.
+- A song is **never repeated within one period**, so the more songs you add the
+  more slots fill in — a ~90-song library comfortably covers even the longest
+  playlist.
+- **🔀 Shuffle** re-rolls which songs land in the current period's slots.
+  Otherwise picks are reproducible: the same period shows the same songs each
+  time until you shuffle.
+- Matching uses the **currently selected BPM scaling mode** (per-period vs
+  global), so switching modes can change which songs match a slot.
 
 ---
 

@@ -42,7 +42,20 @@ testthat::test_dir("tests/testthat")
 ```
 
 Covered: the CO2 to BPM conversion (`co2_to_bpm`), age-label formatting
-(`format_age`), and the Rae proxy binning / validation (`load_data.R`).
+(`format_age`), the Rae proxy binning / validation (`load_data.R`), the BPM song
+matcher (`pick_song_for_bpm` / `pick_song_widening` / `assign_songs_to_playlist`:
+tolerance, widening, exclusion, empty library, seed reproducibility), and the
+song-library seed → Excel-style re-save → load round-trip.
+
+## Song library (in-app playback)
+
+Songs are matched to playlist slots **by BPM at run time** from a flat,
+hand-built `data/song_library.csv` (`song_title, artist, spotify_uri,
+soundcloud_url, bpm, notes`). This replaces the earlier fixed-slot
+`curated_songs.csv`, whose `(period, song_number)` join broke whenever a data
+refresh shifted song numbers. `seed_song_library()` writes the file once (header
++ two example rows) and never overwrites it; `run_generator.R` calls it after
+exporting the templates.
 
 ## Regenerate playlist outputs
 

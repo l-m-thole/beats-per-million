@@ -425,59 +425,169 @@ create_playlist_template <- function(playlist) {
 }
 
 # -----------------------------------------------------------------------------
-# CURATED SONGS - SEEDING & EMBED HELPERS
+# SONG LIBRARY - SEEDING, BPM MATCHING & EMBED HELPERS
 # -----------------------------------------------------------------------------
 
-#' Seed the persistent curated-songs file (only if it does not already exist)
+#' Seed the persistent song library (only if it does not already exist)
 #'
-#' Writes ONE row per (period, song_number) slot across every playlist, with the
-#' period, slot number, per-period target BPM and time window pre-filled, and the
-#' track columns (song_title, artist, spotify_uri, soundcloud_url, notes) left
-#' blank for hand-entry. If `data/curated_songs.csv` already exists it is LEFT
-#' UNTOUCHED, so run_generator.R can never clobber your picks.
+#' Writes `data/song_library.csv` with a header and two example rows, so you have
+#' the right columns to start from. If the file already exists it is LEFT
+#' UNTOUCHED, so run_generator.R can never clobber your library.
 #'
-#' NOTE on bpm_target: this is the per-period BPM (max-contrast mode) and is only
-#' a guide for choosing a track of roughly the right tempo. The app joins your
-#' picks by (period, song_number), NOT by BPM, so the pick shows in both scaling
-#' modes regardless of this value.
+#' The library is a flat list of songs you like, each tagged with its real tempo
+#' (`bpm`). The app matches songs to playlist slots by BPM at run time, so --
+#' unlike the old fixed-slot curated file -- a data refresh that shifts song
+#' numbers can never misalign your picks. Columns:
+#'   song_title, artist, spotify_uri, soundcloud_url, bpm, notes
 #'
-#' CAVEAT: song_number is a positional slot. If you later refresh the Mauna Loa
-#' CSV, the Modern playlist's song count can change and shift its song_numbers,
-#' which would misalign previously-entered Modern rows. Re-check the Modern block
-#' after any data refresh (the other periods are fixed-span and won't shift).
-#'
-#' @param all_playlists Named list of playlists from generate_all_playlists()
-#'   (per-period scaling, i.e. the default), keyed by period id.
 #' @param data_dir Path to the data directory (default: "data").
-#' @return (Invisibly) the path to the curated file.
-seed_curated_songs <- function(all_playlists, data_dir = "data") {
-  curated_file <- file.path(data_dir, "curated_songs.csv")
+#' @return (Invisibly) the path to the library file.
+seed_song_library <- function(data_dir = "data") {
+  lib_file <- file.path(data_dir, "song_library.csv")
 
-  if (file.exists(curated_file)) {
-    message("  • curated_songs.csv already exists - leaving your picks untouched.")
-    return(invisible(curated_file))
+  if (file.exists(lib_file)) {
+    message("  • song_library.csv already exists - leaving your library untouched.")
+    return(invisible(lib_file))
   }
 
-  rows <- dplyr::bind_rows(lapply(names(all_playlists), function(pid) {
-    songs <- all_playlists[[pid]]$songs
-    if (is.null(songs) || nrow(songs) == 0) return(NULL)
-    tibble::tibble(
-      period         = pid,
-      song_number    = songs$song_number,
-      bpm_target     = songs$bpm,
-      time_period    = songs$age_range,
-      song_title     = "",
-      artist         = "",
-      spotify_uri    = "",
-      soundcloud_url = "",
-      notes          = ""
-    )
-  }))
+  rows <- tibble::tibble(
+    song_title     = c("Example slow track (replace me)",
+                       "Example fast track (replace me)"),
+    artist         = c("Various Artists", "Various Artists"),
+    spotify_uri    = c("", ""),
+    soundcloud_url = c("", ""),
+    bpm            = c(70, 140),
+    notes          = c("Delete these two example rows once you add real songs.",
+                       "bpm is the song's real tempo - see tunebat.com / songbpm.com.")
+  )
 
-  readr::write_csv(rows, curated_file)
-  message("  ✓ Seeded ", curated_file, " with ", nrow(rows),
-          " blank slots across ", length(all_playlists), " periods.")
-  invisible(curated_file)
+  readr::write_csv(rows, lib_file)
+  message("  ✓ Seeded ", lib_file, " with a header and 2 example rows. ",
+          "Fill it with real songs (title, artist, a Spotify and/or SoundCloud ",
+          "link, and the song's BPM), then delete the examples.")
+  invisible(lib_file)
+}
+
+#' Pick one library song whose tempo is within `tol` BPM of a target
+#'
+#' Pure matcher (no side effects beyond the RNG draw): keeps songs with a
+#' non-missing `bpm` inside `abs(bpm - target_bpm) <= tol`, drops any whose
+#' `song_title` is in `exclude`, and returns ONE of the survivors chosen with
+#' `dplyr::slice_sample(n = 1)`. Returns NULL when nothing qualifies.
+#'
+#' Reproducibility is the caller's job: call `set.seed()` beforehand so the draw
+#' is deterministic (the app seeds from the period name - see
+#' `assign_songs_to_playlist()`).
+#'
+#' @param songs Song-library tibble (needs `bpm`, `song_title`).
+#' @param target_bpm Target tempo in BPM.
+#' @param tol Half-width of the BPM window (inclusive).
+#' @param exclude Character vector of song titles to skip (already used).
+#' @return One-row tibble, or NULL if no song qualifies.
+pick_song_for_bpm <- function(songs, target_bpm, tol, exclude = character()) {
+  if (is.null(songs) || nrow(songs) == 0) return(NULL)
+  if (length(target_bpm) == 0 || is.na(target_bpm)) return(NULL)
+
+  cand <- songs %>%
+    dplyr::filter(!is.na(bpm), abs(bpm - target_bpm) <= tol)
+
+  if (length(exclude) > 0) {
+    cand <- cand %>% dplyr::filter(!(song_title %in% exclude))
+  }
+
+  if (nrow(cand) == 0) return(NULL)
+  dplyr::slice_sample(cand, n = 1)
+}
+
+#' Pick a song for a target BPM, widening the search until something matches
+#'
+#' Tries progressively looser tolerances, then falls back to the single nearest
+#' song, then gives up:
+#'   tol = 5  ->  tol = 10  ->  nearest song by |bpm - target|  ->  NULL
+#'
+#' Honours `exclude` at every step, so a song already used elsewhere in the
+#' playlist is never picked again. Returns NULL only when the library has no
+#' usable (non-excluded, non-missing-bpm) songs left.
+#'
+#' @inheritParams pick_song_for_bpm
+#' @param tols Ascending BPM tolerances to try before the nearest-song fallback.
+#' @return One-row tibble, or NULL.
+pick_song_widening <- function(songs, target_bpm, exclude = character(),
+                               tols = c(5, 10)) {
+  if (is.null(songs) || nrow(songs) == 0) return(NULL)
+  if (length(target_bpm) == 0 || is.na(target_bpm)) return(NULL)
+
+  for (tol in tols) {
+    hit <- pick_song_for_bpm(songs, target_bpm, tol, exclude = exclude)
+    if (!is.null(hit)) return(hit)
+  }
+
+  # Fallback: the nearest song(s) by absolute BPM distance.
+  cand <- songs %>% dplyr::filter(!is.na(bpm))
+  if (length(exclude) > 0) {
+    cand <- cand %>% dplyr::filter(!(song_title %in% exclude))
+  }
+  if (nrow(cand) == 0) return(NULL)
+
+  min_dist <- min(abs(cand$bpm - target_bpm))
+  cand <- cand %>% dplyr::filter(abs(bpm - target_bpm) == min_dist)
+  dplyr::slice_sample(cand, n = 1)
+}
+
+#' Assign a library song to every slot of a playlist, matched by BPM
+#'
+#' Walks the playlist slots in order and picks a song for each with
+#' `pick_song_widening()`, passing the titles already used in this playlist as
+#' `exclude` so a song never repeats within a period. The random draws are made
+#' reproducible by seeding the RNG from the period name plus `shuffle_counter`,
+#' so the same period always yields the same assignment until the user shuffles.
+#'
+#' @param playlist_songs Playlist tibble from generate_playlist()$songs
+#'   (needs `song_number`, `bpm`).
+#' @param library Song-library tibble from load_song_library().
+#' @param period Period id (character) - used to seed the RNG.
+#' @param shuffle_counter Integer bumped by the app's Shuffle button (default 0).
+#' @param tols Tolerances handed to pick_song_widening().
+#' @return Tibble with one row per MATCHED slot: song_number plus the library
+#'   columns (song_title, artist, spotify_uri, soundcloud_url, bpm, notes).
+#'   Empty (correctly-shaped) tibble when nothing matches.
+assign_songs_to_playlist <- function(playlist_songs, library, period,
+                                     shuffle_counter = 0, tols = c(5, 10)) {
+  empty <- tibble::tibble(
+    song_number = integer(),   song_title = character(),    artist = character(),
+    spotify_uri = character(), soundcloud_url = character(), bpm = double(),
+    notes = character()
+  )
+  if (is.null(playlist_songs) || nrow(playlist_songs) == 0) return(empty)
+  if (is.null(library) || nrow(library) == 0) return(empty)
+
+  set.seed(sum(utf8ToInt(as.character(period))) + shuffle_counter)
+
+  used  <- character(0)
+  picks <- vector("list", nrow(playlist_songs))
+
+  for (i in seq_len(nrow(playlist_songs))) {
+    pick <- pick_song_widening(library, playlist_songs$bpm[i],
+                               exclude = used, tols = tols)
+    if (is.null(pick)) next
+
+    title <- pick$song_title[1]
+    if (!is.na(title) && nzchar(trimws(title))) used <- c(used, title)
+
+    picks[[i]] <- tibble::tibble(
+      song_number    = playlist_songs$song_number[i],
+      song_title     = pick$song_title[1],
+      artist         = pick$artist[1],
+      spotify_uri    = pick$spotify_uri[1],
+      soundcloud_url = pick$soundcloud_url[1],
+      bpm            = pick$bpm[1],
+      notes          = pick$notes[1]
+    )
+  }
+
+  picks <- picks[!vapply(picks, is.null, logical(1))]
+  if (length(picks) == 0) return(empty)
+  dplyr::bind_rows(picks)
 }
 
 #' Extract a Spotify track ID from a URI/URL/bare id

@@ -352,9 +352,10 @@ ALL_PLAYLISTS <- list(
   global     = generate_all_playlists(CO2_DATA, co2_scale = GLOBAL_RANGE)
 )
 
-# Hand-curated song library (joined to playlist slots by period + song_number).
-# Empty tibble if data/curated_songs.csv hasn't been seeded yet.
-CURATED_SONGS <- load_curated_songs(here::here("data"))
+# Hand-curated song library (a flat list of songs tagged with their real BPM).
+# Matched to playlist slots by tempo at run time. Empty tibble if
+# data/song_library.csv hasn't been seeded yet.
+SONG_LIBRARY <- load_song_library(here::here("data"))
 
 # -----------------------------------------------------------------------------
 # USER INTERFACE
@@ -463,7 +464,11 @@ ui <- fluidPage(
                     ),
                     
                     div(class = "card",
-                        h3(class = "card-title", "Listen"),
+                        div(class = "playlist-header",
+                            h3(class = "card-title", "Listen"),
+                            actionButton("shuffle", "🔀 Shuffle",
+                                         class = "btn-download")
+                        ),
                         uiOutput("music_panel")
                     )
              ),
@@ -513,19 +518,29 @@ server <- function(input, output, session) {
   
   # Selected song index
   selected_idx <- reactiveVal(1)
-  
+
+  # Shuffle counter — bumped by the Shuffle button. Feeds the RNG seed so each
+  # bump re-rolls which library songs land in this period's slots (see
+  # assign_songs_to_playlist), while staying reproducible between bumps.
+  shuffle_counter <- reactiveVal(0)
+
   # Reset selection when period changes
   observeEvent(input$selected_period, {
     selected_idx(1)
   })
-  
+
+  # Re-roll the BPM-matched song picks
+  observeEvent(input$shuffle, {
+    shuffle_counter(shuffle_counter() + 1)
+  })
+
   # Update selection from table click
   observeEvent(input$playlist_table_rows_selected, {
     if (length(input$playlist_table_rows_selected) > 0) {
       selected_idx(input$playlist_table_rows_selected[1])
     }
   })
-  
+
   # Get selected song
   selected_song <- reactive({
     pl <- current_playlist()
@@ -539,15 +554,28 @@ server <- function(input, output, session) {
     }
   })
   
-  # Curated pick for the currently selected slot, matched by (period, song_number).
-  # Returns a one-row data frame or NULL. The join is on the positional slot, so
-  # it resolves identically in both BPM scaling modes.
+  # BPM-matched song picks for the WHOLE current playlist, recomputed when the
+  # period, scaling mode, or shuffle counter changes. Doing it playlist-wide (not
+  # per-slot) lets us pass each slot the titles already used as `exclude` so a
+  # song never repeats within a period, and the seeded draw stays consistent
+  # across slots. Returns one row per MATCHED slot (song_number + library cols).
+  curated_picks <- reactive({
+    pl <- current_playlist()
+    if (is.null(pl) || nrow(pl$songs) == 0) return(NULL)
+    assign_songs_to_playlist(
+      pl$songs, SONG_LIBRARY,
+      period          = input$selected_period,
+      shuffle_counter = shuffle_counter()
+    )
+  })
+
+  # The pick for the currently selected slot, or NULL (-> search fallback).
+  # Because matching is by tempo, this naturally reflects each scaling mode's BPM.
   selected_curated <- reactive({
-    song <- selected_song()
-    if (is.null(song) || nrow(CURATED_SONGS) == 0) return(NULL)
-    match <- CURATED_SONGS %>%
-      dplyr::filter(period == input$selected_period,
-                    song_number == song$song_number)
+    song  <- selected_song()
+    picks <- curated_picks()
+    if (is.null(song) || is.null(picks) || nrow(picks) == 0) return(NULL)
+    match <- picks %>% dplyr::filter(song_number == song$song_number)
     if (nrow(match) == 0) return(NULL)
     match[1, ]
   })
@@ -774,9 +802,9 @@ server <- function(input, output, session) {
 
       tagList(
         p(class = "description-text",
-          "No track picked for this slot yet. Add one in ",
-          tags$code("data/curated_songs.csv"),
-          " to play it here — or search for a song near this BPM:"),
+          "No song in your library matches this slot yet. Add more tracks to ",
+          tags$code("data/song_library.csv"),
+          " (with their BPM) to fill it — or search for a song near this BPM:"),
         div(class = "button-row",
             tags$a(href = spotify_search, target = "_blank",
                    class = "btn btn-spotify", "🎵 Spotify"),
