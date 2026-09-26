@@ -210,6 +210,13 @@ body {
   margin-top: 0.5rem;
 }
 
+.play-status {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.8rem;
+  color: #a1a1aa;
+  margin-top: 0.75rem;
+}
+
 .card iframe {
   display: block;
   border: none;
@@ -357,6 +364,10 @@ ALL_PLAYLISTS <- list(
 # data/song_library.csv hasn't been seeded yet.
 SONG_LIBRARY <- load_song_library(here::here("data"))
 
+# Only match against songs that have a BPM *and* a Spotify/SoundCloud link,
+# otherwise slots get "matched" to rows the player can't play.
+SONG_LIBRARY <- playable_songs(SONG_LIBRARY)
+
 # -----------------------------------------------------------------------------
 # USER INTERFACE
 # -----------------------------------------------------------------------------
@@ -367,7 +378,11 @@ ui <- fluidPage(
   tags$head(
     tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=JetBrains+Mono:wght@300;400;500&family=DM+Sans:wght@400;500;600&display=swap"),
     # App styles (defined inline in app_css())
-    tags$style(HTML(app_css()))
+    tags$style(HTML(app_css())),
+    # Player APIs: progress events + auto-advance (see www/player.js)
+    tags$script(src = "https://open.spotify.com/embed/iframe-api/v1", async = NA),
+    tags$script(src = "https://w.soundcloud.com/player/api.js"),
+    tags$script(src = "player.js")
   ),
   
   # Header
@@ -469,7 +484,11 @@ ui <- fluidPage(
                             actionButton("shuffle", "🔀 Shuffle",
                                          class = "btn-download")
                         ),
-                        uiOutput("music_panel")
+                        uiOutput("music_panel"),
+                        uiOutput("play_status"),
+                        checkboxInput("auto_advance",
+                                      "Auto-play next song (max. 3 min each)",
+                                      value = TRUE)
                     )
              ),
              
@@ -523,6 +542,15 @@ server <- function(input, output, session) {
   # bump re-rolls which library songs land in this period's slots (see
   # assign_songs_to_playlist), while staying reproducible between bumps.
   shuffle_counter <- reactiveVal(0)
+
+  # Playback progress of the current song (0 = start, 1 = end / 3-min cap),
+  # reported by www/player.js. Drives the ball on the CO2 curve.
+  play_frac <- reactiveVal(0)
+  play_pos  <- reactiveVal(NULL)   # list(pos, dur) in ms, for the status line
+
+  # Becomes TRUE once anything has played; from then on a newly selected song
+  # (click or auto-advance) starts playing by itself.
+  listening <- reactiveVal(FALSE)
 
   # Reset selection when period changes
   observeEvent(input$selected_period, {
@@ -579,6 +607,52 @@ server <- function(input, output, session) {
     if (nrow(match) == 0) return(NULL)
     match[1, ]
   })
+
+  # ----- PLAYER <-> SHINY -----
+
+  # Identifies the slot the embedded player was built for; progress events
+  # carrying another token (a player that's being torn down) are ignored.
+  player_token <- reactive({
+    paste(input$selected_period, input$scaling_mode, selected_idx(),
+          shuffle_counter(), sep = "|")
+  })
+
+  # New song -> ball back to the start of its window
+  observeEvent(player_token(), {
+    play_frac(0)
+    play_pos(NULL)
+  })
+
+  observeEvent(input$player_progress, {
+    ev <- input$player_progress
+    if (!identical(ev$token, player_token())) return()
+    listening(TRUE)
+    play_frac(as.numeric(ev$frac %||% 0))
+    play_pos(list(pos = as.numeric(ev$pos %||% 0), dur = as.numeric(ev$dur %||% 0)))
+  })
+
+  # Song finished (or hit the 3-minute cap) -> next slot, which autoplays
+  observeEvent(input$player_ended, {
+    if (!identical(input$player_ended$token, player_token())) return()
+    if (!isTRUE(input$auto_advance)) return()
+    idx <- selected_idx()
+    if (idx < nrow(current_playlist()$songs)) selected_idx(idx + 1)
+  })
+
+  # Move the ball along the curve without re-drawing the plot
+  observeEvent(play_frac(), {
+    song <- isolate(selected_song())
+    pl   <- isolate(current_playlist())
+    if (is.null(song) || nrow(pl$raw_data) == 0) return()
+    ax  <- axis_for_period(isolate(current_period()))
+    pos <- ball_position(song, pl$raw_data, play_frac())
+    plotlyProxy("timeline_plot", session) %>%
+      plotlyProxyInvoke(
+        "restyle",
+        list(x = list(list(ax$scale(pos$age))), y = list(list(pos$co2))),
+        list(1L)   # trace 1 = the ball (trace 0 = the CO2 curve)
+      )
+  }, ignoreInit = TRUE)
 
   # ----- OUTPUTS -----
   
@@ -663,17 +737,25 @@ server <- function(input, output, session) {
         showlegend = FALSE
       )
     
-    # Add marker for selected song
+    # Ball for the selected song: sits on the curve at the current playback
+    # position and is moved by the play_frac() observer while the song plays.
+    # The song's time window is shaded so you can see where it will travel.
     song <- selected_song()
     if (!is.null(song)) {
-      mid_age <- (song$start_age + song$end_age) / 2
-      
-      marker_x <- ax$scale(mid_age)
+      pos <- ball_position(song, data, isolate(play_frac()))
+      marker_x <- ax$scale(pos$age)
       
       p <- p %>%
+        layout(shapes = list(list(
+          type = "rect", xref = "x", yref = "paper",
+          x0 = ax$scale(song$start_age), x1 = ax$scale(song$end_age),
+          y0 = 0, y1 = 1,
+          fillcolor = "rgba(255,255,255,0.06)",
+          line = list(width = 0), layer = "below"
+        ))) %>%
         add_trace(
           x = marker_x,
-          y = song$avg_co2,
+          y = pos$co2,
           type = "scatter",
           mode = "markers",
           marker = list(
@@ -758,19 +840,17 @@ server <- function(input, output, session) {
             span(class = "curated-badge", "🎵 Curated pick"))
       }
 
+      # Spotify: placeholder that www/player.js swaps for an IFrame-API
+      # controller (gives us playback position + end-of-track events).
       spotify_iframe <- if (!is.na(sp_embed)) {
-        tags$iframe(
-          src = sp_embed,
-          width = "100%", height = "152",
-          frameborder = "0",
-          allow = "autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture",
-          loading = "lazy",
-          style = "border-radius:12px; margin-top:0.75rem;"
-        )
+        div(style = "border-radius:12px; overflow:hidden; margin-top:0.75rem;",
+            div(id = "bpm-spotify",
+                `data-uri` = paste0("spotify:track:", parse_spotify_id(cur$spotify_uri))))
       }
 
       soundcloud_iframe <- if (!is.na(sc_embed)) {
         tags$iframe(
+          id = "bpm-soundcloud",
           src = sc_embed,
           width = "100%", height = "166",
           frameborder = "no", scrolling = "no",
@@ -790,7 +870,10 @@ server <- function(input, output, session) {
         }
       )
 
-      tagList(header, spotify_iframe, soundcloud_iframe, links)
+      div(id = "bpm-player",
+          `data-token`    = player_token(),
+          `data-autoplay` = tolower(isolate(listening())),
+          header, spotify_iframe, soundcloud_iframe, links)
 
     } else {
       # ----- Blank slot: keep the BPM/mood search buttons -----
@@ -815,6 +898,16 @@ server <- function(input, output, session) {
     }
   })
 
+  # Playback status under the player
+  output$play_status <- renderUI({
+    pp <- play_pos()
+    if (is.null(pp) || is.null(selected_curated())) return(NULL)
+    fmt <- function(ms) sprintf("%d:%02d", floor(ms / 60000), floor(ms / 1000) %% 60)
+    div(class = "play-status",
+        paste0("▶ ", fmt(pp$pos), " / ", fmt(pp$dur),
+               if (pp$dur >= 179000) "  (capped at 3 min)" else ""))
+  })
+
   # Playlist table
   output$playlist_table <- renderDT({
     pl <- current_playlist()
@@ -828,11 +921,13 @@ server <- function(input, output, session) {
         `Mood` = mood
       )
     
+    idx <- selected_idx()
     datatable(
       display_df,
-      selection = list(mode = "single", selected = selected_idx()),
+      selection = list(mode = "single", selected = idx),
       options = list(
         pageLength = 10,
+        displayStart = (ceiling(idx / 10) - 1) * 10,
         dom = "ftp",
         scrollY = "300px",
         scrollCollapse = TRUE,

@@ -645,6 +645,56 @@ soundcloud_embed_url <- function(url) {
          "&color=%23ff5500&auto_play=false&show_comments=false")
 }
 
+#' Keep only library songs the in-app player can actually play
+#'
+#' A song is playable when it has a BPM and a parseable Spotify id or a
+#' SoundCloud URL. Matching against the full library would otherwise hand
+#' many slots a song with no link (-> "no match" search buttons) even though
+#' playable songs at a similar tempo exist.
+#'
+#' @param library Tibble from load_song_library()
+#' @return The playable subset (same columns)
+playable_songs <- function(library) {
+  if (is.null(library) || nrow(library) == 0) return(library)
+  has_sp <- !is.na(vapply(library$spotify_uri, parse_spotify_id, character(1),
+                          USE.NAMES = FALSE))
+  has_sc <- !is.na(vapply(library$soundcloud_url, soundcloud_embed_url,
+                          character(1), USE.NAMES = FALSE))
+  library[!is.na(library$bpm) & (has_sp | has_sc), , drop = FALSE]
+}
+
+#' Where the "now playing" ball sits on the CO2 curve
+#'
+#' Songs play past -> present, so the ball travels from the OLDER edge of the
+#' song's time window (larger age) to the YOUNGER edge as the track plays.
+#' The y value is read off the CO2 curve itself (linear interpolation of the
+#' period's raw data), so the ball rides along the line rather than floating
+#' at the window average.
+#'
+#' @param song One playlist row (needs start_age, end_age, avg_co2)
+#' @param raw_data The period's CO2 data (age, co2)
+#' @param frac Playback progress, 0 = song start, 1 = song end (clamped)
+#' @return list(age, co2)
+ball_position <- function(song, raw_data, frac = 0) {
+  frac <- suppressWarnings(as.numeric(frac)[1])
+  if (is.na(frac)) frac <- 0
+  frac <- min(max(frac, 0), 1)
+
+  age_old   <- max(song$start_age, song$end_age)
+  age_young <- min(song$start_age, song$end_age)
+  age <- age_old - frac * (age_old - age_young)
+
+  ok <- !is.na(raw_data$age) & !is.na(raw_data$co2)
+  co2 <- if (sum(ok) >= 2) {
+    stats::approx(raw_data$age[ok], raw_data$co2[ok], xout = age,
+                  rule = 2, ties = mean)$y
+  } else {
+    song$avg_co2
+  }
+
+  list(age = age, co2 = co2)
+}
+
 #' Print a formatted summary of a playlist
 #' 
 #' @param playlist Playlist result from generate_playlist()

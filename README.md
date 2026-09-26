@@ -184,6 +184,15 @@ slot, refreshing the climate data can never misalign your picks.
   time until you shuffle.
 - Matching uses the **currently selected BPM scaling mode** (per-period vs
   global), so switching modes can change which songs match a slot.
+- Only **playable** songs (a BPM plus a Spotify id or SoundCloud URL) are
+  matched; rows without a link are skipped until you add one.
+- **Playback:** each song plays in full, **capped at 3 minutes**, and the ball
+  on the CO₂ curve travels through the song's time window (shaded) as it plays.
+  With *Auto-play next song* ticked, the next slot starts when a song ends.
+- **Spotify only plays 30-second previews unless you're logged in to Spotify in
+  the same browser.** Open the app in Chrome/Safari ("Open in Browser" in
+  RStudio) and log in at open.spotify.com for full tracks. SoundCloud plays
+  full tracks without a login.
 
 ---
 
