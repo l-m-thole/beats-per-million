@@ -33,6 +33,7 @@ library(here)
 source(here::here("R", "config.R"))
 source(here::here("R", "functions.R"))
 source(here::here("R", "load_data.R"))
+source(here::here("R", "spotify.R"))
 
 # -----------------------------------------------------------------------------
 # CSS FUNCTION
@@ -217,6 +218,13 @@ body {
   margin-top: 0.75rem;
 }
 
+.spotify-connect {
+  margin-bottom: 0.75rem;
+  font-size: 0.85rem;
+}
+
+.spotify-connect .btn { margin-right: 0.5rem; }
+
 .card iframe {
   display: block;
   border: none;
@@ -383,6 +391,7 @@ ui <- fluidPage(
     # player.js must load BEFORE the Spotify API: the API calls
     # window.onSpotifyIframeApiReady once, as soon as it has loaded.
     tags$script(src = "player.js"),
+    tags$script(src = "https://sdk.scdn.co/spotify-player.js"),
     tags$script(src = "https://open.spotify.com/embed/iframe-api/v1"),
     tags$script(src = "https://w.soundcloud.com/player/api.js")
   ),
@@ -486,6 +495,7 @@ ui <- fluidPage(
                             actionButton("shuffle", "🔀 Shuffle",
                                          class = "btn-download")
                         ),
+                        uiOutput("spotify_connect"),
                         uiOutput("music_panel"),
                         uiOutput("play_status"),
                         checkboxInput("auto_advance",
@@ -498,8 +508,12 @@ ui <- fluidPage(
                     div(class = "card",
                         div(class = "playlist-header",
                             h3(class = "card-title", "Playlist"),
-                            downloadButton("download_csv", "📥 CSV",
-                                           class = "btn-download")
+                            div(
+                              actionButton("export_spotify", "➕ Save to Spotify",
+                                           class = "btn-download"),
+                              downloadButton("download_csv", "📥 CSV",
+                                             class = "btn-download")
+                            )
                         ),
                         DTOutput("playlist_table")
                     )
@@ -608,6 +622,127 @@ server <- function(input, output, session) {
     match <- picks %>% dplyr::filter(song_number == song$song_number)
     if (nrow(match) == 0) return(NULL)
     match[1, ]
+  })
+
+  # ----- SPOTIFY LOGIN / FULL PLAYER / EXPORT -----
+
+  sp_connected <- reactiveVal(FALSE)
+
+  # Hand the browser a fresh access token for the Web Playback SDK
+  send_sp_token <- function() {
+    tok <- spotify_access_token()
+    if (is.null(tok)) { sp_connected(FALSE); return(invisible(FALSE)) }
+    sp_connected(TRUE)
+    session$sendCustomMessage("sp_token", list(
+      token = tok,
+      expires_in = .spotify$token$expires_at - as.numeric(Sys.time())
+    ))
+    invisible(TRUE)
+  }
+
+  # On page load: finish a login if Spotify just redirected back (?code=...),
+  # otherwise reuse a cached login.
+  observeEvent(session$clientData$url_search, {
+    q <- parseQueryString(session$clientData$url_search %||% "")
+    if (!is.null(q$error)) {
+      showNotification(paste("Spotify login cancelled:", q$error), type = "warning")
+    } else if (!is.null(q$code)) {
+      tryCatch({
+        spotify_complete_login(q$code, q$state)
+        showNotification("Connected to Spotify.", type = "message")
+      }, error = function(e) showNotification(conditionMessage(e), type = "error", duration = 15))
+    }
+    if (!is.null(q$code) || !is.null(q$error)) session$sendCustomMessage("sp_clean_url", list())
+    send_sp_token()
+  }, once = TRUE, ignoreNULL = FALSE)
+
+  observeEvent(input$sp_token_request, send_sp_token())
+
+  spotify_setup_modal <- function() {
+    showModal(modalDialog(
+      title = "Connect Spotify",
+      tags$ol(
+        tags$li("Create an app at ", tags$a(href = "https://developer.spotify.com/dashboard",
+                                            target = "_blank", "developer.spotify.com/dashboard"),
+                " (needs Spotify Premium) and tick ", tags$b("Web API"), " and ",
+                tags$b("Web Playback SDK"), "."),
+        tags$li("Add this Redirect URI: ", tags$code(SPOTIFY_REDIRECT_URI)),
+        tags$li("Put ", tags$code("SPOTIFY_CLIENT_ID"), " and ", tags$code("SPOTIFY_CLIENT_SECRET"),
+                " in ", tags$code(".Renviron"), " (", tags$code('usethis::edit_r_environ("project")'),
+                "), restart R and run the app again.")
+      ),
+      easyClose = TRUE, footer = modalButton("OK")
+    ))
+  }
+
+  observeEvent(input$sp_connect, {
+    if (!spotify_configured()) return(spotify_setup_modal())
+    session$sendCustomMessage("sp_goto", list(url = spotify_begin_login()))
+  })
+
+  observeEvent(input$sp_disconnect, {
+    spotify_forget_login()
+    sp_connected(FALSE)
+    session$reload()
+  })
+
+  observeEvent(input$sp_error, {
+    msg <- input$sp_error
+    if (grepl("^account_error", msg)) {
+      msg <- "The in-app Spotify player needs a Spotify Premium account."
+    }
+    showNotification(paste("Spotify:", msg), type = "warning", duration = 12)
+  })
+
+  # TRUE once this browser tab is a ready Spotify device (full tracks)
+  sdk_ready <- reactive({
+    isTRUE(sp_connected()) && !is.null(input$sp_device) && nzchar(input$sp_device)
+  })
+
+  output$spotify_connect <- renderUI({
+    if (!spotify_configured()) {
+      return(div(class = "spotify-connect muted",
+                 "Previews only. ",
+                 actionLink("sp_connect", "Set up Spotify for full songs")))
+    }
+    if (!sp_connected()) {
+      return(div(class = "spotify-connect",
+                 actionButton("sp_connect", "Connect Spotify (full songs)",
+                              class = "btn btn-spotify")))
+    }
+    if (!sdk_ready()) {
+      return(div(class = "spotify-connect muted", "Starting Spotify player…"))
+    }
+    div(class = "spotify-connect muted",
+        "✓ Spotify connected — full songs in-app · ",
+        actionLink("sp_disconnect", "disconnect"))
+  })
+
+  # Save the current period's matched songs as a private Spotify playlist.
+  # Nothing opens by itself: you get a notification with a link.
+  observeEvent(input$export_spotify, {
+    if (!spotify_configured()) return(spotify_setup_modal())
+    if (is.null(spotify_access_token())) {
+      showNotification("Connect Spotify first (button in the Listen panel).",
+                       type = "warning", duration = 8)
+      return()
+    }
+    uris <- picks_to_spotify_uris(curated_picks())
+    per  <- current_period()
+    name <- paste0("Beats per Million — ", per$name,
+                   if (input$scaling_mode == "global") " (global scale)" else "")
+    desc <- paste0("CO2 through time as tempo, oldest to youngest. ",
+                   length(uris), " songs matched by BPM. Made with Beats per Million.")
+    res <- tryCatch(spotify_export_playlist(name, desc, uris),
+                    error = function(e) { showNotification(conditionMessage(e), type = "error",
+                                                           duration = 15); NULL })
+    if (!is.null(res)) {
+      showNotification(
+        tagList("Saved ", res$n, " songs to your Spotify as \u201c", name, "\u201d. ",
+                tags$a(href = res$url, target = "_blank", "Open playlist")),
+        type = "message", duration = 20
+      )
+    }
   })
 
   # ----- PLAYER <-> SHINY -----
@@ -844,13 +979,19 @@ server <- function(input, output, session) {
 
       # Spotify: placeholder that www/player.js swaps for an IFrame-API
       # controller (gives us playback position + end-of-track events).
-      spotify_iframe <- if (!is.na(sp_embed)) {
+      sp_uri <- if (!is.na(sp_embed)) paste0("spotify:track:", parse_spotify_id(cur$spotify_uri))
+
+      spotify_iframe <- if (!is.na(sp_embed) && sdk_ready()) {
+        # Full-track player: this browser tab is the Spotify device
+        div(id = "bpm-sdk", `data-uri` = sp_uri, style = "margin-top:0.75rem;",
+            tags$button(id = "bpm-sdk-toggle", type = "button",
+                        class = "btn btn-spotify", "▶ Play"))
+      } else if (!is.na(sp_embed)) {
         div(style = "border-radius:12px; overflow:hidden; margin-top:0.75rem;",
-            div(id = "bpm-spotify",
-                `data-uri` = paste0("spotify:track:", parse_spotify_id(cur$spotify_uri))))
+            div(id = "bpm-spotify", `data-uri` = sp_uri))
       }
 
-      soundcloud_iframe <- if (!is.na(sc_embed)) {
+      soundcloud_iframe <- if (!is.na(sc_embed) && !(sdk_ready() && !is.na(sp_embed))) {
         tags$iframe(
           id = "bpm-soundcloud",
           src = sc_embed,
@@ -964,4 +1105,7 @@ server <- function(input, output, session) {
 # RUN THE APP
 # -----------------------------------------------------------------------------
 
-shinyApp(ui = ui, server = server)
+# Fixed port (the Spotify Redirect URI points here) and the system browser:
+# the Spotify player can't run inside the RStudio Viewer.
+shinyApp(ui = ui, server = server,
+         options = list(port = SPOTIFY_PORT, launch.browser = TRUE))

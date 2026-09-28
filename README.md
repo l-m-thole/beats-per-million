@@ -189,10 +189,22 @@ slot, refreshing the climate data can never misalign your picks.
 - **Playback:** each song plays in full, **capped at 3 minutes**, and the ball
   on the CO₂ curve travels through the song's time window (shaded) as it plays.
   With *Auto-play next song* ticked, the next slot starts when a song ends.
-- **Spotify only plays 30-second previews unless you're logged in to Spotify in
-  the same browser.** Open the app in Chrome/Safari ("Open in Browser" in
-  RStudio) and log in at open.spotify.com for full tracks. SoundCloud plays
-  full tracks without a login.
+- **Full songs in the app need Spotify Premium + a (free) Spotify developer app.**
+  Without it, the Spotify widget only plays 30-s previews (and for songs with
+  no preview it sends you to Spotify). The app never starts that widget by
+  itself. One-time setup:
+  1. Create an app at <https://developer.spotify.com/dashboard>, tick
+     *Web API* and *Web Playback SDK*, and add the Redirect URI
+     `http://127.0.0.1:4321/` exactly.
+  2. `usethis::edit_r_environ("project")` → add `SPOTIFY_CLIENT_ID=...` and
+     `SPOTIFY_CLIENT_SECRET=...`, then restart R.
+  3. `shiny::runApp()` (opens in your browser on port 4321) → **Connect
+     Spotify**. You log in once; the login is remembered.
+  Then ▶ Play plays the full track in the app, the ball moves, and songs
+  auto-advance (max. 3 min each).
+- **➕ Save to Spotify** (Playlist card) saves the current period's matched
+  songs, oldest → youngest, as a private playlist in your Spotify account. It
+  doesn't open anything; you get a notification with a link.
 
 ---
 
