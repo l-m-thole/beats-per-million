@@ -670,6 +670,30 @@ playable_songs <- function(library) {
   library[!is.na(library$bpm) & (has_sp | has_sc | has_yt), , drop = FALSE]
 }
 
+#' Keep only songs the app can play IN FULL (and auto-advance from)
+#'
+#' YouTube and SoundCloud always play full songs. Spotify only does when the
+#' in-app Spotify player is connected (Premium); otherwise a Spotify-only song
+#' falls back to the 30-s preview widget, which can't auto-advance. Matching
+#' against this subset keeps "play the whole song, then the next" working.
+#' If no song qualifies, the input is returned unchanged (never an empty list).
+#'
+#' @param library Tibble from playable_songs()
+#' @param spotify_full TRUE when the Spotify full player is ready
+#' @return The full-song subset (same columns), or `library` if that is empty
+full_song_songs <- function(library, spotify_full = FALSE) {
+  if (is.null(library) || nrow(library) == 0) return(library)
+  has_link <- function(col, parser) {
+    if (!col %in% names(library)) return(rep(FALSE, nrow(library)))
+    !is.na(vapply(library[[col]], parser, character(1), USE.NAMES = FALSE))
+  }
+  full <- has_link("youtube_url", parse_youtube_id) |
+    has_link("soundcloud_url", soundcloud_embed_url) |
+    (isTRUE(spotify_full) & has_link("spotify_uri", parse_spotify_id))
+  if (!any(full)) return(library)
+  library[full, , drop = FALSE]
+}
+
 #' Where the "now playing" ball sits on the CO2 curve
 #'
 #' Songs play past -> present, so the ball travels from the OLDER edge of the

@@ -112,3 +112,20 @@ test_that("an empty library gives an empty, correctly-shaped assignment", {
   expect_true(all(c("song_number", "song_title", "artist", "spotify_uri",
                     "soundcloud_url", "bpm", "notes") %in% names(out)))
 })
+
+test_that("full_song_songs keeps only songs that play in full", {
+  lib <- tibble::tibble(
+    song_title     = c("yt", "sc", "sp"),
+    artist         = "a",
+    spotify_uri    = c(NA, NA, "spotify:track:4uLU6hMCjMI75M1A2tKUQC"),
+    soundcloud_url = c(NA, "https://soundcloud.com/artist/track", NA),
+    youtube_url    = c("https://www.youtube.com/watch?v=dQw4w9WgXcQ", NA, NA),
+    bpm            = c(100, 100, 100),
+    notes          = NA
+  )
+  expect_setequal(full_song_songs(lib)$song_title, c("yt", "sc"))
+  expect_setequal(full_song_songs(lib, spotify_full = TRUE)$song_title, c("yt", "sc", "sp"))
+  # only Spotify-only songs -> fall back to the whole library, never empty
+  expect_equal(nrow(full_song_songs(lib[3, ])), 1)
+  expect_equal(nrow(full_song_songs(lib[0, ])), 0)
+})

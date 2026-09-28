@@ -587,6 +587,9 @@ ui <- fluidPage(
                         uiOutput("play_status"),
                         checkboxInput("auto_advance",
                                       "Auto-play next song",
+                                      value = TRUE),
+                        checkboxInput("full_only",
+                                      "Full songs only (skip songs that would play a 30-s Spotify preview)",
                                       value = TRUE)
                     )
              ),
@@ -695,8 +698,17 @@ server <- function(input, output, session) {
   curated_picks <- reactive({
     pl <- current_playlist()
     if (is.null(pl) || nrow(pl$songs) == 0) return(NULL)
+    # Default: only songs that play in full (YouTube / SoundCloud, or Spotify
+    # once the full player is connected), so every song plays to the end and
+    # auto-advances. Untick "Full songs only" to also use Spotify-only songs
+    # (30-s preview when Spotify isn't connected).
+    lib <- if (isTRUE(input$full_only %||% TRUE)) {
+      full_song_songs(SONG_LIBRARY, spotify_full = sdk_ready())
+    } else {
+      SONG_LIBRARY
+    }
     assign_songs_to_playlist(
-      pl$songs, SONG_LIBRARY,
+      pl$songs, lib,
       period          = input$selected_period,
       shuffle_counter = shuffle_counter()
     )

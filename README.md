@@ -200,6 +200,10 @@ Saving from Excel is fine (columns can be reordered, extra columns are ignored).
   **Play via** lets you pick a service.
 - Songs play in full; the ball on the CO₂ curve travels through the song's time
   window, and with *Auto-play next song* ticked the next slot starts when a song ends.
+- **Full songs only** (on by default) matches only songs that can play to the
+  end: those with a YouTube or SoundCloud link, plus Spotify-only songs once
+  *Connect Spotify* is active. Untick it to also use Spotify-only songs, which
+  play a 30-s preview and don't auto-advance when Spotify isn't connected.
 - **➕ Save to Spotify** saves the current period's songs (oldest → youngest)
   as a private playlist in your Spotify account.
 

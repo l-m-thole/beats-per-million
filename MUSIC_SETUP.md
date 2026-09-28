@@ -154,7 +154,7 @@ log in. You only need to do that once; the login is remembered.
 
 | What you see | What to do |
 |---|---|
-| Only 30-second previews | That song only has a Spotify link. Add a `youtube_url`, or connect Spotify (Premium). |
+| Only 30-second previews | Tick *Full songs only* (default). Otherwise that song only has a Spotify link: add a `youtube_url` (re-run the enrichment the next day if the YouTube quota ran out), or connect Spotify (Premium). |
 | Next song does not start | Tick *Auto-play next song*. The Spotify 30-s preview never auto-plays (by design); YouTube and full Spotify do. |
 | Pressing play opens Spotify | Same as above: Spotify's preview player does this for songs without a preview. |
 | "INVALID_CLIENT: Invalid redirect URI" | In the Spotify dashboard, the Redirect URI must be exactly `http://127.0.0.1:4321/`. |
