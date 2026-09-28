@@ -21,71 +21,100 @@ A collaboration between **Martin Wegmann** and **Lena Thöle**.
 
 ## 📊 Time Periods
 
-| Period | Time Span | Songs | Data Source |
-|--------|-----------|-------|-------------|
-| **Modern Era** | 1958–Present | ~22 | Mauna Loa Observatory |
-| **Roman Empire** | ~2,000 years | ~34 | Antarctic ice cores |
-| **Last Glacial Maximum** | ~20,000 years | ~67 | Antarctic ice cores |
-| **Early Humans** | ~250,000 years | ~84 | Antarctic ice cores |
-| **Full Ice Core** | ~800,000 years | ~89 | Antarctic ice cores |
-| **Cenozoic Era** | ~66 million years | ~88 | Marine proxy records |
+| Period | Time Span | Songs | Data Source | Key events in the app (a selection) |
+|--------|-----------|-------|-------------|------------------------|
+| **Modern Era** | 1958–Present | ~23 | Mauna Loa Observatory | Keeling starts measuring, IPCC, Kyoto, 400 ppm crossed, Paris Agreement |
+| **Roman Empire** | ~2,000 years | ~34 | Antarctic ice cores | Roman Climate Optimum, 536 CE eruptions, Medieval warmth, Little Ice Age, Industrial Revolution |
+| **Last Glacial Maximum** | ~20,000 years | ~67 | Antarctic ice cores | LGM, Bølling–Allerød, Younger Dryas, start of the Holocene, Sweden ice-free, 8.2 kyr event |
+| **Early Humans** | ~250,000 years | ~84 | Antarctic ice cores | Eemian interglacial, Toba eruption, Out of Africa, humans in Europe |
+| **Full Ice Core** | ~800,000 years | ~89 | Antarctic ice cores | Mid-Brunhes Event, MIS 11, first Homo sapiens, 100-kyr ice-age cycles |
+| **Cenozoic Era** | ~66 million years | ~88 | Marine proxy records | K–Pg impact, PETM, Eocene hothouse, Antarctic ice sheet, Pliocene (CO₂ ≈ today) |
+
+Song counts are for the current data and change slightly when the data are refreshed.
+
+In the app, each period has:
+
+- a **short description** plus **"Read more"** background (what the data are, what drove CO₂, and what to listen for);
+- a **key-events timeline** (oldest → youngest, the playback order);
+- **event markers** (▼ and dotted lines) on the CO₂ plot — hover for details;
+- a **"During this song"** box that lists any key event inside the selected song's time window.
+
+The texts and events live in `R/period_context.R` (ages in years BP, i.e. before
+1950; modern events are written as CE years and converted). Add or edit events
+there — `tests/testthat/test-period_context.R` checks that every event falls
+inside its period.
 
 ---
 
 ## 🚀 Getting Started
 
-### Prerequisites
+### 1. Install the packages
+
+The project uses [renv](https://rstudio.github.io/renv/). Open
+`climate_playlists.Rproj` in RStudio (this sets the working directory to the
+project root), then:
 
 ```r
-install.packages(c(
-  "shiny",
-  "readxl",
-  "dplyr",
-  "tibble",
-  "readr",
-  "plotly",
-  "DT",
-  "writexl",
-  "here"
-))
+renv::restore()   # installs the exact package versions from renv.lock
 ```
 
-### Run the Shiny App
+### 2. (Optional) API keys
 
-Open `climate_playlists.Rproj` in RStudio (this sets the working directory to the project root), then:
+The app runs without any keys (YouTube and SoundCloud links play without login).
+Keys are only needed for the full Spotify player, *Save to Spotify* and for
+filling song links/BPM automatically. Copy `.Renviron.example` to `.Renviron`,
+fill in the keys you have, and restart R. `.Renviron` is git-ignored — never
+commit it. Details: [`MUSIC_SETUP.md`](MUSIC_SETUP.md).
+
+### 3. Run the Shiny app
 
 ```r
 shiny::runApp()
 ```
 
-### Generate Playlist Templates
+The app opens in your browser at `http://127.0.0.1:4321` (the Spotify player
+does not work in RStudio's Viewer).
+
+### Generate playlist templates
 
 ```r
 source("run_generator.R")
 ```
 
-This creates CSV files in `output/` with columns for adding your own song selections.
+This writes CSV/XLSX playlist templates to `output/` and seeds
+`data/song_library.csv` if it doesn't exist yet (it never overwrites it).
 
 ---
 
 ## 📁 Project Structure
 
 ```
-climate_playlists/
+climate_playlist/
+├── app.R                      # Shiny application
+├── run_generator.R            # Playlist templates + seeds the song library
 ├── R/
-│   ├── config.R          # Shared constants & time periods
-│   ├── functions.R       # CO2→BPM conversion, playlist generation
-│   └── load_data.R       # Data loading & normalization
-├── app.R                 # Shiny application
-├── run_generator.R       # CLI script for generating templates + seeding the library
+│   ├── config.R               # Constants & time-period definitions
+│   ├── period_context.R       # Background texts + key events per period
+│   ├── functions.R            # CO2→BPM, playlist generation, song matcher
+│   ├── load_data.R            # Data + song-library loading
+│   ├── spotify.R              # Spotify login, player, Save to Spotify
+│   ├── enrich_library.R       # Fills blank BPM / Spotify / SoundCloud / YouTube cells
+│   └── _disable_autoload.R    # Stops runApp() from sourcing everything in R/
+├── www/player.js              # In-app players, progress + auto-advance
 ├── data/
-│   ├── co2_data.xlsx     # Processed: 'maunaloa' + 'bereiter2014' sheets
-│   ├── song_library.csv  # Your songs + their real BPM (matched to slots at runtime)
-│   └── rawData/
-│       ├── co2_mm_mlo.csv      # Raw monthly Mauna Loa CO2 (NOAA)
-│       ├── rae2021co2.xlsx     # Cenozoic proxy data (Rae et al. 2021)
-│       └── eggleston2016.xlsx  # Antarctic 155 kyr CO2 + isotopes (currently unused)
-├── output/               # Generated playlist templates
+│   ├── co2_data.xlsx          # Processed: 'maunaloa' + 'bereiter2014' sheets
+│   ├── song_library.csv       # Your songs + their real BPM (matched at run time)
+│   ├── song_library_enrich_log.csv  # Review log of the last enrichment run
+│   ├── backups/               # Library backups made by the enrichment (git-ignored)
+│   └── rawData/               # Raw CO2 files + provenance README
+├── data-raw/
+│   ├── build_co2_data.R       # Rebuilds co2_data.xlsx from rawData/
+│   └── enrich_song_library.R  # Run the song-library enrichment
+├── tests/testthat/            # Unit tests
+├── output/                    # Generated playlist templates
+├── .Renviron.example          # Template for API keys (copy to .Renviron)
+├── MUSIC_SETUP.md             # Players, keys, song links, troubleshooting
+├── DEVELOPMENT.md             # renv, data rebuild, tests
 └── README.md
 ```
 
@@ -119,11 +148,14 @@ climate_playlists/
 bpm = 60 + (90 / (co2_max - co2_min)) × (co2 - co2_min)
 ```
 
-Each time period is scaled independently, so:
-- The **lowest** CO₂ in that period → 60 BPM
-- The **highest** CO₂ in that period → 150 BPM
+The app has two **BPM scaling** modes:
 
-This ensures the full BPM range is used for each playlist, highlighting the relative climate variation within each timeframe.
+- **Per period (default, max. contrast):** each period is scaled on its own, so
+  the **lowest** CO₂ in that period → 60 BPM and the **highest** → 150 BPM. This
+  highlights the variation *within* a period, but also amplifies small wiggles
+  (e.g. the nearly flat Roman era).
+- **Global (comparable eras):** all periods share one scale (≈174–1963 ppm), so
+  the same CO₂ always gives the same BPM and eras can be compared directly.
 
 ### Time Compression
 
@@ -142,48 +174,70 @@ Each playlist compresses geological time into listenable duration:
 
 ## 🎧 Using the Song Library
 
-The app plays songs from a single hand-built library, **matched to each playlist
-slot by tempo** at run time. Because the match is by BPM rather than a fixed
-slot, refreshing the climate data can never misalign your picks.
+The app plays songs from one hand-built library, `data/song_library.csv`,
+**matched to each playlist slot by tempo** at run time. Because the match is by
+BPM rather than a fixed slot, refreshing the climate data can never misalign
+your picks.
 
-1. **Seed the file (first time):** `source("run_generator.R")` creates
-   `data/song_library.csv` with a header and two example rows. It never
-   overwrites an existing library.
-2. **Add songs:** open `data/song_library.csv` and fill one row per song:
-   - `song_title`, `artist`
-   - `spotify_uri` — any of `spotify:track:<id>`, an `https://open.spotify.com/track/<id>` URL, or the bare id
-   - `soundcloud_url` — the public track URL
-   - `bpm` — the song's **real tempo** (see below)
-   - `notes` — anything you like
-
-   Delete the two example rows once you've added real songs. Saving from Excel is
-   fine: columns can be reordered and extra columns are ignored on load.
-3. **Run the app:** `shiny::runApp()`, pick a period, and click a song in the
-   Playlist. If a library song is near that slot's BPM you get an embedded
-   Spotify/SoundCloud player plus "Open in…" links; if nothing matches yet you
-   get BPM search buttons.
-
-### Finding a song's BPM
-
-- Look it up on [TuneBat](https://tunebat.com) or [songbpm.com](https://songbpm.com).
-- **Watch half-/double-time tags.** These tools sometimes report a track at half
-  or double its felt tempo (e.g. a 70 BPM song listed as 140). Enter the tempo
-  that matches how the song actually *feels*, or the matching will be off — a
-  quick `half-time?` in `notes` helps you remember which ones you second-guessed.
+Columns: `song_title, artist, spotify_uri, soundcloud_url, bpm, notes, youtube_url`.
+Saving from Excel is fine (columns can be reordered, extra columns are ignored).
 
 ### How matching works
 
-- For each slot the app looks for a library song within **±5 BPM** of the slot's
-  target, then widens to **±10 BPM**, then falls back to the **single nearest**
-  song. Only an empty library leaves a slot with search buttons.
-- A song is **never repeated within one period**, so the more songs you add the
-  more slots fill in — a ~90-song library comfortably covers even the longest
-  playlist.
-- **🔀 Shuffle** re-rolls which songs land in the current period's slots.
-  Otherwise picks are reproducible: the same period shows the same songs each
-  time until you shuffle.
-- Matching uses the **currently selected BPM scaling mode** (per-period vs
-  global), so switching modes can change which songs match a slot.
+- For each slot the app looks for a song within **±5 BPM**, then **±10 BPM**,
+  then takes the **single nearest** song. Only an empty library leaves a slot
+  with search buttons.
+- A song is **never repeated within one period**.
+- **🔀 Shuffle** re-rolls the picks; otherwise the same period always shows the
+  same songs (seeded from the period name).
+- Matching follows the selected **BPM scaling** (per period vs global).
+- Only **playable** songs (a BPM plus a Spotify, SoundCloud or YouTube link) are used.
+
+### Playback
+
+- **Play via Spotify is the default.** Order: Spotify full player (after
+  *Connect Spotify*, needs Premium) → YouTube → SoundCloud → Spotify 30-s
+  preview. **Play via** lets you prefer YouTube or SoundCloud instead.
+- **Full songs via Spotify need a one-time *Connect Spotify* login** (Spotify
+  Premium). Until then Spotify only allows 30-s previews, and the app shows a
+  *Connect Spotify to play the full song* button right at the player.
+- If a YouTube video refuses to play (many label videos block other websites),
+  the app says why, switches that song to the next player, and remembers the
+  video in `data/youtube_blocked.csv` so it is skipped from then on.
+- Songs play in full; the ball on the CO₂ curve travels through the song's time
+  window, and with *Auto-play next song* ticked the next slot starts when a song ends.
+- **Full songs only** (on by default) matches only songs that can play to the
+  end: those with a YouTube or SoundCloud link, plus Spotify-only songs once
+  *Connect Spotify* is active. Untick it to also use Spotify-only songs, which
+  play a 30-s preview and don't auto-advance when Spotify isn't connected.
+- **➕ Save to Spotify** saves the current period's songs (oldest → youngest)
+  as a private playlist in your Spotify account.
+
+Setup of keys, the Spotify developer app and sharing with a colleague:
+[`MUSIC_SETUP.md`](MUSIC_SETUP.md).
+
+### Finding a song's BPM
+
+- **Automatically:** add rows with just `song_title` + `artist`, then run
+  `source("data-raw/enrich_song_library.R")`. It fills only **blank** `bpm`,
+  `spotify_uri`, `soundcloud_url` and `youtube_url` cells (steps without a key
+  are skipped), backs up the CSV to `data/backups/` first, and writes a review
+  log to `data/song_library_enrich_log.csv`. BPM comes from the
+  [GetSongBPM](https://getsongbpm.com) API (see below).
+- **By hand:** look it up on [GetSongBPM](https://getsongbpm.com),
+  [TuneBat](https://tunebat.com) or [songbpm.com](https://songbpm.com).
+- **Watch half-/double-time.** Tempo databases sometimes list a song at half or
+  double its felt tempo (a 70 BPM ballad listed as 140). The enrichment flags
+  values outside 60–150 BPM in the log; enter the tempo the song *feels* like.
+
+### 🎼 BPM data: GetSongBPM
+
+Song tempos looked up automatically come from the **[GetSongBPM API](https://getsongbpm.com/api)**
+(`GETSONGBPM_KEY` in `.Renviron`). The API is free, but its terms require a
+**visible link back to [getsongbpm.com](https://getsongbpm.com)** on a public
+page of the project — this section (in a public repository) and the link in the
+app footer serve as that attribution. Please keep both if you fork or reuse the
+project. Rate limit: 3,000 requests per hour.
 
 ---
 
@@ -198,3 +252,4 @@ This project is released under the MIT License.
 - Charles David Keeling for beginning the Mauna Loa CO₂ record in 1958
 - The ice core drilling teams at EPICA, Vostok, and other Antarctic sites
 - The paleoclimate community for developing CO₂ proxy methods
+- [GetSongBPM](https://getsongbpm.com) for song tempo (BPM) data

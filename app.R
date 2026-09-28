@@ -32,7 +32,9 @@ library(here)
 
 source(here::here("R", "config.R"))
 source(here::here("R", "functions.R"))
+source(here::here("R", "period_context.R"))
 source(here::here("R", "load_data.R"))
+source(here::here("R", "spotify.R"))
 
 # -----------------------------------------------------------------------------
 # CSS FUNCTION
@@ -142,6 +144,63 @@ body {
   margin-bottom: 1rem;
 }
 
+/* Period context + key events */
+.context-more summary {
+  cursor: pointer;
+  color: #3b82f6;
+  font-size: 0.9rem;
+  margin: 0.25rem 0 0.75rem;
+}
+.context-more p {
+  color: #a1a1aa;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+.events-title {
+  color: #f5f5f7;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 1rem 0 0.5rem;
+}
+.event-list {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+  border-left: 2px solid rgba(255,255,255,0.1);
+}
+.event-list li {
+  position: relative;
+  padding: 0 0 0.75rem 0.9rem;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: #a1a1aa;
+}
+.event-list li::before {
+  content: "";
+  position: absolute;
+  left: -6px; top: 0.35rem;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: #f59e0b;
+}
+.event-when {
+  display: block;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.75rem;
+  color: #f59e0b;
+}
+.event-name { color: #f5f5f7; font-weight: 500; }
+.song-events {
+  margin: 0.5rem 0 1rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: 10px;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  font-size: 0.9rem;
+  color: #f5f5f7;
+}
+
 .now-playing-label-small {
   display: block;
   color: #a1a1aa;
@@ -210,6 +269,32 @@ body {
   margin-top: 0.5rem;
 }
 
+.play-status {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.8rem;
+  color: #a1a1aa;
+  margin-top: 0.75rem;
+}
+
+#play_source .control-label {
+  color: #a1a1aa;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+#play_source .radio-inline {
+  margin-right: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.spotify-connect {
+  margin-bottom: 0.75rem;
+  font-size: 0.85rem;
+}
+
+.spotify-connect .btn { margin-right: 0.5rem; }
+
 .card iframe {
   display: block;
   border: none;
@@ -227,6 +312,16 @@ body {
 
 .btn-soundcloud {
   background: #ff5500 !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: 20px !important;
+  padding: 0.6rem 1.2rem !important;
+  font-weight: 500 !important;
+  text-decoration: none !important;
+}
+
+.btn-youtube {
+  background: #ff0033 !important;
   color: #fff !important;
   border: none !important;
   border-radius: 20px !important;
@@ -357,6 +452,27 @@ ALL_PLAYLISTS <- list(
 # data/song_library.csv hasn't been seeded yet.
 SONG_LIBRARY <- load_song_library(here::here("data"))
 
+# Only match against songs that have a BPM *and* a Spotify/SoundCloud link,
+# otherwise slots get "matched" to rows the player can't play.
+SONG_LIBRARY <- playable_songs(SONG_LIBRARY)
+
+# YouTube videos that refused to play in the app (owner blocks embedding,
+# removed, ...). Remembered across sessions so they are skipped next time.
+YT_BLOCKED_FILE <- here::here("data", "youtube_blocked.csv")
+read_yt_blocked <- function() {
+  if (!file.exists(YT_BLOCKED_FILE)) return(character(0))
+  x <- tryCatch(utils::read.csv(YT_BLOCKED_FILE, colClasses = "character")$video_id,
+                error = function(e) character(0))
+  unique(x[!is.na(x) & nzchar(x)])
+}
+add_yt_blocked <- function(id, code) {
+  new <- !file.exists(YT_BLOCKED_FILE)
+  try(utils::write.table(
+    data.frame(video_id = id, error_code = code, date = format(Sys.Date())),
+    YT_BLOCKED_FILE, sep = ",", row.names = FALSE, col.names = new, append = !new
+  ), silent = TRUE)
+}
+
 # -----------------------------------------------------------------------------
 # USER INTERFACE
 # -----------------------------------------------------------------------------
@@ -367,7 +483,15 @@ ui <- fluidPage(
   tags$head(
     tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=JetBrains+Mono:wght@300;400;500&family=DM+Sans:wght@400;500;600&display=swap"),
     # App styles (defined inline in app_css())
-    tags$style(HTML(app_css()))
+    tags$style(HTML(app_css())),
+    # Player APIs: progress events + auto-advance (see www/player.js)
+    # player.js must load BEFORE the Spotify API: the API calls
+    # window.onSpotifyIframeApiReady once, as soon as it has loaded.
+    tags$script(src = "player.js"),
+    tags$script(src = "https://sdk.scdn.co/spotify-player.js"),
+    tags$script(src = "https://open.spotify.com/embed/iframe-api/v1"),
+    tags$script(src = "https://w.soundcloud.com/player/api.js"),
+    tags$script(src = "https://www.youtube.com/iframe_api")
   ),
   
   # Header
@@ -469,7 +593,21 @@ ui <- fluidPage(
                             actionButton("shuffle", "🔀 Shuffle",
                                          class = "btn-download")
                         ),
-                        uiOutput("music_panel")
+                        uiOutput("spotify_connect"),
+                        radioButtons("play_source", "Play via",
+                                     choices = c("Best available" = "auto",
+                                                 "Spotify" = "spotify",
+                                                 "YouTube" = "youtube",
+                                                 "SoundCloud" = "soundcloud"),
+                                     selected = "spotify", inline = TRUE),
+                        uiOutput("music_panel"),
+                        uiOutput("play_status"),
+                        checkboxInput("auto_advance",
+                                      "Auto-play next song",
+                                      value = TRUE),
+                        checkboxInput("full_only",
+                                      "Full songs only (skip songs that would play a 30-s Spotify preview)",
+                                      value = TRUE)
                     )
              ),
              
@@ -477,8 +615,12 @@ ui <- fluidPage(
                     div(class = "card",
                         div(class = "playlist-header",
                             h3(class = "card-title", "Playlist"),
-                            downloadButton("download_csv", "📥 CSV",
-                                           class = "btn-download")
+                            div(
+                              actionButton("export_spotify", "➕ Save to Spotify",
+                                           class = "btn-download"),
+                              downloadButton("download_csv", "📥 CSV",
+                                             class = "btn-download")
+                            )
                         ),
                         DTOutput("playlist_table")
                     )
@@ -496,6 +638,8 @@ ui <- fluidPage(
         " • ",
         tags$a(href = "https://www.annualreviews.org/doi/10.1146/annurev-earth-082420-063026", target = "_blank", "Rae et al. 2021")
       ),
+      p("Song tempos (BPM) partly from ",
+        tags$a(href = "https://getsongbpm.com", target = "_blank", "GetSongBPM")),
       p("A collaboration between Martin Wegmann and Lena Thöle")
   )
 )
@@ -517,16 +661,25 @@ server <- function(input, output, session) {
   })
   
   # Selected song index
-  selected_idx <- reactiveVal(1)
+  selected_idx <- reactiveVal(1L)   # integer: DT sends integers, and 1 vs 1L would re-render everything
 
   # Shuffle counter — bumped by the Shuffle button. Feeds the RNG seed so each
   # bump re-rolls which library songs land in this period's slots (see
   # assign_songs_to_playlist), while staying reproducible between bumps.
   shuffle_counter <- reactiveVal(0)
 
+  # Playback progress of the current song (0 = start, 1 = end / 3-min cap),
+  # reported by www/player.js. Drives the ball on the CO2 curve.
+  play_frac <- reactiveVal(0)
+  play_pos  <- reactiveVal(NULL)   # list(pos, dur) in ms, for the status line
+
+  # Becomes TRUE once anything has played; from then on a newly selected song
+  # (click or auto-advance) starts playing by itself.
+  listening <- reactiveVal(FALSE)
+
   # Reset selection when period changes
   observeEvent(input$selected_period, {
-    selected_idx(1)
+    selected_idx(1L)
   })
 
   # Re-roll the BPM-matched song picks
@@ -537,7 +690,7 @@ server <- function(input, output, session) {
   # Update selection from table click
   observeEvent(input$playlist_table_rows_selected, {
     if (length(input$playlist_table_rows_selected) > 0) {
-      selected_idx(input$playlist_table_rows_selected[1])
+      selected_idx(as.integer(input$playlist_table_rows_selected[1]))
     }
   })
 
@@ -562,8 +715,19 @@ server <- function(input, output, session) {
   curated_picks <- reactive({
     pl <- current_playlist()
     if (is.null(pl) || nrow(pl$songs) == 0) return(NULL)
+    # Default: only songs that play in full (YouTube / SoundCloud, or Spotify
+    # once the full player is connected), so every song plays to the end and
+    # auto-advances. Untick "Full songs only" to also use Spotify-only songs
+    # (30-s preview when Spotify isn't connected).
+    lib <- if (isTRUE(input$full_only %||% TRUE)) {
+      # isolate: a video failing mid-session must not reshuffle the whole list
+      full_song_songs(SONG_LIBRARY, spotify_full = sdk_ready(),
+                      bad_youtube = isolate(bad_yt()))
+    } else {
+      SONG_LIBRARY
+    }
     assign_songs_to_playlist(
-      pl$songs, SONG_LIBRARY,
+      pl$songs, lib,
       period          = input$selected_period,
       shuffle_counter = shuffle_counter()
     )
@@ -580,11 +744,234 @@ server <- function(input, output, session) {
     match[1, ]
   })
 
+  # ----- SPOTIFY LOGIN / FULL PLAYER / EXPORT -----
+
+  sp_connected <- reactiveVal(FALSE)
+
+  # Hand the browser a fresh access token for the Web Playback SDK
+  send_sp_token <- function() {
+    tok <- spotify_access_token()
+    if (is.null(tok)) { sp_connected(FALSE); return(invisible(FALSE)) }
+    sp_connected(TRUE)
+    session$sendCustomMessage("sp_token", list(
+      token = tok,
+      expires_in = .spotify$token$expires_at - as.numeric(Sys.time())
+    ))
+    invisible(TRUE)
+  }
+
+  # On page load: finish a login if Spotify just redirected back (?code=...),
+  # otherwise reuse a cached login.
+  observeEvent(session$clientData$url_search, {
+    q <- parseQueryString(session$clientData$url_search %||% "")
+    if (!is.null(q$error)) {
+      showNotification(paste("Spotify login cancelled:", q$error), type = "warning")
+    } else if (!is.null(q$code)) {
+      tryCatch({
+        spotify_complete_login(q$code, q$state)
+        showNotification("Connected to Spotify.", type = "message")
+      }, error = function(e) showNotification(conditionMessage(e), type = "error", duration = 15))
+    }
+    if (!is.null(q$code) || !is.null(q$error)) session$sendCustomMessage("sp_clean_url", list())
+    send_sp_token()
+  }, once = TRUE, ignoreNULL = FALSE)
+
+  observeEvent(input$sp_token_request, send_sp_token())
+
+  spotify_setup_modal <- function() {
+    showModal(modalDialog(
+      title = "Connect Spotify",
+      tags$ol(
+        tags$li("Create an app at ", tags$a(href = "https://developer.spotify.com/dashboard",
+                                            target = "_blank", "developer.spotify.com/dashboard"),
+                " (needs Spotify Premium) and tick ", tags$b("Web API"), " and ",
+                tags$b("Web Playback SDK"), "."),
+        tags$li("Add this Redirect URI: ", tags$code(SPOTIFY_REDIRECT_URI)),
+        tags$li("Put ", tags$code("SPOTIFY_CLIENT_ID"), " and ", tags$code("SPOTIFY_CLIENT_SECRET"),
+                " in ", tags$code(".Renviron"), " (", tags$code('usethis::edit_r_environ("project")'),
+                "), restart R and run the app again.")
+      ),
+      easyClose = TRUE, footer = modalButton("OK")
+    ))
+  }
+
+  start_spotify_login <- function() {
+    if (!spotify_configured()) return(spotify_setup_modal())
+    session$sendCustomMessage("sp_goto", list(url = spotify_begin_login()))
+  }
+  observeEvent(input$sp_connect, start_spotify_login())
+  observeEvent(input$sp_connect_inline, start_spotify_login())
+
+  observeEvent(input$sp_disconnect, {
+    spotify_forget_login()
+    sp_connected(FALSE)
+    session$reload()
+  })
+
+  # YouTube refused to play this video (removed, or embedding disabled by the
+  # uploader). player.js then ends the song, so auto-play moves on.
+  # The video is remembered as broken for this session and the Listen panel
+  # re-renders with the next player for the same song (Spotify first), which
+  # starts playing right away.
+  bad_yt <- reactiveVal(read_yt_blocked())
+  observeEvent(input$yt_error, {
+    ev <- input$yt_error
+    if (!identical(ev$token, player_token())) return()
+    why <- switch(as.character(ev$code),
+      "2"   = "the youtube_url is not a valid video link",
+      "5"   = "the browser can't play this video",
+      "100" = "the video was removed or is private",
+      "101" = , "150" = "the owner doesn't allow playing it on other websites",
+      "153" = "YouTube rejected the embed (player configuration / referrer)",
+      paste("YouTube error", ev$code))
+    if (!is.null(ev$id) && nzchar(ev$id) && !(ev$id %in% bad_yt())) {
+      bad_yt(union(bad_yt(), ev$id))
+      # permanent problems -> skip this video in future sessions too
+      if (as.character(ev$code) %in% c("2", "100", "101", "150")) add_yt_blocked(ev$id, ev$code)
+    }
+    listening(TRUE)
+    showNotification(
+      paste0("YouTube can't play this song here: ", why,
+             ". Switching to another player; this video is skipped from now on ",
+             "(listed in data/youtube_blocked.csv)."),
+      type = "warning", duration = 10)
+  })
+
+  observeEvent(input$sp_error, {
+    msg <- input$sp_error
+    if (grepl("^account_error", msg)) {
+      msg <- "The in-app Spotify player needs a Spotify Premium account."
+    }
+    showNotification(paste("Spotify:", msg), type = "warning", duration = 12)
+  })
+
+  # TRUE once this browser tab is a ready Spotify device (full tracks)
+  sdk_ready <- reactive({
+    isTRUE(sp_connected()) && !is.null(input$sp_device) && nzchar(input$sp_device)
+  })
+
+  output$spotify_connect <- renderUI({
+    if (!spotify_configured()) {
+      return(div(class = "spotify-connect muted",
+                 "Previews only. ",
+                 actionLink("sp_connect", "Set up Spotify for full songs")))
+    }
+    if (!sp_connected()) {
+      return(div(class = "spotify-connect",
+                 actionButton("sp_connect", "Connect Spotify (full songs)",
+                              class = "btn btn-spotify")))
+    }
+    if (!sdk_ready()) {
+      return(div(class = "spotify-connect muted", "Starting Spotify player…"))
+    }
+    div(class = "spotify-connect muted",
+        "✓ Spotify connected — full songs in-app · ",
+        actionLink("sp_disconnect", "disconnect"))
+  })
+
+  # Save the current period's matched songs as a private Spotify playlist.
+  # Nothing opens by itself: you get a notification with a link.
+  observeEvent(input$export_spotify, {
+    if (!spotify_configured()) return(spotify_setup_modal())
+    if (is.null(spotify_access_token())) {
+      showNotification("Connect Spotify first (button in the Listen panel).",
+                       type = "warning", duration = 8)
+      return()
+    }
+    uris <- picks_to_spotify_uris(curated_picks())
+    per  <- current_period()
+    name <- paste0("Beats per Million — ", per$name,
+                   if (input$scaling_mode == "global") " (global scale)" else "")
+    desc <- paste0("CO2 through time as tempo, oldest to youngest. ",
+                   length(uris), " songs matched by BPM. Made with Beats per Million.")
+    res <- tryCatch(spotify_export_playlist(name, desc, uris),
+                    error = function(e) { showNotification(conditionMessage(e), type = "error",
+                                                           duration = 15); NULL })
+    if (!is.null(res)) {
+      showNotification(
+        tagList("Saved ", res$n, " songs to your Spotify as \u201c", name, "\u201d. ",
+                tags$a(href = res$url, target = "_blank", "Open playlist")),
+        type = "message", duration = 20
+      )
+    }
+  })
+
+  # ----- PLAYER <-> SHINY -----
+
+  # Identifies the slot the embedded player was built for; progress events
+  # carrying another token (a player that's being torn down) are ignored.
+  player_token <- reactive({
+    paste(input$selected_period, input$scaling_mode, selected_idx(),
+          shuffle_counter(), sep = "|")
+  })
+
+  # New song -> ball back to the start of its window
+  observeEvent(player_token(), {
+    play_frac(0)
+    play_pos(NULL)
+  })
+
+  observeEvent(input$player_progress, {
+    ev <- input$player_progress
+    if (!identical(ev$token, player_token())) return()
+    listening(TRUE)
+    play_frac(as.numeric(ev$frac %||% 0))
+    play_pos(list(pos = as.numeric(ev$pos %||% 0), dur = as.numeric(ev$dur %||% 0)))
+  })
+
+  # Song finished (or hit the 3-minute cap) -> next slot, which autoplays
+  observeEvent(input$player_ended, {
+    if (!identical(input$player_ended$token, player_token())) return()
+    if (!isTRUE(input$auto_advance)) return()
+    idx <- selected_idx()
+    if (idx < nrow(current_playlist()$songs)) selected_idx(idx + 1L)
+  })
+
+  # Move the ball along the curve without re-drawing the plot
+  observeEvent(play_frac(), {
+    song <- isolate(selected_song())
+    pl   <- isolate(current_playlist())
+    if (is.null(song) || nrow(pl$raw_data) == 0) return()
+    ax  <- axis_for_period(isolate(current_period()))
+    pos <- ball_position(song, pl$raw_data, play_frac())
+    plotlyProxy("timeline_plot", session) %>%
+      plotlyProxyInvoke(
+        "restyle",
+        list(x = list(list(ax$scale(pos$age))), y = list(list(pos$co2))),
+        list(1L)   # trace 1 = the ball (trace 0 = the CO2 curve)
+      )
+  }, ignoreInit = TRUE)
+
   # ----- OUTPUTS -----
   
   # Period description
   output$period_description <- renderUI({
-    p(class = "description-text", current_period()$description)
+    pid <- input$selected_period
+    ctx <- period_context_text(pid)
+    ev  <- period_key_events(pid)
+
+    tagList(
+      p(class = "description-text", current_period()$description),
+      if (length(ctx)) {
+        tags$details(class = "context-more",
+          tags$summary("Read more about this period"),
+          lapply(ctx, tags$p)
+        )
+      },
+      if (nrow(ev)) {
+        tagList(
+          div(class = "events-title", "Key events (oldest → youngest)"),
+          tags$ul(class = "event-list",
+            lapply(seq_len(nrow(ev)), function(i) {
+              tags$li(
+                span(class = "event-when", ev$when[i]),
+                span(class = "event-name", ev$title[i]), " – ", ev$detail[i]
+              )
+            })
+          )
+        )
+      }
+    )
   })
   
   # How it works - dynamic based on playlist
@@ -663,17 +1050,36 @@ server <- function(input, output, session) {
         showlegend = FALSE
       )
     
-    # Add marker for selected song
+    # Ball for the selected song: sits on the curve at the current playback
+    # position and is moved by the play_frac() observer while the song plays.
+    # The song's time window is shaded so you can see where it will travel.
+    # Key events: dotted vertical lines (shapes) + hoverable markers on top.
+    ev <- period_key_events(input$selected_period)
+    ev <- ev[ev$age >= min(data$age) & ev$age <= max(data$age), , drop = FALSE]
+    event_shapes <- lapply(seq_len(nrow(ev)), function(i) list(
+      type = "line", xref = "x", yref = "paper",
+      x0 = ax$scale(ev$age[i]), x1 = ax$scale(ev$age[i]), y0 = 0, y1 = 1,
+      line = list(color = "rgba(245,158,11,0.35)", width = 1, dash = "dot"),
+      layer = "below"
+    ))
+    p <- p %>% layout(shapes = event_shapes)
+
     song <- selected_song()
     if (!is.null(song)) {
-      mid_age <- (song$start_age + song$end_age) / 2
-      
-      marker_x <- ax$scale(mid_age)
+      pos <- ball_position(song, data, isolate(play_frac()))
+      marker_x <- ax$scale(pos$age)
       
       p <- p %>%
+        layout(shapes = c(event_shapes, list(list(
+          type = "rect", xref = "x", yref = "paper",
+          x0 = ax$scale(song$start_age), x1 = ax$scale(song$end_age),
+          y0 = 0, y1 = 1,
+          fillcolor = "rgba(255,255,255,0.06)",
+          line = list(width = 0), layer = "below"
+        )))) %>%
         add_trace(
           x = marker_x,
-          y = song$avg_co2,
+          y = pos$co2,
           type = "scatter",
           mode = "markers",
           marker = list(
@@ -687,7 +1093,22 @@ server <- function(input, output, session) {
           )
         )
     }
-    
+
+    # Added last on purpose: the play-progress observer restyles trace 1 (ball).
+    if (nrow(ev)) {
+      p <- p %>%
+        add_trace(
+          x = ax$scale(ev$age),
+          y = rep(max(data$co2, na.rm = TRUE), nrow(ev)),
+          type = "scatter", mode = "markers",
+          marker = list(symbol = "triangle-down", size = 9, color = "#f59e0b"),
+          text = paste0("<b>", ev$when, " – ", ev$title, "</b><br>",
+                        vapply(strwrap(ev$detail, 50, simplify = FALSE),
+                               paste, character(1), collapse = "<br>")),
+          hovertemplate = "%{text}<extra></extra>"
+        )
+    }
+
     p
   })
   
@@ -707,6 +1128,16 @@ server <- function(input, output, session) {
           span(class = "now-playing-label-small", "CO₂ CONCENTRATION"),
           div(class = "now-playing-value", paste0(song$avg_co2, " ppm"))
       ),
+      {
+        ev <- events_in_window(input$selected_period, song$start_age, song$end_age)
+        if (nrow(ev)) {
+          div(class = "song-events",
+              span(class = "now-playing-label-small", "DURING THIS SONG"),
+              lapply(seq_len(nrow(ev)), function(i)
+                div("📍 ", tags$b(ev$when[i]), " – ", ev$title[i]))
+          )
+        }
+      },
       div(class = "now-playing-bpm",
           span(class = "bpm-large", style = paste0("color:", song$bpm_color), song$bpm),
           span(class = "bpm-label", "BPM")
@@ -736,7 +1167,10 @@ server <- function(input, output, session) {
       NA_character_
     }
 
-    has_track <- (!is.na(sp_embed)) || (!is.na(sc_embed))
+    yt_id   <- if (!is.null(cur)) parse_youtube_id(cur$youtube_url) else NA_character_
+    yt_open <- if (!is.na(yt_id)) paste0("https://www.youtube.com/watch?v=", yt_id) else NA_character_
+
+    has_track <- (!is.na(sp_embed)) || (!is.na(sc_embed)) || (!is.na(yt_id))
 
     if (has_track) {
       # ----- Curated slot: show players + direct links -----
@@ -758,39 +1192,95 @@ server <- function(input, output, session) {
             span(class = "curated-badge", "🎵 Curated pick"))
       }
 
-      spotify_iframe <- if (!is.na(sp_embed)) {
-        tags$iframe(
-          src = sp_embed,
-          width = "100%", height = "152",
-          frameborder = "0",
-          allow = "autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture",
-          loading = "lazy",
-          style = "border-radius:12px; margin-top:0.75rem;"
-        )
-      }
+      # ONE player per song. "Play via" picks the service; if this song has
+      # no link for it, fall back to the best available one:
+      #   Spotify full player (connected) > YouTube > SoundCloud > Spotify preview
+      # www/player.js wires each one up for progress / end-of-song events.
+      sp_uri <- if (!is.na(sp_embed)) paste0("spotify:track:", parse_spotify_id(cur$spotify_uri))
 
-      soundcloud_iframe <- if (!is.na(sc_embed)) {
-        tags$iframe(
-          src = sc_embed,
-          width = "100%", height = "166",
-          frameborder = "no", scrolling = "no",
-          allow = "autoplay",
-          style = "margin-top:0.75rem;"
-        )
-      }
+      avail <- c(
+        spotify_full = !is.na(sp_embed) && sdk_ready(),
+        youtube      = !is.na(yt_id) && !(yt_id %in% bad_yt()),
+        soundcloud   = !is.na(sc_embed),
+        spotify      = !is.na(sp_embed)
+      )
+      want <- input$play_source %||% "auto"
+      order <- switch(want,
+        # Spotify is the default. Without Connect Spotify it only plays 30-s
+        # previews, so full-length YouTube/SoundCloud come before the preview.
+        spotify    = c("spotify_full", "youtube", "soundcloud", "spotify"),
+        youtube    = c("youtube", "spotify_full", "soundcloud", "spotify"),
+        soundcloud = c("soundcloud", "spotify_full", "youtube", "spotify"),
+        c("spotify_full", "youtube", "soundcloud", "spotify")
+      )
+      use <- order[avail[order]][1]
+      label <- c(spotify_full = "Spotify", spotify = "Spotify (30-s preview)",
+                 youtube = "YouTube", soundcloud = "SoundCloud")
+      want_label <- c(spotify = "Spotify", youtube = "YouTube", soundcloud = "SoundCloud")
 
-      links <- div(class = "button-row",
-        if (!is.na(sp_open)) {
-          tags$a(href = sp_open, target = "_blank",
-                 class = "btn btn-spotify", "🎵 Open in Spotify")
-        },
-        if (!is.na(sc_open)) {
-          tags$a(href = sc_open, target = "_blank",
-                 class = "btn btn-soundcloud", "☁️ Open in SoundCloud")
-        }
+      player <- switch(use,
+        spotify_full = div(id = "bpm-sdk", `data-uri` = sp_uri, style = "margin-top:0.75rem;",
+                           tags$button(id = "bpm-sdk-toggle", type = "button",
+                                       class = "btn btn-spotify", "▶ Play")),
+        youtube = div(style = "border-radius:12px; overflow:hidden; margin-top:0.75rem;",
+                      div(id = "bpm-youtube", `data-id` = yt_id)),
+        soundcloud = tags$iframe(
+          id = "bpm-soundcloud", src = sc_embed,
+          width = "100%", height = "166", frameborder = "no", scrolling = "no",
+          allow = "autoplay", style = "margin-top:0.75rem;"
+        ),
+        spotify = div(style = "border-radius:12px; overflow:hidden; margin-top:0.75rem;",
+                      div(id = "bpm-spotify", `data-uri` = sp_uri))
       )
 
-      tagList(header, spotify_iframe, soundcloud_iframe, links)
+      source_note <- p(class = "muted", style = "font-size:0.8rem; margin:0.4rem 0 0;",
+        paste0("Playing via ", label[[use]],
+               if (want != "auto" && !startsWith(use, want) &&
+                   !isTRUE(c(spotify = !is.na(sp_embed), youtube = !is.na(yt_id),
+                             soundcloud = !is.na(sc_embed))[[want]]))
+                 paste0(" (no ", want_label[[want]], " link for this song)") else "",
+               if (want == "youtube" && !is.na(yt_id) && yt_id %in% bad_yt())
+                 " (this YouTube video can't be embedded)" else "",
+               if (want == "spotify" && !sdk_ready() && use != "spotify")
+                 " \u2014 click Connect Spotify to play full songs via Spotify" else "",
+               if (use == "spotify") " \u2014 connect Spotify (Premium) or add a youtube_url for the full song." else ""))
+
+      # Always one button per service: open the song if we have a link,
+      # otherwise search that service for it.
+      q_song <- utils::URLencode(paste(artist_txt %||% "", title_txt %||% ""), reserved = TRUE)
+      links <- div(class = "button-row",
+        tags$a(href = if (!is.na(sp_open)) sp_open else paste0("https://open.spotify.com/search/", q_song),
+               target = "_blank", class = "btn btn-spotify",
+               if (!is.na(sp_open)) "🎵 Open in Spotify" else "🔎 Find on Spotify"),
+        tags$a(href = if (!is.na(yt_open)) yt_open else paste0("https://www.youtube.com/results?search_query=", q_song),
+               target = "_blank", class = "btn btn-youtube",
+               if (!is.na(yt_open)) "▶ Open on YouTube" else "🔎 Find on YouTube"),
+        tags$a(href = if (!is.na(sc_open)) sc_open else paste0("https://soundcloud.com/search?q=", q_song),
+               target = "_blank", class = "btn btn-soundcloud",
+               if (!is.na(sc_open)) "☁️ Open in SoundCloud" else "🔎 Find on SoundCloud")
+      )
+
+      # Spotify preferred but not connected: say so right at the player,
+      # with the one click that unlocks full songs.
+      connect_hint <- if (want %in% c("spotify", "auto") && !sdk_ready() &&
+                          !is.na(sp_embed) && spotify_configured()) {
+        div(class = "spotify-connect", style = "margin-top:0.75rem;",
+            if (isTRUE(sp_connected())) {
+              span(class = "muted", "Starting the Spotify player\u2026 (needs Spotify Premium)")
+            } else {
+              tagList(
+                actionButton("sp_connect_inline", "\u25B6 Connect Spotify to play the full song",
+                             class = "btn btn-spotify"),
+                div(class = "muted", style = "font-size:0.8rem; margin-top:0.3rem;",
+                    "One-time login. Without it Spotify only allows 30-s previews.")
+              )
+            })
+      }
+
+      div(id = "bpm-player",
+          `data-token`    = player_token(),
+          `data-autoplay` = tolower(isolate(listening())),
+          header, connect_hint, player, source_note, links)
 
     } else {
       # ----- Blank slot: keep the BPM/mood search buttons -----
@@ -815,6 +1305,16 @@ server <- function(input, output, session) {
     }
   })
 
+  # Playback status under the player
+  output$play_status <- renderUI({
+    pp <- play_pos()
+    if (is.null(pp) || is.null(selected_curated())) return(NULL)
+    fmt <- function(ms) sprintf("%d:%02d", floor(ms / 60000), floor(ms / 1000) %% 60)
+    div(class = "play-status",
+        paste0("▶ ", fmt(pp$pos), " / ", fmt(pp$dur),
+               ""))
+  })
+
   # Playlist table
   output$playlist_table <- renderDT({
     pl <- current_playlist()
@@ -828,11 +1328,13 @@ server <- function(input, output, session) {
         `Mood` = mood
       )
     
+    idx <- selected_idx()
     datatable(
       display_df,
-      selection = list(mode = "single", selected = selected_idx()),
+      selection = list(mode = "single", selected = idx),
       options = list(
         pageLength = 10,
+        displayStart = (ceiling(idx / 10) - 1) * 10,
         dom = "ftp",
         scrollY = "300px",
         scrollCollapse = TRUE,
@@ -867,4 +1369,7 @@ server <- function(input, output, session) {
 # RUN THE APP
 # -----------------------------------------------------------------------------
 
-shinyApp(ui = ui, server = server)
+# Fixed port (the Spotify Redirect URI points here) and the system browser:
+# the Spotify player can't run inside the RStudio Viewer.
+shinyApp(ui = ui, server = server,
+         options = list(port = SPOTIFY_PORT, launch.browser = TRUE))

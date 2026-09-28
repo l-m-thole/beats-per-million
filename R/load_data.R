@@ -108,15 +108,16 @@ load_co2_data <- function(data_dir = "data") {
 #'
 #' @param data_dir Path to the data directory (default: "data").
 #' @return Tibble with columns song_title, artist, spotify_uri, soundcloud_url,
-#'   bpm, notes.
+#'   youtube_url, bpm, notes.
 load_song_library <- function(data_dir = "data") {
 
   needed <- c("song_title", "artist", "spotify_uri",
-              "soundcloud_url", "bpm", "notes")
+              "soundcloud_url", "youtube_url", "bpm", "notes")
 
   empty <- tibble::tibble(
     song_title = character(),  artist = character(),        spotify_uri = character(),
-    soundcloud_url = character(), bpm = double(),           notes = character()
+    soundcloud_url = character(), youtube_url = character(), bpm = double(),
+    notes = character()
   )
 
   library_file <- file.path(data_dir, "song_library.csv")
@@ -144,11 +145,12 @@ load_song_library <- function(data_dir = "data") {
   n_playable <- sum(
     !is.na(df$bpm) & (
       (!is.na(df$spotify_uri)    & nzchar(trimws(df$spotify_uri))) |
-      (!is.na(df$soundcloud_url) & nzchar(trimws(df$soundcloud_url)))
+      (!is.na(df$soundcloud_url) & nzchar(trimws(df$soundcloud_url))) |
+      (!is.na(df$youtube_url)    & nzchar(trimws(df$youtube_url)))
     )
   )
   cat("  ✓ Song library:", nrow(df), "songs,", n_playable,
-      "playable (BPM + a Spotify/SoundCloud link)\n")
+      "playable (BPM + a Spotify/SoundCloud/YouTube link)\n")
 
   df[, needed]
 }

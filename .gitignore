@@ -6,3 +6,10 @@
 
 # macOS
 .DS_Store
+
+# Secrets
+.Renviron
+data/backups/
+
+# Local scratch
+_to_delete/
