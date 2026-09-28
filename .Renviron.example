@@ -1,0 +1,21 @@
+# Copy this file to .Renviron (same folder) and fill in the keys you have.
+# .Renviron is git-ignored: never commit real keys. Restart R after editing.
+# Missing keys are fine - that feature/step is skipped.
+
+# Spotify: full in-app player, Save to Spotify, finding Spotify links
+# https://developer.spotify.com/dashboard  (Redirect URI: http://127.0.0.1:4321/)
+SPOTIFY_CLIENT_ID=
+SPOTIFY_CLIENT_SECRET=
+
+# YouTube Data API v3: finding YouTube links (free, ~100 searches/day)
+# https://console.cloud.google.com
+YOUTUBE_API_KEY=
+
+# GetSongBPM: filling blank bpm cells (free; requires a PUBLIC backlink to
+# https://getsongbpm.com - see MUSIC_SETUP.md)  https://getsongbpm.com/api
+GETSONGBPM_KEY=
+
+# SoundCloud: finding SoundCloud links (optional; access by application)
+# https://developers.soundcloud.com
+SOUNDCLOUD_CLIENT_ID=
+SOUNDCLOUD_CLIENT_SECRET=

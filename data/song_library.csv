@@ -1,162 +1,232 @@
-song_title,artist,spotify_uri,soundcloud_url,bpm,notes
-Bring Me To Life,Evanescence,,,95,
-You Can Call Me Al,Paul Simon,,,129,
-Invisible Touch,Genesis,,,130,
-Hold On My Heart,Genesis,,,86,
-Sweet Home Chicago,Big Joe Maher,,,106,
-Chicago,Sufjan Stevens,,,94,
-John Wayne Gacy, Jr.,Sufjan Stevens,,,78,
-R-E-S-P-E-C-T,Aretha Franklin,,,115,
-Paint It Black,Rolling Stones,,,163,
-Jailhouse Rock,Elvis Presley,,,169,
-Love Me Tender,Elvis Presley,,,75,
-Arsonist's Lullabye,Hozier,,,65,
-From Eden,Hozier,,,71,
-Take Me To Church,Hozier,,,63,
-Aerodynamic,Daft Punk,,,123,
-Crescendolls,Daft Punk,,,124,
-Digital Love,Daft Punk,,,124,
-Starboy,The Weeknd ft. Daft Punk,,,93,
-Lose Yourself,Eminem,,,86,
-Like Toy Soldiers,Eminem,,,80,
-Mockingbird,Eminem,,,85,
-My Name Is...,Eminem,,,86,
-Stan,Eminem,,,80,
-When I'm Gone,Eminem,,,75,
-Against All Odds,Phil Collins,,,58,
-In The Air Tonight,Phil Collins,,,95,
-You'll Be In My Heart,Phil Collins,,,97,
-Nightcall,Kavinsky,,,91,
-Goldeneye,Tina Turner,,,102,
-(Simply) The Best,Tina Turner,,,103,
-Bridging The Gap,Nas,,,75,
-If I Ruled The World,Nas,,,94,
-Made You Look,Nas,,,95,
-Ready or Not,Fugees,,,89,
-Get Back,The Beatles,,,121,
-Help!,The Beatles,,,95,
-Another Bites The Dust,Queen,,,110,
-Body Language,Queen,,,132,
-Bohemian Rhapsody,Queen,,,89,
-Crazy Little Thing Called Love,Queen,,,154,
-Don't Stop Me Now,Queen,,,155,
-I Want To Break Free,Queen,,,109,
-We Will Rock You,Queen,,,163,
-D.A.N.C.E.,Justice,,,114,
-Layla,Eric Clapton,,,93,
-Money For Nothing,Dire Straits,,,134,
-So Far Away,Dire Straits,,,114,
-Sultans Of Swing,Dire Straits,,,74,
-911,Wyclef Jean Feat. Mary J. Blige,,,87,
-Runaway Love,Ludacris ft. Mary J. Blige,,,91,
-Family Affair,Mary J. Blige,,,93,
-No More Drama,Mary J. Blige,,,98,
-Therapy,Mary J. Blige,,,82,
-Hypnotize,Notorious B.I.G.,,,94,
-Mo Money Mo Problems,Notorious B.I.G.,,,104,
-Changes,2Pac,,,110,
-Ghetto Gospel,2Pac,,,81,
-99 Problems,Jay-Z,,,94,
-Dirt Off Your Sholder,Jay-Z,,,82,
-Hard Knock Life,Jay-Z,,,77,
-Empire State Of Mind,Jay-Z & Alicia Keys,,,86,
-No Church In The Wild,Jay-Z & Kanye West ft. Frank Ocean & The Dream,,,93,
-Otis,Jay-Z & Kanye West ft. Otis Redding,,,94,
-Lucifer,Jay-Z,,,86,
-Numb/Encore,Linkin Park & Jay-Z,,,107,
-Boys,Lizzo,,,120,
-Deliverance,Bubba Sparxxx,,,92,
-Back In The Mudd,Bubba Sparxxx,,,200,
-Wish You Were Here,Pink Floyd,,,118,
-A Whola Lotta Love,Led Zeppelin,,,90,
-Immigrant Song,Led Zeppelin,,,117,
-Dreams,The Cranberries,,,117,
-Zombie,The Cranberries,,,82,
-It's My Life,Bon Jovi,,,120,
-Living On A Prayer,Bon Jovi,,,122,
-Runaway,Bon Jovi,,,152,
-Anyway You Want It,Journey,,,140,
-Don't Stop Believin',Journey,,,120,
-Separate Ways (Worlds Apart),Journey,,,131,
-More Than A Feeling,Boston,,,110,
-Dream,Dizzee Rascal,,,100,
-Bad Guy,Billie Eilish,,,135,
-No Time To Die,Billie Eilish,,,72,
-All The Good Girls Go To Hell,Billie Eilish,,,93,
-Every Breath You Take,The Police,,,116,
-Roxanne,The Police,https://open.spotify.com/track/3EYOJ48Et32uATr9ZmLnAo,,134,
-Message In A Bottle,The Police,,,150,
-Africa,Toto,,,92,
-Hold The Line,Toto,,,96,
-Highway To Hell,AC/DC,,,124,
-Shook Me All Night Long,AC/DC,,,127,
-T.N.T.,AC/DC,,,132,
-Thunderstruck,AC/DC,,,133,
-Eminence Front,The Who,,,99,
-Won't Get Fooled Again,The Who,,,135,
-Baba O'Riley,The Who,,,116,
-Go Your Own Way,Fleetwod Mac,,,136,
-Long Walk Home,Bruce Springsteen,,,124,
-Murder Incorporated,Bruce Springsteen,,,111,
-Streets Of Philadelphia,Bruce Springsteen,,,93,
-Sledgehammer,Peter Gabriel,,,96,
-In Your Eyes,Peter Gabriel,,,89,
-Games Without Frontiers,Peter Gabriel,,,96,
-It's All Coming Back To Me Now,Celine Dion,,,84,
-My Heart Will Go On,Celine Dion,,,50,
-The Power Of Love,Celine Dion,,,70,
-And So It Goes,Billy Joel,,,78,
-She's Got A Way,Billy Joel,,,67,
-Man! I Feel Like A Woman,Shania Twain,,,126,
-That Don't Impress Me Much,Shania Twain,,,126,
-Out Of The Woods,Taylor Swift,,,92,
-Shake It Off,Taylor Swift,,,80,
-The Man,Taylor Swift,,,	110,
-We Are Never Ever Getting Back Together,Taylor Swift,,,	86,
-You Need To Calm Down,Taylor Swift,,,85,
-Holding Out For A Hero,Bonnie Tyler,,,150,
-Total Eclipse Of The Heart,Bonnie Tyler,,,66,
-Wait So Long,Trampled By Turtles,,,95,
-She Wants To Move,N.E.R.D.,,,115,
-Hot-N-Fun,N.E.R.D. ft. Nelly Furtado,,,120,
-Sooner Or Later,N.E.R.D.,,,80,
-Love Me Now,John Legend,,,125,
-Misery Business,Paramore,,,86,
-Still Into You,Paramore,,,136,
-That's What You Get,Paramore,,,131,
-Uptown Girl,Billy Joel,,,129,
-Royals,Lorde,,,85,
-Team,Lorde,,,100,
-Tennis Court,Lorde,,,90,
-Yellow Flicker Beat,Lorde,,,96,
-Breezeblocks,Alt-J,,,75,
-Fitzpleasure,Alt-J,,,72,
-In Cold Blood,Alt-J,,,72,
-Left Hand Free,Alt-J,,,102,
-Back To Black,Amy Winehouse,,,127,
-I Know I'm No Good,Amy Winehouse,,,103,
-Rehab,Amy Winehouse,,,72,
-Hey Ma,Bon Iver,,,73,
-Fancy,Reba McEntire,,,95,
-Forever Love,Reba McEntire,,,60,
-He Gets That From Me,Reba McEntire,,,72,
-If I Were A Boy,Reba McEntire,,,90,
-The Bridge You Burn,Reba McEntire,,,114,
-Until They Don't Love You,Reba McEntire,,,122,
-We're So Good Together,Reba McEntire,,,120,
-My Sister,Reba McEntire,,,94,
-The Wire,HAIM,,,113,
-Top Notch,Manchester Orchestra,,,130,
-Morris Brown,OutKast,,,126,
-It's Tricky,Run DMC,,,130,
-It's Like That,Run DMC vs. Jason Nevins,,,128,
-Ch-Check It Out,Beastie Boys,,,115,
-Intergalactic,Beastie Boys,,,106,
-Triple Trouble,Beastie Boys,,,110,
-The Whole World,Outkast Feat. Killer Mike,,,123,
-Nobody Speak,DJ Shadow & Run The Jewels,,,80,
-Stand Up,Ludacris,,,99,
-Neckbrace,Ratatat,,,120,
-Joker & The Thief,Wolfmother,,,157,
-All Along The Watchtower,Jimi Hendrix,,,126,
-The Kids Aren't Alright,The Offspring,,,100,
+song_title,artist,spotify_uri,soundcloud_url,bpm,notes,youtube_url
+Bring Me To Life,Evanescence,https://open.spotify.com/track/0COqiPhxzoWICwFCS4eZcp?si=9367763d3a5d43cc,,95,,https://www.youtube.com/watch?v=Yhwal9i1uyw
+You Can Call Me Al,Paul Simon,https://open.spotify.com/track/0qxYx4F3vm1AOnfux6dDxP?si=96d54305bef942f9,,129,,https://www.youtube.com/watch?v=uq-gYOrU8bA
+Invisible Touch,Genesis,https://open.spotify.com/track/2ivQ7hAOUrVjpTaVl1l9SG?si=3b0ce68efca444bc,,130,,https://www.youtube.com/watch?v=MHSGsIPMQIo
+Hold On My Heart,Genesis,https://open.spotify.com/track/0tHqrEotbB7KpB6KMnPr7G?si=63733e039b40417f,,86,,https://www.youtube.com/watch?v=ZowO_f55Q5I
+Sweet Home Chicago,Big Joe Maher,https://open.spotify.com/track/1j2554rjMzws2sVo1oeaBe?si=b5481e6fa9d447d4,,106,,https://www.youtube.com/watch?v=qxWFxCNRZxo
+Chicago,Sufjan Stevens,https://open.spotify.com/track/1yupbrI7ROhigIHpQBevPh?si=d1936da074344086,,94,,https://www.youtube.com/watch?v=edpLqHYp4XY
+"John Wayne Gacy, Jr.",Sufjan Stevens,https://open.spotify.com/track/2R3g9k14OAcUzZYwo90Tx6?si=8e69b4310e434b3b,,78,,https://www.youtube.com/watch?v=ZWpvMm27WIM
+R-E-S-P-E-C-T,Aretha Franklin,https://open.spotify.com/track/7s25THrKz86DM225dOYwnr?si=e9a6218a081b4b49,,115,,https://www.youtube.com/watch?v=9iayJ8u4Qew
+Paint It Black,Rolling Stones,https://open.spotify.com/track/63T7DJ1AFDD6Bn8VzG6JE8?si=b2be1df108904a22,,163,,https://www.youtube.com/watch?v=EBUFtoC2oj4
+Jailhouse Rock,Elvis Presley,https://open.spotify.com/track/4gphxUgq0JSFv2BCLhNDiE?si=e0f699625dec4f32,,169,,https://www.youtube.com/watch?v=gj0Rz-uP4Mk
+Love Me Tender,Elvis Presley,https://open.spotify.com/track/7LSGjWtza5Y8itm6Cpbj1s?si=82a6cd76812a4bc6,,75,,https://www.youtube.com/watch?v=YC0BPcLea0Y
+Arsonist's Lullabye,Hozier,https://open.spotify.com/track/7lpmIGFw7Kc9qIdq4cGs34?si=dfcfb06a4e334bb7,,65,,https://www.youtube.com/watch?v=XoQvbDROucQ
+From Eden,Hozier,https://open.spotify.com/track/5ltHoAqXvRiOQvcAqpHo3U?si=933834cb9ed942a8,,71,,https://www.youtube.com/watch?v=uQe70sys77A
+Take Me To Church,Hozier,https://open.spotify.com/track/70LrxJ5u19umvrXbC19g20?si=da5c5321b1264c56,,63,,https://www.youtube.com/watch?v=PVjiKRfKpPI
+Aerodynamic,Daft Punk,https://open.spotify.com/track/3H3cOQ6LBLSvmcaV7QkZEu?si=eeec0fdda7324d1c,,123,,https://www.youtube.com/watch?v=L93-7vRfxNs
+Crescendolls,Daft Punk,https://open.spotify.com/track/6vuPZX9fWESg5js2JFTQRJ?si=9f1039a5217e49cd,,124,,https://www.youtube.com/watch?v=6S3ISlvlEbs
+Digital Love,Daft Punk,https://open.spotify.com/track/2VEZx7NWsZ1D0eJ4uv5Fym?si=d189753160ff4eaa,,124,,https://www.youtube.com/watch?v=MfO6EYbVBFw
+Starboy,The Weeknd ft. Daft Punk,https://open.spotify.com/track/7MXVkk9YMctZqd1Srtv4MB?si=3bdab679ada1460f,,93,,https://www.youtube.com/watch?v=plnfIj7dkJE
+Lose Yourself,Eminem,https://open.spotify.com/track/5Z01UMMf7V1o0MzF86s6WJ?si=adbae761448e4631,,86,,https://www.youtube.com/watch?v=Wj7lL6eDOqc
+Like Toy Soldiers,Eminem,https://open.spotify.com/track/6CN3e26iQSj1N5lomh0mfO?si=a08f1655782e4e6a,,80,,https://www.youtube.com/watch?v=UcjVX-mza-U
+Mockingbird,Eminem,https://open.spotify.com/track/561jH07mF1jHuk7KlaeF0s?si=050f9ff587264178,,85,,https://www.youtube.com/watch?v=FjVjHkezTIM
+My Name Is...,Eminem,https://open.spotify.com/track/75IN3CtuZwTHTnZvYM4qnJ?si=7691ec7a856744f1,,86,,https://www.youtube.com/watch?v=SFH4tWd644g
+Stan,Eminem,https://open.spotify.com/track/3UmaczJpikHgJFyBTAJVoz?si=edff2361476842bc,,80,,https://www.youtube.com/watch?v=7u1Jj6aRIec
+When I'm Gone,Eminem,https://open.spotify.com/track/2lRI7n5b9jlPYsEpRuots6,,75,,https://www.youtube.com/watch?v=HnEwvZYdAlE
+Against All Odds,Phil Collins,https://open.spotify.com/track/63CHa6rmamv9OsehkRD8oz,,58,,https://www.youtube.com/watch?v=wuvtoyVi7vY
+In The Air Tonight,Phil Collins,https://open.spotify.com/track/18AXbzPzBS8Y3AkgSxzJPb,,95,,https://www.youtube.com/watch?v=YkADj0TPrJA
+You'll Be In My Heart,Phil Collins,https://open.spotify.com/track/4Y8vb1uy9IjM2V1hqvrAid,,97,,https://www.youtube.com/watch?v=EfHLHdSxQA0
+Nightcall,Kavinsky,https://open.spotify.com/track/0U0ldCRmgCqhVvD6ksG63j,,91,,https://www.youtube.com/watch?v=MV_3Dpw-BRY
+Goldeneye,Tina Turner,https://open.spotify.com/track/528QhCT2v3HgD71RmrSUNW,,102,,https://www.youtube.com/watch?v=1_Aq5rQdPso
+(Simply) The Best,Tina Turner,https://open.spotify.com/track/6seLicC6cKt5k9EWmrbzIa,,103,,https://www.youtube.com/watch?v=8Afffdv5Tfg
+Bridging The Gap,Nas,https://open.spotify.com/track/5h3xoQzVec6OCtzFuuafw7,,75,,https://www.youtube.com/watch?v=hq7z3JBKCTE
+If I Ruled The World,Nas,https://open.spotify.com/track/5PQmSHzWnlgG4EBuIqjac2,,94,,https://www.youtube.com/watch?v=5Sm7mkwvVkg
+Made You Look,Nas,https://open.spotify.com/track/3qRPc4QpHGNwKFAzCdqwxA,,95,,https://www.youtube.com/watch?v=DhPtRA7zieE
+Ready or Not,Fugees,https://open.spotify.com/track/3vZO25GdYuqFrR1kzZADnp,,89,,https://www.youtube.com/watch?v=PWOa_eeKzO0
+Get Back,The Beatles,https://open.spotify.com/track/4MLBqAEzNN89o2M9h92Z26,,121,,https://www.youtube.com/watch?v=IKJqecxswCA
+Help!,The Beatles,https://open.spotify.com/track/7DD7eSuYSC5xk2ArU62esN,,95,,https://www.youtube.com/watch?v=N4KvafPbauw
+Another Bites The Dust,Queen,,,110,,
+Body Language,Queen,https://open.spotify.com/track/3IZFbIRZYJIZV0y0Nd0N5g,,132,,https://www.youtube.com/watch?v=p2EDkv_dyeI
+Bohemian Rhapsody,Queen,https://open.spotify.com/track/2JiDi0qAXsPwhPqA2qaKGt,,89,,https://www.youtube.com/watch?v=fJ9rUzIMcZQ
+Crazy Little Thing Called Love,Queen,https://open.spotify.com/track/7uON6DWIjXgmLQIfGsWXpV,,154,,https://www.youtube.com/watch?v=LV4gSOMVbT8
+Don't Stop Me Now,Queen,https://open.spotify.com/track/1NHWG8zxSEypSRF3UufrnO,,155,,https://www.youtube.com/watch?v=mGEISrJFJ54
+I Want To Break Free,Queen,https://open.spotify.com/track/5lmMeytpSOBTzFYRS32fwA,,109,,https://www.youtube.com/watch?v=jAJOtR8IJZs
+We Will Rock You,Queen,https://open.spotify.com/track/2ELSVi4kwWOXgxiIC592tJ,,163,,https://www.youtube.com/watch?v=DXB9oMH_n6c
+D.A.N.C.E.,Justice,https://open.spotify.com/track/33yAEqzKXexYM3WlOYtTfQ,,114,,https://www.youtube.com/watch?v=3f4DOfSEHCk
+Layla,Eric Clapton,https://open.spotify.com/track/0j1W7TK290PcVy15bpGgbo,,93,,https://www.youtube.com/watch?v=fX5USg8_1gA
+Money For Nothing,Dire Straits,https://open.spotify.com/track/4nFNJmjfgBF7jwv2oBC45b,,134,,https://www.youtube.com/watch?v=2zXTaB_9JQg
+So Far Away,Dire Straits,https://open.spotify.com/track/4DDyybdhC9su038YIG6JDj,,114,,https://www.youtube.com/watch?v=YIHMPc6ZCuI
+Sultans Of Swing,Dire Straits,https://open.spotify.com/track/37Tmv4NnfQeb0ZgUC4fOJj,,74,,https://www.youtube.com/watch?v=UKCTm7TkI88
+911,Wyclef Jean Feat. Mary J. Blige,https://open.spotify.com/track/1Ov4E4nE7E0yzeqpbhEE5g,,87,,https://www.youtube.com/watch?v=EUeFKNirqs0
+Runaway Love,Ludacris ft. Mary J. Blige,https://open.spotify.com/track/3QnEp4rluCxUwgpXT43jmC,,91,,https://www.youtube.com/watch?v=ISvMS6s41vY
+Family Affair,Mary J. Blige,https://open.spotify.com/track/3aw9iWUQ3VrPQltgwvN9Xu,,93,,https://www.youtube.com/watch?v=XPqg74xDU_4
+No More Drama,Mary J. Blige,https://open.spotify.com/track/7nWsh14AHpnTzq1Xejz90U,,98,,https://www.youtube.com/watch?v=I62P5xJMJgc
+Therapy,Mary J. Blige,https://open.spotify.com/track/2ZuZsMDtRSoOAkQly6MlAX,,82,,https://www.youtube.com/watch?v=ihrH45QFelw
+Hypnotize,Notorious B.I.G.,https://open.spotify.com/track/7KwZNVEaqikRSBSpyhXK2j,,94,,https://www.youtube.com/watch?v=k1qpgQr8wXk
+Mo Money Mo Problems,Notorious B.I.G.,https://open.spotify.com/track/4INDiWSKvqSKDEu7mh8HFz,,104,,https://www.youtube.com/watch?v=3_fkRw_SuxA
+Changes,2Pac,https://open.spotify.com/track/1ofhfV90EnYhEr7Un2fWiv,,110,,https://www.youtube.com/watch?v=M8Wj6-gPY0g
+Ghetto Gospel,2Pac,https://open.spotify.com/track/7jLbTp3qZzah9kMIdW8e5M,,81,,https://www.youtube.com/watch?v=O9fEBX1zDgE
+99 Problems,Jay-Z,https://open.spotify.com/track/7IdFdRlCjUi6kkhbPoRfnw,,94,,https://www.youtube.com/watch?v=M7wfjjgmjwU
+Dirt Off Your Sholder,Jay-Z,,,82,,
+Hard Knock Life,Jay-Z,https://open.spotify.com/track/5Tl0HJvynZtKdSUMKbFVVX,,77,,https://www.youtube.com/watch?v=94iyQ_wlFVQ
+Empire State Of Mind,Jay-Z & Alicia Keys,https://open.spotify.com/track/2igwFfvr1OAGX9SKDCPBwO,,86,,https://www.youtube.com/watch?v=183mZ-wj7eA
+No Church In The Wild,Jay-Z & Kanye West ft. Frank Ocean & The Dream,https://open.spotify.com/track/7r6PigmGzlB3YPB7wvBBbi,,93,,https://www.youtube.com/watch?v=Vf0DX7PrMDI
+Otis,Jay-Z & Kanye West ft. Otis Redding,https://open.spotify.com/track/14I61w6cyYUHiV2n28IYdP,,94,,https://www.youtube.com/watch?v=BoEKWtgJQAU
+Lucifer,Jay-Z,https://open.spotify.com/track/05VHidqx1tV6V7MsCdAIby,,86,,https://www.youtube.com/watch?v=Oy9LHIDtmGc
+Numb/Encore,Linkin Park & Jay-Z,https://open.spotify.com/track/7dyluIqv7QYVTXXZiMWPHW,,107,,https://www.youtube.com/watch?v=_1oO4wzPCmE
+Boys,Lizzo,https://open.spotify.com/track/1ITsmuChPVC05ogvorAyVu,,120,,https://www.youtube.com/watch?v=XplzAs0El2Y
+Deliverance,Bubba Sparxxx,https://open.spotify.com/track/70RMVzexrIvYJiFEnuGymb,,92,,
+Back In The Mudd,Bubba Sparxxx,,,200,,
+Wish You Were Here,Pink Floyd,https://open.spotify.com/track/6mFkJmJqdDVQ1REhVfGgd1,,118,,https://www.youtube.com/watch?v=-0MQXbcw-co
+A Whola Lotta Love,Led Zeppelin,,,90,,
+Immigrant Song,Led Zeppelin,https://open.spotify.com/track/78lgmZwycJ3nzsdgmPPGNx,,117,,https://www.youtube.com/watch?v=y8OtzJtp-EM
+Dreams,The Cranberries,https://open.spotify.com/track/3W486X36Id1ChRaLhseMBj,,117,,https://www.youtube.com/watch?v=Yam5uK6e-bQ
+Zombie,The Cranberries,https://open.spotify.com/track/49wOjOkS4pBK3PQnPnNYjb,,82,,https://www.youtube.com/watch?v=yGxHDmHoqXc
+It's My Life,Bon Jovi,https://open.spotify.com/track/0v1XpBHnsbkCn7iJ9Ucr1l,,120,,https://www.youtube.com/watch?v=vx2u5uUu3DE
+Living On A Prayer,Bon Jovi,https://open.spotify.com/track/2tHteTLx1YuGDvqoczcM4i,,122,,
+Runaway,Bon Jovi,https://open.spotify.com/track/0X1sqQ652p1sceKM2nJlIJ,,152,,https://www.youtube.com/watch?v=yLUmgshaWf0
+Anyway You Want It,Journey,https://open.spotify.com/track/5afmZnLTjGQT12wK8Twk1g,,140,,https://www.youtube.com/watch?v=kLDVTfQGDe4
+Don't Stop Believin',Journey,https://open.spotify.com/track/77NNZQSqzLNqh2A9JhLRkg,,120,,https://www.youtube.com/watch?v=PIFUWHvSixw
+Separate Ways (Worlds Apart),Journey,https://open.spotify.com/track/1pTw2cNrp9L3esxLAvWnN2,,131,,https://www.youtube.com/watch?v=uH64qV71uUQ
+More Than A Feeling,Boston,https://open.spotify.com/track/1QEEqeFIZktqIpPI4jSVSF,,110,,https://www.youtube.com/watch?v=Pa7ecuADhlY
+Dream,Dizzee Rascal,https://open.spotify.com/track/4aNZEdW6OAHMChI1dTXFwL,,100,,https://www.youtube.com/watch?v=Phc1PGXEt3Y
+Bad Guy,Billie Eilish,https://open.spotify.com/track/2Fxmhks0bxGSBdJ92vM42m,,135,,https://www.youtube.com/watch?v=DyDfgMOUjCI
+No Time To Die,Billie Eilish,https://open.spotify.com/track/73SpzrcaHk0RQPFP73vqVR,,72,,https://www.youtube.com/watch?v=BboMpayJomw
+All The Good Girls Go To Hell,Billie Eilish,https://open.spotify.com/track/6IRdLKIyS4p7XNiP8r6rsx,,93,,https://www.youtube.com/watch?v=-PZsSWwc9xA
+Every Breath You Take,The Police,https://open.spotify.com/track/1JSTJqkT5qHq8MDJnJbRE1,,116,,https://www.youtube.com/watch?v=6cucosmPj-A
+Roxanne,The Police,https://open.spotify.com/track/3EYOJ48Et32uATr9ZmLnAo,,134,,https://www.youtube.com/watch?v=Cdu3a2arXdw
+Message In A Bottle,The Police,https://open.spotify.com/track/1oYYd2gnWZYrt89EBXdFiO,,150,,https://www.youtube.com/watch?v=4m3CMTeo-nU
+Africa,Toto,https://open.spotify.com/track/2374M0fQpWi3dLnB54qaLX,,92,,https://www.youtube.com/watch?v=aCFLgavufaY
+Hold The Line,Toto,https://open.spotify.com/track/4aVuWgvD0X63hcOCnZtNFA,,96,,https://www.youtube.com/watch?v=QS_0_SI6oXU
+Highway To Hell,AC/DC,https://open.spotify.com/track/2zYzyRzz6pRmhPzyfMEC8s,,124,,https://www.youtube.com/watch?v=l482T0yNkeo
+Shook Me All Night Long,AC/DC,https://open.spotify.com/track/2SiXAy7TuUkycRVbbWDEpo,,127,,https://www.youtube.com/watch?v=Lo2qQmj0_h4
+T.N.T.,AC/DC,https://open.spotify.com/track/7LRMbd3LEoV5wZJvXT1Lwb,,132,,https://www.youtube.com/watch?v=NhsK5WExrnE
+Thunderstruck,AC/DC,https://open.spotify.com/track/57bgtoPSgt236HzfBOd8kj,,133,,https://www.youtube.com/watch?v=v2AC41dglnM
+Eminence Front,The Who,https://open.spotify.com/track/0LN5gIsS5tQSmRzQrHSaTR,,99,,https://www.youtube.com/watch?v=xODK_OwxpHM
+Won't Get Fooled Again,The Who,https://open.spotify.com/track/0cJPLFrlV7TTCyPLupHzcH,,135,,https://www.youtube.com/watch?v=Jtb10ZwbReY
+Baba O'Riley,The Who,https://open.spotify.com/track/3qiyyUfYe7CRYLucrPmulD,,116,,https://www.youtube.com/watch?v=rIbMbXjbW98
+Go Your Own Way,Fleetwod Mac,,,136,,
+Long Walk Home,Bruce Springsteen,https://open.spotify.com/track/41RlTAAmlNhuhPx8rPZlDS,,124,,https://www.youtube.com/watch?v=iywFZqtPlhU
+Murder Incorporated,Bruce Springsteen,https://open.spotify.com/track/5TiH6X28HWCYfkHutY18lv,,111,,https://www.youtube.com/watch?v=oshU-C5zTWE
+Streets Of Philadelphia,Bruce Springsteen,https://open.spotify.com/track/3fbnbn6A5O5RNb08tlUEgd,,93,,https://www.youtube.com/watch?v=tKdk97y2Wjg
+Sledgehammer,Peter Gabriel,https://open.spotify.com/track/029NqmIySn1kOY305AAhxT,,96,,https://www.youtube.com/watch?v=OBdYYVF0Mk4
+In Your Eyes,Peter Gabriel,https://open.spotify.com/track/1wyluqXP2ujdTpCfm1E617,,89,,https://www.youtube.com/watch?v=lq6L0-lAVYc
+Games Without Frontiers,Peter Gabriel,https://open.spotify.com/track/1SXSLvVq87U2DctZDXU5Id,,96,,https://www.youtube.com/watch?v=kdCxuQYqZtM
+It's All Coming Back To Me Now,Celine Dion,https://open.spotify.com/track/5EQzuYfTZt7B2LqlvTF49l,,84,,https://www.youtube.com/watch?v=qDneDYFM3fk
+My Heart Will Go On,Celine Dion,https://open.spotify.com/track/6e7N7cQ8MuPtu3FweRQYJz,,50,,https://www.youtube.com/watch?v=cJnSrovvM74
+The Power Of Love,Celine Dion,https://open.spotify.com/track/5kK1Iru9ogP3Iy1zsANU1n,,70,,https://www.youtube.com/watch?v=8noF9djRNzI
+And So It Goes,Billy Joel,https://open.spotify.com/track/1u7kQUb3lQcpHaYRfia13A,,78,,https://www.youtube.com/watch?v=FHO6a2H-pqY
+She's Got A Way,Billy Joel,https://open.spotify.com/track/3Ie2eLOIj2IhKnzPwXrLbJ,,67,,https://www.youtube.com/watch?v=i1waaD72R3E
+Man! I Feel Like A Woman,Shania Twain,https://open.spotify.com/track/6sxptembJVty4sNtcPMAVz,,126,,https://www.youtube.com/watch?v=o9OUSh_ADJ0
+That Don't Impress Me Much,Shania Twain,https://open.spotify.com/track/4FUfoWMypAyWbOavmYyeNu,,126,,https://www.youtube.com/watch?v=omLm5DAwd88
+Out Of The Woods,Taylor Swift,https://open.spotify.com/track/045ZeOHPIzhxxsm8bq5kyE,,92,,https://www.youtube.com/watch?v=JLf9q36UsBk
+Shake It Off,Taylor Swift,https://open.spotify.com/track/0cqRj7pUJDkTCEsJkx8snD,,80,,https://www.youtube.com/watch?v=H59xVMF4zxE
+The Man,Taylor Swift,https://open.spotify.com/track/3RauEVgRgj1IuWdJ9fDs70,,110,,
+We Are Never Ever Getting Back Together,Taylor Swift,https://open.spotify.com/track/5YqltLsjdqFtvqE7Nrysvs,,86,,
+You Need To Calm Down,Taylor Swift,https://open.spotify.com/track/6RRNNciQGZEXnqk8SQ9yv5,,85,,
+Holding Out For A Hero,Bonnie Tyler,https://open.spotify.com/track/5Hyr47BBGpvOfcykSCcaw9,,150,,
+Total Eclipse Of The Heart,Bonnie Tyler,https://open.spotify.com/track/7wuJGgpTNzbUyn26IOY6rj,,66,,
+Wait So Long,Trampled By Turtles,https://open.spotify.com/track/1I7JVzjG70FM9NrgSY5von,,95,,
+She Wants To Move,N.E.R.D.,https://open.spotify.com/track/2JPJoasAPRqCPUwy2qyMph,,115,,
+Hot-N-Fun,N.E.R.D. ft. Nelly Furtado,https://open.spotify.com/track/3o3kju9CMP1JxKsjLOpQhp,,120,,
+Sooner Or Later,N.E.R.D.,https://open.spotify.com/track/4JMYfwYULOoWTaIW3CTvvT,,80,,
+Love Me Now,John Legend,https://open.spotify.com/track/6nxQdXa1uAL0rY72wPZu89,,125,,
+Misery Business,Paramore,https://open.spotify.com/track/3l9CW99AHtExIRV4hW2N5m,,86,,
+Still Into You,Paramore,https://open.spotify.com/track/1yjY7rpaAQvKwpdUliHx0d,,136,,
+That's What You Get,Paramore,https://open.spotify.com/track/0UY4FvG4f9JI6kBR1BlWrZ,,131,,
+Uptown Girl,Billy Joel,https://open.spotify.com/track/5zA8vzDGqPl2AzZkEYQGKh,,129,,
+Royals,Lorde,https://open.spotify.com/track/2dLLR6qlu5UJ5gk0dKz0h3,,85,,
+Team,Lorde,https://open.spotify.com/track/3G6hD9B2ZHOsgf4WfNu7X1,,100,,
+Tennis Court,Lorde,https://open.spotify.com/track/74fpNVAJrKGQuqHETi4WSt,,90,,
+Yellow Flicker Beat,Lorde,https://open.spotify.com/track/5PQ17j37k1X7ZCIKqWQgbw,,96,,
+Breezeblocks,Alt-J,https://open.spotify.com/track/1ZLroqJA8qoS5QEeCo0fA7,,75,,
+Fitzpleasure,Alt-J,https://open.spotify.com/track/3qVKp0bGG2uEkrkMOtwb5F,,72,,
+In Cold Blood,Alt-J,https://open.spotify.com/track/3G51uIe192pEtcttD1cwrf,,72,,
+Left Hand Free,Alt-J,https://open.spotify.com/track/5qJqzpNdEbt92roedFwoDR,,102,,
+Back To Black,Amy Winehouse,https://open.spotify.com/track/30FURVTCpbKyykjSEQzGkH,,127,,
+I Know I'm No Good,Amy Winehouse,,,103,,
+Rehab,Amy Winehouse,https://open.spotify.com/track/1L5tZi0izXsi5Kk5OJf4W0,,72,,
+Hey Ma,Bon Iver,https://open.spotify.com/track/0RstfX9nRY1Lfuy1808MoT,,73,,
+Fancy,Reba McEntire,https://open.spotify.com/track/5wF0S5ORJ5rMcWZICC46Fb,,95,,
+Forever Love,Reba McEntire,https://open.spotify.com/track/2HHvRZ2SOQy9oJTLwAcqb6,,60,,
+He Gets That From Me,Reba McEntire,https://open.spotify.com/track/46a3BjDPBdi6OngVhTkuM6,,72,,
+If I Were A Boy,Reba McEntire,https://open.spotify.com/track/6snYsO7fEOcG63Mi4cenj8,,90,,
+The Bridge You Burn,Reba McEntire,https://open.spotify.com/track/1dBrtTi5tiKBSVGzxaZqBL,,114,,
+Until They Don't Love You,Reba McEntire,https://open.spotify.com/track/5RuN5qEEl5KgXQ8fxSbYnZ,,122,,
+We're So Good Together,Reba McEntire,https://open.spotify.com/track/422wGlTu87QuD8FagidJd7,,120,,
+My Sister,Reba McEntire,https://open.spotify.com/track/21gIIm2pGR0VK36gLVvY26,,94,,
+The Wire,HAIM,https://open.spotify.com/track/7KdF7Zac5eC9jutk9Qret4,,113,,
+Top Notch,Manchester Orchestra,https://open.spotify.com/track/5kEwbg3pkwbEN9mb6tvY68,,130,,
+Morris Brown,OutKast,https://open.spotify.com/track/18uAu5gCnoGGNYQu8LeAr1,,126,,
+It's Tricky,Run DMC,https://open.spotify.com/track/6jBCehpNMkwFVF3dz4nLIW,,130,,
+It's Like That,Run DMC vs. Jason Nevins,https://open.spotify.com/track/0CtkjgZpkgnW7U6WmHsakD,,128,,
+Ch-Check It Out,Beastie Boys,https://open.spotify.com/track/56H98l4uinRifnTH8e308N,,115,,
+Intergalactic,Beastie Boys,https://open.spotify.com/track/5fpizYGbi5IQoEraj6FP0R,,106,,
+Triple Trouble,Beastie Boys,https://open.spotify.com/track/67wjzKe19et4fvb7ID6zAu,,110,,
+The Whole World,Outkast Feat. Killer Mike,https://open.spotify.com/track/074v54tSEWLbq3Hu5wf6uh,,123,,
+Nobody Speak,DJ Shadow & Run The Jewels,https://open.spotify.com/track/7Gc9OoiYsUrByC8tzD7kYY,,80,,
+Stand Up,Ludacris,https://open.spotify.com/track/2CtCwQhY0ZLvr8L2l8Bo6e,,99,,
+Neckbrace,Ratatat,https://open.spotify.com/track/7G8Sx6EsFxiyGq6FToPa3q,,120,,
+Joker & The Thief,Wolfmother,https://open.spotify.com/track/6dNJ3lasVLPd0078T9yqlm,,157,,
+All Along The Watchtower,Jimi Hendrix,https://open.spotify.com/track/2aoo2jlRnM3A0NyLQqMN2f,,126,,
+The Kids Aren't Alright,The Offspring,https://open.spotify.com/track/4EchqUKQ3qAQuRNKmeIpnf,,100,,
+I Wanna Dance With Somebody,Whitney Houston,https://open.spotify.com/track/2tUBqZG2AbRi7Q0BIrVrEj,,119,,
+Bangaranga,DARA,https://open.spotify.com/track/6SvlfrQYzUsW5UQUpUpy26?si=e692001af06b419c,,136,,
+Where Are Your Kids Tonight?,CMAT,https://open.spotify.com/track/4oE6YtwKmwCB08clfvwOnj?si=1590b038fb5a4837,,121,,
+The Whole Of The Moon,Jack Garratt,https://open.spotify.com/track/6lWJhld657ZJWSVcnuh0vs,,128,,
+Right Now,HAIM,https://open.spotify.com/track/2uPVM8eGYFnAgQCadvReVD,,75,,
+Don't Kill My Vibe,Sigrid,https://open.spotify.com/track/5DCaAsjQRLYvvdFUzaYnAz,,75,,
+Often,The Weeknd,https://open.spotify.com/track/4PhsKqMdgMEUSstTDAmMpg,,134,,
+Blinding Lights,The Weeknd,https://open.spotify.com/track/0VjIjW4GlUZAMYd2vXMi3b,,86,,
+Or Nah,Ty Dollar Sign,https://open.spotify.com/track/7t2bFihaDvhIrd2gn2CWJO?si=e5f265d6ad314781,,122,,
+Händerna Mot Himlen,Petra Marklund,https://open.spotify.com/track/14AJI1RloVWTh8bJe9gBPM?si=3652238dc49a425d,,125,,
+Work,Charlotte Day Wilson,https://open.spotify.com/track/1knUACOt5yfNAYn7gnYQVt?si=8b58a38de342431b,,65,,
+Rain,Ben Platt,https://open.spotify.com/track/55PC8EQgaWWrIgP0H2VC6x,,120,,
+KAOS,Mogarrad,https://open.spotify.com/track/1QSvSIFyIRWKApGEJ7WCQP?si=f2f6f65b8727404b,,138,,
+Hero,David Kushner,https://open.spotify.com/track/3boMR8d6f8NA8OYsiSRMkH,,99,,
+Don't Go Breaking My Heart,Elton John,https://open.spotify.com/track/7HW5WIw7ZgZORCzUxv5gW5,,131,,
+I Can See Clearly Now,Jimmy Cliff,https://open.spotify.com/track/7aJZxI6TVdIvQSuWxQ4rqp,,120,,
+Crazy,Gnarls Barkley,https://open.spotify.com/track/1vxw6aYJls2oq3gW0DujAo,,112,,
+How Do You Love Me Now,Nicotine Dolls,,,123,,
+Calm Down,Rema,https://open.spotify.com/track/6hgoYQDUcPyCz7LcTUHKxa,,107,,
+Glimpse Of Us,Joji,https://open.spotify.com/track/3aBGKDiAAvH2H7HLOyQ4US,,85,,
+Black Hole,Griff,https://open.spotify.com/track/0vnKE8ukNmF641XhnEyZJD,,113,,
+Dancing On My Own,Robyn,https://open.spotify.com/track/2UT3iEU7uQAXNUxCKfiZAj,,117,,
+Tell Your Girlfriend,Robyn,,,125,,
+Titanium,Sia,https://open.spotify.com/track/0TDLuuLlV54CkRRUOahJb4,,126,,
+Bulletproof,Laroux,https://open.spotify.com/track/3UcOSBYaTaJrkLouquHbVY,,123,,
+When I Grow Up,Fever Ray,https://open.spotify.com/track/0wXtBUnOihiNsQ6nXa0QoD,,92,,
+May I Have This Dance,Francis and the Lights,https://open.spotify.com/track/3yPD6CHGE1xdJBWyu6ZBKk,,90,,
+Friends,Francis and the Lights feat. Bon Iver and Kanye West,https://open.spotify.com/track/0ZpBPavoID3eDbaXKSWpAD,,73,,
+Young Hearts Run Free,Candi Staton,https://open.spotify.com/track/3MFa9idQuY4iJLWsZl3tIQ,,115,,
+Hold My Girl,George Ezra,https://open.spotify.com/track/42bbDWZ8WmXTH7PkYAlGLu,,122,,
+You Got The Love,Candi Staton,https://open.spotify.com/track/1kIgA49bo8f2qyyKoJ9u2d,,113,,
+Since You've Been Gone,Kelly Clarkson,,,131,,
+Wonder,Naughty Boy,https://open.spotify.com/track/3KVIxZF2vi1j7rjVNpD7i7,,124,,
+Hide And Seek,Imogen Heap,https://open.spotify.com/track/2tej1KSqNuxwywIpY1rDRc,,61,,
+Can't Stop The Feeling,Justin Timberlake,https://open.spotify.com/track/6JV2JOEocMgcZxYSZelKcc,,113,,
+In My Blood,Shawn Mendes,https://open.spotify.com/track/2QZ7WLBE8h2y1Y5Fb8RYbH,,70,,
+Imagine - Tiësto Remix,"Ben Platt, Tiësto",https://open.spotify.com/track/0RYqTScbPJ3wijhvWOgLkE,,110,,
+Ugly Heart,G. R. L.,https://open.spotify.com/track/3qqho4PnTn3zlMPBzWhFFD,,125,,
+Thriller,Micheal Jackson,https://open.spotify.com/track/3KdkWJpsopKS0WRJGh8GU0,,118,,
+Billie Jean,Micheal Jackson,https://open.spotify.com/track/145vDc2jqm98DuvI0b8exJ,,117,,
+Geronimo,Sheppard,https://open.spotify.com/track/2RfM3MKoo4BHWTAQsfXRSo,,142,,
+Pink Pony Club,Chappell Roan,https://open.spotify.com/track/1k2pQc5i348DCHwbn5KTdc,,107,,
+Still Don't Know My Name,Labrynth,,,90,,
+Sky And Sand,Paul Kalkbrenner,https://open.spotify.com/track/3ZSqMer9RLSglvi18bWXYV,,127,,
+Dreaming Of You,The Coral,https://open.spotify.com/track/6ebxt3Iylxe0GcEuUGlIvb,,100,,
+You Broke Me First,Tate McRae,https://open.spotify.com/track/4l0RmWt52FxpVxMNni6i63,,124,,
+Ho Hey,The Lumineers,https://open.spotify.com/track/0DwClY2t9YAWHBROMIgrXb,,80,,
+9 to 5,Dolly Parton,https://open.spotify.com/track/4w3tQBXhn5345eUXDGBWZG,,105,,
+Gap In The Clouds,Yellow Days,https://open.spotify.com/track/7l5j3FapCyr6HxUgoAynM2,,70,,
+Dance Monkey,Tones And I,https://open.spotify.com/track/2XU0oxnq2qxCpomAAuJY8K,,98,,
+In My View,Young Fathers,https://open.spotify.com/track/6dqs8fnEKzvqYta2abiJKN,,131,,
+I'm So Tired…,"Lauv, Troye Sivan",https://open.spotify.com/track/7LpMG3AEaIJgs62HQhAa91,,101,,
+"Cheer Up, My Brother",HNNY,https://open.spotify.com/track/37D9O4De2WL1hA6gyResgl,,108,,
+Phone Battery Dead,Tom Rosentahl,,,116,,
+Lost in The World,Kanye West feat. Bon Iver,https://open.spotify.com/track/2Im64pIz6m0EJKdUe6eZ8r,,117,,
+The City,Patrick Wolf,https://open.spotify.com/track/66xw76tCSvWxPSMx8IlHcN,,124,,
+Sex On Fire,Kings Of Leon,https://open.spotify.com/track/0ntQJM78wzOLVeCUAW7Y45,,77,,
+The Edge Of Glory,Lady Gaga,https://open.spotify.com/track/57F80059mWaWFvWG3tBTbO,,128,,
+Born This Way,Lady Gaga,https://open.spotify.com/track/30XU4suKzCeoCK9YFzdufg,,124,,
+Halo,Beyoncé,https://open.spotify.com/track/4JehYebiI9JE8sR8MisGVb,,80,,
+Crazy in Love,Beyoncé feat Jay-Z,https://open.spotify.com/track/5IVuqXILoxVWvWEPm82Jxr,,99,,
+This Is How We Do It,Montell Jordan,https://open.spotify.com/track/6aJ90LBl96bly9zuEH1U2X?si=002110d617a048e4,,104,,
+All Night Long,Lionel Richie,https://open.spotify.com/track/4czNORk5MjW5WOn98bki32?si=8b3c63bc52514d48,,109,,
+Can I Kick It?,A Tribe Called Quest,https://open.spotify.com/track/1gSDTZHemEViEBiXysrlo0?si=ed05659cfa06453f,,97,,
+Take Me Home Tonight,Eddie Money,https://open.spotify.com/track/7b4yGtR0rujvLi5EBfKKJ2?si=c5c7fd19554b40e1,,133,,
+With A Little Help From My Friends,Joe Cocker,https://open.spotify.com/track/0YZ3J8xzGwLOg4yEgST1YK?si=b4d8872e94ed4928,,73,,
+Feeling Good,Nina Simone,https://open.spotify.com/track/6Rqn2GFlmvmV4w9Ala0I1e?si=ebe70dc234484e5a,,82,,
+Don't Let Me Be Misunderstood,Nina Simone,https://open.spotify.com/track/7M9pPyt8Gr41THLhbz4NSB?si=b0178795f58b44c4,,79,,
+Believe,Cher,https://open.spotify.com/track/2goLsvvODILDzeeiT4dAoR?si=48fbcd87aa544e6a,,133,,
+Faith,George Michael,https://open.spotify.com/track/0OfOiFFvoNHH0Ph1rRZI8F?si=040dade677a84546,,96,,

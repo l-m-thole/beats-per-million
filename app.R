@@ -32,6 +32,7 @@ library(here)
 
 source(here::here("R", "config.R"))
 source(here::here("R", "functions.R"))
+source(here::here("R", "period_context.R"))
 source(here::here("R", "load_data.R"))
 source(here::here("R", "spotify.R"))
 
@@ -141,6 +142,63 @@ body {
 
 .now-playing-row {
   margin-bottom: 1rem;
+}
+
+/* Period context + key events */
+.context-more summary {
+  cursor: pointer;
+  color: #3b82f6;
+  font-size: 0.9rem;
+  margin: 0.25rem 0 0.75rem;
+}
+.context-more p {
+  color: #a1a1aa;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+.events-title {
+  color: #f5f5f7;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 1rem 0 0.5rem;
+}
+.event-list {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+  border-left: 2px solid rgba(255,255,255,0.1);
+}
+.event-list li {
+  position: relative;
+  padding: 0 0 0.75rem 0.9rem;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: #a1a1aa;
+}
+.event-list li::before {
+  content: "";
+  position: absolute;
+  left: -6px; top: 0.35rem;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: #f59e0b;
+}
+.event-when {
+  display: block;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.75rem;
+  color: #f59e0b;
+}
+.event-name { color: #f5f5f7; font-weight: 500; }
+.song-events {
+  margin: 0.5rem 0 1rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: 10px;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  font-size: 0.9rem;
+  color: #f5f5f7;
 }
 
 .now-playing-label-small {
@@ -560,6 +618,8 @@ ui <- fluidPage(
         " • ",
         tags$a(href = "https://www.annualreviews.org/doi/10.1146/annurev-earth-082420-063026", target = "_blank", "Rae et al. 2021")
       ),
+      p("Song tempos (BPM) partly from ",
+        tags$a(href = "https://getsongbpm.com", target = "_blank", "GetSongBPM")),
       p("A collaboration between Martin Wegmann and Lena Thöle")
   )
 )
@@ -833,7 +893,32 @@ server <- function(input, output, session) {
   
   # Period description
   output$period_description <- renderUI({
-    p(class = "description-text", current_period()$description)
+    pid <- input$selected_period
+    ctx <- period_context_text(pid)
+    ev  <- period_key_events(pid)
+
+    tagList(
+      p(class = "description-text", current_period()$description),
+      if (length(ctx)) {
+        tags$details(class = "context-more",
+          tags$summary("Read more about this period"),
+          lapply(ctx, tags$p)
+        )
+      },
+      if (nrow(ev)) {
+        tagList(
+          div(class = "events-title", "Key events (oldest → youngest)"),
+          tags$ul(class = "event-list",
+            lapply(seq_len(nrow(ev)), function(i) {
+              tags$li(
+                span(class = "event-when", ev$when[i]),
+                span(class = "event-name", ev$title[i]), " – ", ev$detail[i]
+              )
+            })
+          )
+        )
+      }
+    )
   })
   
   # How it works - dynamic based on playlist
@@ -915,19 +1000,30 @@ server <- function(input, output, session) {
     # Ball for the selected song: sits on the curve at the current playback
     # position and is moved by the play_frac() observer while the song plays.
     # The song's time window is shaded so you can see where it will travel.
+    # Key events: dotted vertical lines (shapes) + hoverable markers on top.
+    ev <- period_key_events(input$selected_period)
+    ev <- ev[ev$age >= min(data$age) & ev$age <= max(data$age), , drop = FALSE]
+    event_shapes <- lapply(seq_len(nrow(ev)), function(i) list(
+      type = "line", xref = "x", yref = "paper",
+      x0 = ax$scale(ev$age[i]), x1 = ax$scale(ev$age[i]), y0 = 0, y1 = 1,
+      line = list(color = "rgba(245,158,11,0.35)", width = 1, dash = "dot"),
+      layer = "below"
+    ))
+    p <- p %>% layout(shapes = event_shapes)
+
     song <- selected_song()
     if (!is.null(song)) {
       pos <- ball_position(song, data, isolate(play_frac()))
       marker_x <- ax$scale(pos$age)
       
       p <- p %>%
-        layout(shapes = list(list(
+        layout(shapes = c(event_shapes, list(list(
           type = "rect", xref = "x", yref = "paper",
           x0 = ax$scale(song$start_age), x1 = ax$scale(song$end_age),
           y0 = 0, y1 = 1,
           fillcolor = "rgba(255,255,255,0.06)",
           line = list(width = 0), layer = "below"
-        ))) %>%
+        )))) %>%
         add_trace(
           x = marker_x,
           y = pos$co2,
@@ -944,7 +1040,22 @@ server <- function(input, output, session) {
           )
         )
     }
-    
+
+    # Added last on purpose: the play-progress observer restyles trace 1 (ball).
+    if (nrow(ev)) {
+      p <- p %>%
+        add_trace(
+          x = ax$scale(ev$age),
+          y = rep(max(data$co2, na.rm = TRUE), nrow(ev)),
+          type = "scatter", mode = "markers",
+          marker = list(symbol = "triangle-down", size = 9, color = "#f59e0b"),
+          text = paste0("<b>", ev$when, " – ", ev$title, "</b><br>",
+                        vapply(strwrap(ev$detail, 50, simplify = FALSE),
+                               paste, character(1), collapse = "<br>")),
+          hovertemplate = "%{text}<extra></extra>"
+        )
+    }
+
     p
   })
   
@@ -964,6 +1075,16 @@ server <- function(input, output, session) {
           span(class = "now-playing-label-small", "CO₂ CONCENTRATION"),
           div(class = "now-playing-value", paste0(song$avg_co2, " ppm"))
       ),
+      {
+        ev <- events_in_window(input$selected_period, song$start_age, song$end_age)
+        if (nrow(ev)) {
+          div(class = "song-events",
+              span(class = "now-playing-label-small", "DURING THIS SONG"),
+              lapply(seq_len(nrow(ev)), function(i)
+                div("📍 ", tags$b(ev$when[i]), " – ", ev$title[i]))
+          )
+        }
+      },
       div(class = "now-playing-bpm",
           span(class = "bpm-large", style = paste0("color:", song$bpm_color), song$bpm),
           span(class = "bpm-label", "BPM")
