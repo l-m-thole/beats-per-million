@@ -23,6 +23,19 @@
   };
   function withSpotify(fn) { if (spApi) fn(spApi); else spQueue.push(fn); }
 
+  // If the Spotify IFrame API can't load (blocked, offline, old viewer), fall
+  // back to a plain embed so there is always a player - just without progress
+  // events (ball won't move, no auto-advance for that song).
+  function plainSpotifyEmbed(el, uri) {
+    var id = (uri || "").split(":").pop();
+    var f = document.createElement("iframe");
+    f.src = "https://open.spotify.com/embed/track/" + id;
+    f.width = "100%"; f.height = "152"; f.frameBorder = "0";
+    f.allow = "autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture";
+    f.style.borderRadius = "12px";
+    el.replaceWith(f);
+  }
+
   function send(name, value, event) {
     if (window.Shiny && Shiny.setInputValue) {
       Shiny.setInputValue(name, value, event ? { priority: "event" } : undefined);
@@ -91,7 +104,11 @@
     // ---- Spotify ----
     if (spEl) {
       var uri = spEl.getAttribute("data-uri");
+      var fallback = setTimeout(function () {
+        if (!spApi && document.body.contains(spEl)) plainSpotifyEmbed(spEl, uri);
+      }, 4000);
       withSpotify(function (api) {
+        clearTimeout(fallback);
         if (myToken !== token || !document.body.contains(spEl)) return;
         api.createController(spEl, { uri: uri, width: "100%", height: 152 }, function (c) {
           if (myToken !== token) { try { c.destroy(); } catch (e) {} return; }

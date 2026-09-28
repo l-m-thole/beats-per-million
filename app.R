@@ -380,9 +380,11 @@ ui <- fluidPage(
     # App styles (defined inline in app_css())
     tags$style(HTML(app_css())),
     # Player APIs: progress events + auto-advance (see www/player.js)
-    tags$script(src = "https://open.spotify.com/embed/iframe-api/v1", async = NA),
-    tags$script(src = "https://w.soundcloud.com/player/api.js"),
-    tags$script(src = "player.js")
+    # player.js must load BEFORE the Spotify API: the API calls
+    # window.onSpotifyIframeApiReady once, as soon as it has loaded.
+    tags$script(src = "player.js"),
+    tags$script(src = "https://open.spotify.com/embed/iframe-api/v1"),
+    tags$script(src = "https://w.soundcloud.com/player/api.js")
   ),
   
   # Header
