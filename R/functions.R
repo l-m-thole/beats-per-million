@@ -438,7 +438,7 @@ create_playlist_template <- function(playlist) {
 #' (`bpm`). The app matches songs to playlist slots by BPM at run time, so --
 #' unlike the old fixed-slot curated file -- a data refresh that shifts song
 #' numbers can never misalign your picks. Columns:
-#'   song_title, artist, spotify_uri, soundcloud_url, bpm, notes
+#'   song_title, artist, spotify_uri, soundcloud_url, youtube_url, bpm, notes
 #'
 #' @param data_dir Path to the data directory (default: "data").
 #' @return (Invisibly) the path to the library file.
@@ -456,6 +456,7 @@ seed_song_library <- function(data_dir = "data") {
     artist         = c("Various Artists", "Various Artists"),
     spotify_uri    = c("", ""),
     soundcloud_url = c("", ""),
+    youtube_url    = c("", ""),
     bpm            = c(70, 140),
     notes          = c("Delete these two example rows once you add real songs.",
                        "bpm is the song's real tempo - see tunebat.com / songbpm.com.")
@@ -463,8 +464,8 @@ seed_song_library <- function(data_dir = "data") {
 
   readr::write_csv(rows, lib_file)
   message("  ✓ Seeded ", lib_file, " with a header and 2 example rows. ",
-          "Fill it with real songs (title, artist, a Spotify and/or SoundCloud ",
-          "link, and the song's BPM), then delete the examples.")
+          "Fill it with real songs (title, artist, a Spotify, SoundCloud and/or ",
+          "YouTube link, and the song's BPM), then delete the examples.")
   invisible(lib_file)
 }
 
@@ -555,8 +556,8 @@ assign_songs_to_playlist <- function(playlist_songs, library, period,
                                      shuffle_counter = 0, tols = c(5, 10)) {
   empty <- tibble::tibble(
     song_number = integer(),   song_title = character(),    artist = character(),
-    spotify_uri = character(), soundcloud_url = character(), bpm = double(),
-    notes = character()
+    spotify_uri = character(), soundcloud_url = character(),
+    youtube_url = character(), bpm = double(), notes = character()
   )
   if (is.null(playlist_songs) || nrow(playlist_songs) == 0) return(empty)
   if (is.null(library) || nrow(library) == 0) return(empty)
@@ -580,6 +581,7 @@ assign_songs_to_playlist <- function(playlist_songs, library, period,
       artist         = pick$artist[1],
       spotify_uri    = pick$spotify_uri[1],
       soundcloud_url = pick$soundcloud_url[1],
+      youtube_url    = if ("youtube_url" %in% names(pick)) pick$youtube_url[1] else NA_character_,
       bpm            = pick$bpm[1],
       notes          = pick$notes[1]
     )
@@ -647,8 +649,8 @@ soundcloud_embed_url <- function(url) {
 
 #' Keep only library songs the in-app player can actually play
 #'
-#' A song is playable when it has a BPM and a parseable Spotify id or a
-#' SoundCloud URL. Matching against the full library would otherwise hand
+#' A song is playable when it has a BPM and a parseable Spotify id, a
+#' SoundCloud URL or a YouTube video id. Matching against the full library would otherwise hand
 #' many slots a song with no link (-> "no match" search buttons) even though
 #' playable songs at a similar tempo exist.
 #'
@@ -660,7 +662,12 @@ playable_songs <- function(library) {
                           USE.NAMES = FALSE))
   has_sc <- !is.na(vapply(library$soundcloud_url, soundcloud_embed_url,
                           character(1), USE.NAMES = FALSE))
-  library[!is.na(library$bpm) & (has_sp | has_sc), , drop = FALSE]
+  has_yt <- if ("youtube_url" %in% names(library)) {
+    !is.na(vapply(library$youtube_url, parse_youtube_id, character(1), USE.NAMES = FALSE))
+  } else {
+    rep(FALSE, nrow(library))
+  }
+  library[!is.na(library$bpm) & (has_sp | has_sc | has_yt), , drop = FALSE]
 }
 
 #' Where the "now playing" ball sits on the CO2 curve
@@ -693,6 +700,36 @@ ball_position <- function(song, raw_data, frac = 0) {
   }
 
   list(age = age, co2 = co2)
+}
+
+#' Extract a YouTube video id from a URL or bare id
+#'
+#' Handles youtube.com/watch?v=ID, music.youtube.com/watch?v=ID, youtu.be/ID,
+#' youtube.com/embed/ID, youtube.com/shorts/ID and a bare 11-character id.
+#' @return the 11-character id, or NA_character_
+parse_youtube_id <- function(url) {
+  if (is.null(url) || length(url) == 0) return(NA_character_)
+  url <- suppressWarnings(as.character(url)[1])
+  if (is.na(url)) return(NA_character_)
+  url <- trimws(url)
+  if (!nzchar(url)) return(NA_character_)
+
+  pats <- c("[?&]v=([A-Za-z0-9_-]{11})",
+            "youtu\\.be/([A-Za-z0-9_-]{11})",
+            "/(?:embed|shorts|live)/([A-Za-z0-9_-]{11})")
+  for (p in pats) {
+    m <- regmatches(url, regexec(p, url, perl = TRUE))[[1]]
+    if (length(m) >= 2) return(m[2])
+  }
+  if (grepl("^[A-Za-z0-9_-]{11}$", url)) return(url)
+  NA_character_
+}
+
+#' "Open on YouTube" URL for a stored youtube_url
+youtube_open_url <- function(url) {
+  id <- parse_youtube_id(url)
+  if (is.na(id)) return(NA_character_)
+  paste0("https://www.youtube.com/watch?v=", id)
 }
 
 #' Print a formatted summary of a playlist

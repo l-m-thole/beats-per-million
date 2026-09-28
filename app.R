@@ -250,6 +250,16 @@ body {
   text-decoration: none !important;
 }
 
+.btn-youtube {
+  background: #ff0033 !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: 20px !important;
+  padding: 0.6rem 1.2rem !important;
+  font-weight: 500 !important;
+  text-decoration: none !important;
+}
+
 .btn-download {
   background: rgba(255,255,255,0.1) !important;
   border: none !important;
@@ -393,7 +403,8 @@ ui <- fluidPage(
     tags$script(src = "player.js"),
     tags$script(src = "https://sdk.scdn.co/spotify-player.js"),
     tags$script(src = "https://open.spotify.com/embed/iframe-api/v1"),
-    tags$script(src = "https://w.soundcloud.com/player/api.js")
+    tags$script(src = "https://w.soundcloud.com/player/api.js"),
+    tags$script(src = "https://www.youtube.com/iframe_api")
   ),
   
   # Header
@@ -552,7 +563,7 @@ server <- function(input, output, session) {
   })
   
   # Selected song index
-  selected_idx <- reactiveVal(1)
+  selected_idx <- reactiveVal(1L)   # integer: DT sends integers, and 1 vs 1L would re-render everything
 
   # Shuffle counter — bumped by the Shuffle button. Feeds the RNG seed so each
   # bump re-rolls which library songs land in this period's slots (see
@@ -570,7 +581,7 @@ server <- function(input, output, session) {
 
   # Reset selection when period changes
   observeEvent(input$selected_period, {
-    selected_idx(1)
+    selected_idx(1L)
   })
 
   # Re-roll the BPM-matched song picks
@@ -581,7 +592,7 @@ server <- function(input, output, session) {
   # Update selection from table click
   observeEvent(input$playlist_table_rows_selected, {
     if (length(input$playlist_table_rows_selected) > 0) {
-      selected_idx(input$playlist_table_rows_selected[1])
+      selected_idx(as.integer(input$playlist_table_rows_selected[1]))
     }
   })
 
@@ -686,6 +697,15 @@ server <- function(input, output, session) {
     session$reload()
   })
 
+  # YouTube refused to play this video (removed, or embedding disabled by the
+  # uploader). player.js then ends the song, so auto-play moves on.
+  observeEvent(input$yt_error, {
+    if (!identical(input$yt_error$token, player_token())) return()
+    showNotification(
+      "This YouTube video can't be played here (embedding disabled or removed) - try another youtube_url for it.",
+      type = "warning", duration = 10)
+  })
+
   observeEvent(input$sp_error, {
     msg <- input$sp_error
     if (grepl("^account_error", msg)) {
@@ -773,7 +793,7 @@ server <- function(input, output, session) {
     if (!identical(input$player_ended$token, player_token())) return()
     if (!isTRUE(input$auto_advance)) return()
     idx <- selected_idx()
-    if (idx < nrow(current_playlist()$songs)) selected_idx(idx + 1)
+    if (idx < nrow(current_playlist()$songs)) selected_idx(idx + 1L)
   })
 
   # Move the ball along the curve without re-drawing the plot
@@ -955,7 +975,10 @@ server <- function(input, output, session) {
       NA_character_
     }
 
-    has_track <- (!is.na(sp_embed)) || (!is.na(sc_embed))
+    yt_id   <- if (!is.null(cur)) parse_youtube_id(cur$youtube_url) else NA_character_
+    yt_open <- if (!is.na(yt_id)) paste0("https://www.youtube.com/watch?v=", yt_id) else NA_character_
+
+    has_track <- (!is.na(sp_embed)) || (!is.na(sc_embed)) || (!is.na(yt_id))
 
     if (has_track) {
       # ----- Curated slot: show players + direct links -----
@@ -977,21 +1000,22 @@ server <- function(input, output, session) {
             span(class = "curated-badge", "🎵 Curated pick"))
       }
 
-      # Spotify: placeholder that www/player.js swaps for an IFrame-API
-      # controller (gives us playback position + end-of-track events).
+      # ONE player per song, first available of:
+      #   1. Spotify full player (connected + Premium) - full tracks
+      #   2. YouTube                                    - full tracks, no login
+      #   3. SoundCloud                                 - full tracks, no login
+      #   4. Spotify embed                              - 30-s previews
+      # www/player.js wires each one up for progress / end-of-song events.
       sp_uri <- if (!is.na(sp_embed)) paste0("spotify:track:", parse_spotify_id(cur$spotify_uri))
 
-      spotify_iframe <- if (!is.na(sp_embed) && sdk_ready()) {
-        # Full-track player: this browser tab is the Spotify device
+      player <- if (!is.na(sp_embed) && sdk_ready()) {
         div(id = "bpm-sdk", `data-uri` = sp_uri, style = "margin-top:0.75rem;",
             tags$button(id = "bpm-sdk-toggle", type = "button",
                         class = "btn btn-spotify", "▶ Play"))
-      } else if (!is.na(sp_embed)) {
+      } else if (!is.na(yt_id)) {
         div(style = "border-radius:12px; overflow:hidden; margin-top:0.75rem;",
-            div(id = "bpm-spotify", `data-uri` = sp_uri))
-      }
-
-      soundcloud_iframe <- if (!is.na(sc_embed) && !(sdk_ready() && !is.na(sp_embed))) {
+            div(id = "bpm-youtube", `data-id` = yt_id))
+      } else if (!is.na(sc_embed)) {
         tags$iframe(
           id = "bpm-soundcloud",
           src = sc_embed,
@@ -1000,12 +1024,23 @@ server <- function(input, output, session) {
           allow = "autoplay",
           style = "margin-top:0.75rem;"
         )
+      } else {
+        tagList(
+          div(style = "border-radius:12px; overflow:hidden; margin-top:0.75rem;",
+              div(id = "bpm-spotify", `data-uri` = sp_uri)),
+          p(class = "muted", style = "font-size:0.8rem; margin-top:0.4rem;",
+            "Spotify preview (30 s). Add a youtube_url, or connect Spotify, for the full song.")
+        )
       }
 
       links <- div(class = "button-row",
         if (!is.na(sp_open)) {
           tags$a(href = sp_open, target = "_blank",
                  class = "btn btn-spotify", "🎵 Open in Spotify")
+        },
+        if (!is.na(yt_open)) {
+          tags$a(href = yt_open, target = "_blank",
+                 class = "btn btn-youtube", "▶ Open on YouTube")
         },
         if (!is.na(sc_open)) {
           tags$a(href = sc_open, target = "_blank",
@@ -1016,7 +1051,7 @@ server <- function(input, output, session) {
       div(id = "bpm-player",
           `data-token`    = player_token(),
           `data-autoplay` = tolower(isolate(listening())),
-          header, spotify_iframe, soundcloud_iframe, links)
+          header, player, links)
 
     } else {
       # ----- Blank slot: keep the BPM/mood search buttons -----

@@ -184,15 +184,24 @@ slot, refreshing the climate data can never misalign your picks.
   time until you shuffle.
 - Matching uses the **currently selected BPM scaling mode** (per-period vs
   global), so switching modes can change which songs match a slot.
-- Only **playable** songs (a BPM plus a Spotify id or SoundCloud URL) are
+- Only **playable** songs (a BPM plus a Spotify, SoundCloud or YouTube link) are
   matched; rows without a link are skipped until you add one.
 - **Playback:** each song plays in full, **capped at 3 minutes**, and the ball
   on the CO₂ curve travels through the song's time window (shaded) as it plays.
   With *Auto-play next song* ticked, the next slot starts when a song ends.
-- **Full songs in the app need Spotify Premium + a (free) Spotify developer app.**
-  Without it, the Spotify widget only plays 30-s previews (and for songs with
-  no preview it sends you to Spotify). The app never starts that widget by
-  itself. One-time setup:
+- **Which player plays a song** (first available): Spotify full player (if
+  connected) → **YouTube** → SoundCloud → Spotify preview widget (30 s).
+  YouTube and SoundCloud play full songs with no login - add a `youtube_url`
+  column value (any youtube.com / youtu.be / music.youtube.com link).
+- **Fill `youtube_url` automatically:** get a free YouTube Data API key
+  (console.cloud.google.com → enable *YouTube Data API v3* → create API key),
+  add `YOUTUBE_API_KEY=...` to `.Renviron`, restart R, then
+  `source("data-raw/enrich_song_library.R")`. The free quota is ~100 songs per
+  day; just re-run the next day - only blank cells are filled. Check the
+  matches in `data/song_library_enrich_log.csv`.
+- **Full Spotify songs in the app need Spotify Premium + a (free) Spotify
+  developer app.** Without it, the Spotify widget only plays 30-s previews. The
+  app never starts that widget by itself. One-time setup:
   1. Create an app at <https://developer.spotify.com/dashboard>, tick
      *Web API* and *Web Playback SDK*, and add the Redirect URI
      `http://127.0.0.1:4321/` exactly.

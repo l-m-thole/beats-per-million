@@ -1,13 +1,13 @@
 // =============================================================================
 // Beats per Million - in-app player bridge
 // -----------------------------------------------------------------------------
-// Two ways to play a Spotify track in the Listen panel:
-//   1. Full player (Spotify connected + Premium): the Web Playback SDK turns
-//      this browser tab into a Spotify device and plays FULL tracks in-app.
-//   2. Fallback: Spotify's embed widget (30-s previews unless logged in to
-//      Spotify in this browser). It is never started programmatically, so the
-//      app never sends you off to Spotify by itself.
-// SoundCloud tracks use the SoundCloud widget (full tracks, no login).
+// The server renders ONE player per song, first available of:
+//   1. Spotify full player (Spotify connected + Premium): the Web Playback SDK
+//      turns this browser tab into a Spotify device - FULL tracks in-app.
+//   2. YouTube (IFrame API) - full tracks, no login.
+//   3. SoundCloud widget    - full tracks, no login.
+//   4. Spotify embed widget - 30-s previews; never started programmatically,
+//      so the app never sends you off to Spotify by itself.
 //
 // Reports to Shiny:
 //   input$player_progress = {token, frac, pos, dur}  (~2x per second)
@@ -20,6 +20,7 @@
   var SEND_EVERY_MS = 500;   // progress throttle
 
   var embedApi = null, embedQueue = [];
+  var ytReady = false, ytQueue = [], ytPlayer = null, ytPoll = null;
   var spController = null, scWidget = null;
   var token = null, ended = false, lastSent = 0, spLastPos = 0, scDur = 0;
 
@@ -47,6 +48,8 @@
     ended = true;
     try { if (spController) spController.pause(); } catch (e) {}
     try { if (scWidget) scWidget.pause(); } catch (e) {}
+    try { if (ytPlayer && ytPlayer.pauseVideo) ytPlayer.pauseVideo(); } catch (e) {}
+    clearInterval(ytPoll);
     try { if (sdk.player && sdk.playingToken === myToken) sdk.player.pause(); } catch (e) {}
     setSdkButton(false);
     send("player_progress", { token: token, frac: 1, pos: limit || 0, dur: limit || 0 });
@@ -138,6 +141,23 @@
   });
 
   // ===========================================================================
+  // YouTube IFrame API (full tracks, no login)
+  // ===========================================================================
+  window.onYouTubeIframeAPIReady = function () {
+    ytReady = true;
+    ytQueue.splice(0).forEach(function (fn) { fn(); });
+  };
+  function withYT(fn) { if (ytReady) fn(); else ytQueue.push(fn); }
+
+  function startYtPoll(p, myToken) {
+    clearInterval(ytPoll);
+    ytPoll = setInterval(function () {
+      if (myToken !== token) { clearInterval(ytPoll); return; }
+      try { report(myToken, p.getCurrentTime() * 1000, p.getDuration() * 1000); } catch (e) {}
+    }, 500);
+  }
+
+  // ===========================================================================
   // 2. Spotify embed (fallback) - never auto-played
   // ===========================================================================
   window.onSpotifyIframeApiReady = function (IFrameAPI) {
@@ -167,6 +187,9 @@
     try { if (spController && spController.destroy) spController.destroy(); } catch (e) {}
     spController = null; scWidget = null;
     clearInterval(sdk.poll);
+    clearInterval(ytPoll);
+    try { if (ytPlayer && ytPlayer.destroy) ytPlayer.destroy(); } catch (e) {}
+    ytPlayer = null;
     // a new song was selected while the SDK was playing the old one
     if (sdk.player && sdk.playingToken && sdk.playingToken !== newToken) {
       try { sdk.player.pause(); } catch (e) {}
@@ -181,6 +204,7 @@
     var sdkEl = document.getElementById("bpm-sdk");
     var scFrame = document.getElementById("bpm-soundcloud");
     var spEl = document.getElementById("bpm-spotify");
+    var ytEl = document.getElementById("bpm-youtube");
 
     // ---- Full Spotify player (SDK) ----
     if (sdkEl) {
@@ -196,6 +220,38 @@
       });
       if (autoplay) sdkPlay(uri, myToken);
       return;   // SDK handles this song; embeds are not rendered in this mode
+    }
+
+    // ---- YouTube (full tracks) ----
+    if (ytEl) {
+      var vid = ytEl.getAttribute("data-id");
+      withYT(function () {
+        if (myToken !== token || !document.body.contains(ytEl)) return;
+        ytPlayer = new YT.Player(ytEl, {
+          videoId: vid, width: "100%", height: "200",
+          playerVars: { playsinline: 1, rel: 0 },
+          events: {
+            onReady: function (e) {
+              if (autoplay && myToken === token) e.target.playVideo();
+            },
+            onStateChange: function (e) {
+              if (myToken !== token) return;
+              if (e.data === YT.PlayerState.PLAYING) {
+                startYtPoll(e.target, myToken);
+              } else if (e.data === YT.PlayerState.ENDED) {
+                finish(myToken, limitFor(e.target.getDuration() * 1000));
+              } else {
+                clearInterval(ytPoll);
+              }
+            },
+            onError: function (e) {
+              if (myToken !== token) return;
+              send("yt_error", { token: myToken, code: e.data }, true);
+              finish(myToken, 0);
+            }
+          }
+        });
+      });
     }
 
     // ---- SoundCloud (full tracks) ----

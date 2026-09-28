@@ -2,7 +2,7 @@
 # Excel-style re-save (columns reordered + an extra column) round-trip.
 
 LIB_COLS <- c("song_title", "artist", "spotify_uri",
-              "soundcloud_url", "bpm", "notes")
+              "soundcloud_url", "youtube_url", "bpm", "notes")
 
 test_that("load_song_library returns an empty, correctly-shaped tibble when absent", {
   dir <- tempfile("songlib-empty-")
