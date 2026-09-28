@@ -30,8 +30,11 @@ with a similar BPM. The app uses one player per song, the first one that works:
 4. **Spotify preview**: 30 seconds only. The app never starts it by itself.
 
 While a song plays, the ball on the CO₂ curve moves through that song's time
-window. Each song plays for at most 3 minutes, then the next one starts
-(untick *Auto-play next song* to stop that).
+window. When a song ends, the next one starts (untick *Auto-play next song*
+to stop that). **Play via** lets you choose Spotify, YouTube or SoundCloud; if
+a song has no link for that service, the app uses the best one it has. Under
+the player there is always a Spotify, YouTube and SoundCloud button: *Open* if
+the song has a link, otherwise *Find* (a search on that site).
 
 **➕ Save to Spotify** (next to 📥 CSV) saves the current period's songs as a
 private playlist in your Spotify account. It doesn't open anything; you get a
@@ -125,6 +128,7 @@ log in. You only need to do that once; the login is remembered.
 | What you see | What to do |
 |---|---|
 | Only 30-second previews | That song only has a Spotify link. Add a `youtube_url`, or connect Spotify (Premium). |
+| Next song does not start | Tick *Auto-play next song*. The Spotify 30-s preview never auto-plays (by design); YouTube and full Spotify do. |
 | Pressing play opens Spotify | Same as above: Spotify's preview player does this for songs without a preview. |
 | "INVALID_CLIENT: Invalid redirect URI" | In the Spotify dashboard, the Redirect URI must be exactly `http://127.0.0.1:4321/`. |
 | Spotify says 403 / "user not registered" | Ask Lena to add your Spotify email under *User Management*. |

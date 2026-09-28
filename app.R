@@ -218,6 +218,18 @@ body {
   margin-top: 0.75rem;
 }
 
+#play_source .control-label {
+  color: #a1a1aa;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+#play_source .radio-inline {
+  margin-right: 0.75rem;
+  font-size: 0.9rem;
+}
+
 .spotify-connect {
   margin-bottom: 0.75rem;
   font-size: 0.85rem;
@@ -507,10 +519,16 @@ ui <- fluidPage(
                                          class = "btn-download")
                         ),
                         uiOutput("spotify_connect"),
+                        radioButtons("play_source", "Play via",
+                                     choices = c("Best available" = "auto",
+                                                 "Spotify" = "spotify",
+                                                 "YouTube" = "youtube",
+                                                 "SoundCloud" = "soundcloud"),
+                                     selected = "auto", inline = TRUE),
                         uiOutput("music_panel"),
                         uiOutput("play_status"),
                         checkboxInput("auto_advance",
-                                      "Auto-play next song (max. 3 min each)",
+                                      "Auto-play next song",
                                       value = TRUE)
                     )
              ),
@@ -1000,58 +1018,70 @@ server <- function(input, output, session) {
             span(class = "curated-badge", "🎵 Curated pick"))
       }
 
-      # ONE player per song, first available of:
-      #   1. Spotify full player (connected + Premium) - full tracks
-      #   2. YouTube                                    - full tracks, no login
-      #   3. SoundCloud                                 - full tracks, no login
-      #   4. Spotify embed                              - 30-s previews
+      # ONE player per song. "Play via" picks the service; if this song has
+      # no link for it, fall back to the best available one:
+      #   Spotify full player (connected) > YouTube > SoundCloud > Spotify preview
       # www/player.js wires each one up for progress / end-of-song events.
       sp_uri <- if (!is.na(sp_embed)) paste0("spotify:track:", parse_spotify_id(cur$spotify_uri))
 
-      player <- if (!is.na(sp_embed) && sdk_ready()) {
-        div(id = "bpm-sdk", `data-uri` = sp_uri, style = "margin-top:0.75rem;",
-            tags$button(id = "bpm-sdk-toggle", type = "button",
-                        class = "btn btn-spotify", "▶ Play"))
-      } else if (!is.na(yt_id)) {
-        div(style = "border-radius:12px; overflow:hidden; margin-top:0.75rem;",
-            div(id = "bpm-youtube", `data-id` = yt_id))
-      } else if (!is.na(sc_embed)) {
-        tags$iframe(
-          id = "bpm-soundcloud",
-          src = sc_embed,
-          width = "100%", height = "166",
-          frameborder = "no", scrolling = "no",
-          allow = "autoplay",
-          style = "margin-top:0.75rem;"
-        )
-      } else {
-        tagList(
-          div(style = "border-radius:12px; overflow:hidden; margin-top:0.75rem;",
-              div(id = "bpm-spotify", `data-uri` = sp_uri)),
-          p(class = "muted", style = "font-size:0.8rem; margin-top:0.4rem;",
-            "Spotify preview (30 s). Add a youtube_url, or connect Spotify, for the full song.")
-        )
-      }
+      avail <- c(
+        spotify_full = !is.na(sp_embed) && sdk_ready(),
+        youtube      = !is.na(yt_id),
+        soundcloud   = !is.na(sc_embed),
+        spotify      = !is.na(sp_embed)
+      )
+      want <- input$play_source %||% "auto"
+      order <- switch(want,
+        spotify    = c("spotify_full", "spotify", "youtube", "soundcloud"),
+        youtube    = c("youtube", "spotify_full", "soundcloud", "spotify"),
+        soundcloud = c("soundcloud", "spotify_full", "youtube", "spotify"),
+        c("spotify_full", "youtube", "soundcloud", "spotify")
+      )
+      use <- order[avail[order]][1]
+      label <- c(spotify_full = "Spotify", spotify = "Spotify (30-s preview)",
+                 youtube = "YouTube", soundcloud = "SoundCloud")
+      want_label <- c(spotify = "Spotify", youtube = "YouTube", soundcloud = "SoundCloud")
 
+      player <- switch(use,
+        spotify_full = div(id = "bpm-sdk", `data-uri` = sp_uri, style = "margin-top:0.75rem;",
+                           tags$button(id = "bpm-sdk-toggle", type = "button",
+                                       class = "btn btn-spotify", "▶ Play")),
+        youtube = div(style = "border-radius:12px; overflow:hidden; margin-top:0.75rem;",
+                      div(id = "bpm-youtube", `data-id` = yt_id)),
+        soundcloud = tags$iframe(
+          id = "bpm-soundcloud", src = sc_embed,
+          width = "100%", height = "166", frameborder = "no", scrolling = "no",
+          allow = "autoplay", style = "margin-top:0.75rem;"
+        ),
+        spotify = div(style = "border-radius:12px; overflow:hidden; margin-top:0.75rem;",
+                      div(id = "bpm-spotify", `data-uri` = sp_uri))
+      )
+
+      source_note <- p(class = "muted", style = "font-size:0.8rem; margin:0.4rem 0 0;",
+        paste0("Playing via ", label[[use]],
+               if (want != "auto" && !startsWith(use, want))
+                 paste0(" (no ", want_label[[want]], " link for this song)") else "",
+               if (use == "spotify") " \u2014 add a youtube_url or connect Spotify for the full song." else ""))
+
+      # Always one button per service: open the song if we have a link,
+      # otherwise search that service for it.
+      q_song <- utils::URLencode(paste(artist_txt %||% "", title_txt %||% ""), reserved = TRUE)
       links <- div(class = "button-row",
-        if (!is.na(sp_open)) {
-          tags$a(href = sp_open, target = "_blank",
-                 class = "btn btn-spotify", "🎵 Open in Spotify")
-        },
-        if (!is.na(yt_open)) {
-          tags$a(href = yt_open, target = "_blank",
-                 class = "btn btn-youtube", "▶ Open on YouTube")
-        },
-        if (!is.na(sc_open)) {
-          tags$a(href = sc_open, target = "_blank",
-                 class = "btn btn-soundcloud", "☁️ Open in SoundCloud")
-        }
+        tags$a(href = if (!is.na(sp_open)) sp_open else paste0("https://open.spotify.com/search/", q_song),
+               target = "_blank", class = "btn btn-spotify",
+               if (!is.na(sp_open)) "🎵 Open in Spotify" else "🔎 Find on Spotify"),
+        tags$a(href = if (!is.na(yt_open)) yt_open else paste0("https://www.youtube.com/results?search_query=", q_song),
+               target = "_blank", class = "btn btn-youtube",
+               if (!is.na(yt_open)) "▶ Open on YouTube" else "🔎 Find on YouTube"),
+        tags$a(href = if (!is.na(sc_open)) sc_open else paste0("https://soundcloud.com/search?q=", q_song),
+               target = "_blank", class = "btn btn-soundcloud",
+               if (!is.na(sc_open)) "☁️ Open in SoundCloud" else "🔎 Find on SoundCloud")
       )
 
       div(id = "bpm-player",
           `data-token`    = player_token(),
           `data-autoplay` = tolower(isolate(listening())),
-          header, player, links)
+          header, player, source_note, links)
 
     } else {
       # ----- Blank slot: keep the BPM/mood search buttons -----
@@ -1083,7 +1113,7 @@ server <- function(input, output, session) {
     fmt <- function(ms) sprintf("%d:%02d", floor(ms / 60000), floor(ms / 1000) %% 60)
     div(class = "play-status",
         paste0("▶ ", fmt(pp$pos), " / ", fmt(pp$dur),
-               if (pp$dur >= 179000) "  (capped at 3 min)" else ""))
+               ""))
   })
 
   # Playlist table

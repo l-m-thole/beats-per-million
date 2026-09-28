@@ -11,12 +11,10 @@
 //
 // Reports to Shiny:
 //   input$player_progress = {token, frac, pos, dur}  (~2x per second)
-//   input$player_ended    = {token, t}                (song finished or capped)
+//   input$player_ended    = {token, t}                (song finished)
 //   input$sp_device / input$sp_error / input$sp_token_request (SDK plumbing)
-// Each song plays in full, capped at 3 minutes.
 // =============================================================================
 (function () {
-  var CAP_MS = 180000;       // play at most 3 minutes per song
   var SEND_EVERY_MS = 500;   // progress throttle
 
   var embedApi = null, embedQueue = [];
@@ -29,18 +27,19 @@
       Shiny.setInputValue(name, value, event ? { priority: "event" } : undefined);
     }
   }
-  function limitFor(dur) { return Math.min(dur > 0 ? dur : CAP_MS, CAP_MS); }
+  function limitFor(dur) { return dur > 0 ? dur : 0; }   // full song, no cap
 
   function report(myToken, pos, dur) {
     if (ended || myToken !== token) return;
     var limit = limitFor(dur);
+    if (!limit) return;
     var frac = Math.max(0, Math.min(1, pos / limit));
     var now = Date.now();
     if (now - lastSent >= SEND_EVERY_MS) {
       lastSent = now;
       send("player_progress", { token: token, frac: frac, pos: pos, dur: limit });
     }
-    if (pos >= limit - 300) finish(myToken, limit);
+    if (pos >= limit - 700) finish(myToken, limit);
   }
 
   function finish(myToken, limit) {
@@ -62,7 +61,7 @@
   var sdk = {
     ready: false, player: null, deviceId: null,
     accessToken: null, expiresAt: 0, waiters: [],
-    playingToken: null, poll: null, lastPos: 0
+    playingToken: null, playingUri: null, hasPlayed: false, poll: null, lastPos: 0
   };
 
   function withToken(cb) {
@@ -107,7 +106,7 @@
         if (!r.ok) r.text().then(function (t) { send("sp_error", "play failed (" + r.status + "): " + t, true); });
       });
     });
-    sdk.playingToken = myToken; sdk.lastPos = 0;
+    sdk.playingToken = myToken; sdk.playingUri = uri; sdk.hasPlayed = false; sdk.lastPos = 0;
     startSdkPoll(myToken);
     setSdkButton(true);
   }
@@ -117,11 +116,24 @@
     sdk.poll = setInterval(function () {
       if (myToken !== token || !sdk.player) { clearInterval(sdk.poll); return; }
       sdk.player.getCurrentState().then(function (st) {
-        if (!st || myToken !== token) return;
+        if (myToken !== token) return;
+        // Player dropped its state after our track ended
+        if (!st) { if (sdk.hasPlayed && sdk.lastPos > 0) finish(myToken, 0); return; }
+        var cur = st.track_window && st.track_window.current_track;
+        var curUri = cur ? ((cur.linked_from && cur.linked_from.uri) || cur.uri) : null;
+        // Spotify "autoplay" moved on to a different (recommended) track
+        if (sdk.hasPlayed && curUri && curUri !== sdk.playingUri && (!cur || cur.uri !== sdk.playingUri)) {
+          finish(myToken, 0); return;
+        }
         setSdkButton(!st.paused);
-        if (!st.paused) report(myToken, st.position, st.duration);
-        // natural end: Spotify pauses and jumps back to 0
-        if (st.paused && st.position === 0 && sdk.lastPos > st.duration - 3000) {
+        if (!st.paused && st.position > 0) {
+          sdk.hasPlayed = true;
+          report(myToken, st.position, st.duration);
+        }
+        // Natural end: Spotify pauses and jumps back to 0 (or restarts)
+        var wasNearEnd = sdk.lastPos > st.duration - 5000;
+        if (sdk.hasPlayed && wasNearEnd &&
+            ((st.paused && st.position === 0) || st.position < sdk.lastPos - 5000)) {
           finish(myToken, limitFor(st.duration));
         }
         sdk.lastPos = st.position;
@@ -191,7 +203,8 @@
     try { if (ytPlayer && ytPlayer.destroy) ytPlayer.destroy(); } catch (e) {}
     ytPlayer = null;
     // a new song was selected while the SDK was playing the old one
-    if (sdk.player && sdk.playingToken && sdk.playingToken !== newToken) {
+    if (sdk.player && sdk.playingToken &&
+        (sdk.playingToken !== newToken || !document.getElementById("bpm-sdk"))) {
       try { sdk.player.pause(); } catch (e) {}
       sdk.playingToken = null;
     }

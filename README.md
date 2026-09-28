@@ -186,7 +186,7 @@ slot, refreshing the climate data can never misalign your picks.
   global), so switching modes can change which songs match a slot.
 - Only **playable** songs (a BPM plus a Spotify, SoundCloud or YouTube link) are
   matched; rows without a link are skipped until you add one.
-- **Playback:** each song plays in full, **capped at 3 minutes**, and the ball
+- **Playback:** each song plays in full, and the ball
   on the CO₂ curve travels through the song's time window (shaded) as it plays.
   With *Auto-play next song* ticked, the next slot starts when a song ends.
 - **Setting up keys, filling song links, sharing with a colleague:** see
@@ -212,7 +212,7 @@ slot, refreshing the climate data can never misalign your picks.
   3. `shiny::runApp()` (opens in your browser on port 4321) → **Connect
      Spotify**. You log in once; the login is remembered.
   Then ▶ Play plays the full track in the app, the ball moves, and songs
-  auto-advance (max. 3 min each).
+  auto-advance.
 - **➕ Save to Spotify** (Playlist card) saves the current period's matched
   songs, oldest → youngest, as a private playlist in your Spotify account. It
   doesn't open anything; you get a notification with a link.
