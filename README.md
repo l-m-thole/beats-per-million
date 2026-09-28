@@ -189,6 +189,8 @@ slot, refreshing the climate data can never misalign your picks.
 - **Playback:** each song plays in full, **capped at 3 minutes**, and the ball
   on the CO₂ curve travels through the song's time window (shaded) as it plays.
   With *Auto-play next song* ticked, the next slot starts when a song ends.
+- **Setting up keys, filling song links, sharing with a colleague:** see
+  [`MUSIC_SETUP.md`](MUSIC_SETUP.md).
 - **Which player plays a song** (first available): Spotify full player (if
   connected) → **YouTube** → SoundCloud → Spotify preview widget (30 s).
   YouTube and SoundCloud play full songs with no login - add a `youtube_url`

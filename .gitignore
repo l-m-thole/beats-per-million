@@ -9,3 +9,4 @@
 
 # Secrets
 .Renviron
+data/backups/
