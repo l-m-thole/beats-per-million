@@ -242,7 +242,11 @@
         if (myToken !== token || !document.body.contains(ytEl)) return;
         ytPlayer = new YT.Player(ytEl, {
           videoId: vid, width: "100%", height: "200",
-          playerVars: { playsinline: 1, rel: 0 },
+          // origin + widget_referrer: YouTube refuses embeds it can't attribute
+          // to a page (error 153 "video player configuration error").
+          playerVars: { playsinline: 1, rel: 0,
+                        origin: window.location.origin,
+                        widget_referrer: window.location.href },
           events: {
             onReady: function (e) {
               if (autoplay && myToken === token) e.target.playVideo();
@@ -259,8 +263,9 @@
             },
             onError: function (e) {
               if (myToken !== token) return;
-              send("yt_error", { token: myToken, code: e.data }, true);
-              finish(myToken, 0);
+              // Don't skip the song: Shiny marks this video as broken and
+              // re-renders the panel with the next player (Spotify first).
+              send("yt_error", { token: myToken, code: e.data, id: vid }, true);
             }
           }
         });

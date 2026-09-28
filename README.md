@@ -195,9 +195,15 @@ Saving from Excel is fine (columns can be reordered, extra columns are ignored).
 
 ### Playback
 
-- **Player order** (first available): Spotify full player (after *Connect
-  Spotify*, needs Premium) → YouTube → SoundCloud → Spotify 30-s preview.
-  **Play via** lets you pick a service.
+- **Play via Spotify is the default.** Order: Spotify full player (after
+  *Connect Spotify*, needs Premium) → YouTube → SoundCloud → Spotify 30-s
+  preview. **Play via** lets you prefer YouTube or SoundCloud instead.
+- **Full songs via Spotify need a one-time *Connect Spotify* login** (Spotify
+  Premium). Until then Spotify only allows 30-s previews, and the app shows a
+  *Connect Spotify to play the full song* button right at the player.
+- If a YouTube video refuses to play (many label videos block other websites),
+  the app says why, switches that song to the next player, and remembers the
+  video in `data/youtube_blocked.csv` so it is skipped from then on.
 - Songs play in full; the ball on the CO₂ curve travels through the song's time
   window, and with *Auto-play next song* ticked the next slot starts when a song ends.
 - **Full songs only** (on by default) matches only songs that can play to the

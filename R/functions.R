@@ -680,14 +680,19 @@ playable_songs <- function(library) {
 #'
 #' @param library Tibble from playable_songs()
 #' @param spotify_full TRUE when the Spotify full player is ready
+#' @param bad_youtube YouTube video ids known not to play in the app
 #' @return The full-song subset (same columns), or `library` if that is empty
-full_song_songs <- function(library, spotify_full = FALSE) {
+full_song_songs <- function(library, spotify_full = FALSE, bad_youtube = character(0)) {
   if (is.null(library) || nrow(library) == 0) return(library)
   has_link <- function(col, parser) {
     if (!col %in% names(library)) return(rep(FALSE, nrow(library)))
     !is.na(vapply(library[[col]], parser, character(1), USE.NAMES = FALSE))
   }
-  full <- has_link("youtube_url", parse_youtube_id) |
+  yt_ok <- if ("youtube_url" %in% names(library)) {
+    ids <- vapply(library$youtube_url, parse_youtube_id, character(1), USE.NAMES = FALSE)
+    !is.na(ids) & !(ids %in% bad_youtube)
+  } else rep(FALSE, nrow(library))
+  full <- yt_ok |
     has_link("soundcloud_url", soundcloud_embed_url) |
     (isTRUE(spotify_full) & has_link("spotify_uri", parse_spotify_id))
   if (!any(full)) return(library)

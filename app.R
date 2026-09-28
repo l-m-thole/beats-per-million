@@ -456,6 +456,23 @@ SONG_LIBRARY <- load_song_library(here::here("data"))
 # otherwise slots get "matched" to rows the player can't play.
 SONG_LIBRARY <- playable_songs(SONG_LIBRARY)
 
+# YouTube videos that refused to play in the app (owner blocks embedding,
+# removed, ...). Remembered across sessions so they are skipped next time.
+YT_BLOCKED_FILE <- here::here("data", "youtube_blocked.csv")
+read_yt_blocked <- function() {
+  if (!file.exists(YT_BLOCKED_FILE)) return(character(0))
+  x <- tryCatch(utils::read.csv(YT_BLOCKED_FILE, colClasses = "character")$video_id,
+                error = function(e) character(0))
+  unique(x[!is.na(x) & nzchar(x)])
+}
+add_yt_blocked <- function(id, code) {
+  new <- !file.exists(YT_BLOCKED_FILE)
+  try(utils::write.table(
+    data.frame(video_id = id, error_code = code, date = format(Sys.Date())),
+    YT_BLOCKED_FILE, sep = ",", row.names = FALSE, col.names = new, append = !new
+  ), silent = TRUE)
+}
+
 # -----------------------------------------------------------------------------
 # USER INTERFACE
 # -----------------------------------------------------------------------------
@@ -582,7 +599,7 @@ ui <- fluidPage(
                                                  "Spotify" = "spotify",
                                                  "YouTube" = "youtube",
                                                  "SoundCloud" = "soundcloud"),
-                                     selected = "auto", inline = TRUE),
+                                     selected = "spotify", inline = TRUE),
                         uiOutput("music_panel"),
                         uiOutput("play_status"),
                         checkboxInput("auto_advance",
@@ -703,7 +720,9 @@ server <- function(input, output, session) {
     # auto-advances. Untick "Full songs only" to also use Spotify-only songs
     # (30-s preview when Spotify isn't connected).
     lib <- if (isTRUE(input$full_only %||% TRUE)) {
-      full_song_songs(SONG_LIBRARY, spotify_full = sdk_ready())
+      # isolate: a video failing mid-session must not reshuffle the whole list
+      full_song_songs(SONG_LIBRARY, spotify_full = sdk_ready(),
+                      bad_youtube = isolate(bad_yt()))
     } else {
       SONG_LIBRARY
     }
@@ -776,10 +795,12 @@ server <- function(input, output, session) {
     ))
   }
 
-  observeEvent(input$sp_connect, {
+  start_spotify_login <- function() {
     if (!spotify_configured()) return(spotify_setup_modal())
     session$sendCustomMessage("sp_goto", list(url = spotify_begin_login()))
-  })
+  }
+  observeEvent(input$sp_connect, start_spotify_login())
+  observeEvent(input$sp_connect_inline, start_spotify_login())
 
   observeEvent(input$sp_disconnect, {
     spotify_forget_login()
@@ -789,10 +810,30 @@ server <- function(input, output, session) {
 
   # YouTube refused to play this video (removed, or embedding disabled by the
   # uploader). player.js then ends the song, so auto-play moves on.
+  # The video is remembered as broken for this session and the Listen panel
+  # re-renders with the next player for the same song (Spotify first), which
+  # starts playing right away.
+  bad_yt <- reactiveVal(read_yt_blocked())
   observeEvent(input$yt_error, {
-    if (!identical(input$yt_error$token, player_token())) return()
+    ev <- input$yt_error
+    if (!identical(ev$token, player_token())) return()
+    why <- switch(as.character(ev$code),
+      "2"   = "the youtube_url is not a valid video link",
+      "5"   = "the browser can't play this video",
+      "100" = "the video was removed or is private",
+      "101" = , "150" = "the owner doesn't allow playing it on other websites",
+      "153" = "YouTube rejected the embed (player configuration / referrer)",
+      paste("YouTube error", ev$code))
+    if (!is.null(ev$id) && nzchar(ev$id) && !(ev$id %in% bad_yt())) {
+      bad_yt(union(bad_yt(), ev$id))
+      # permanent problems -> skip this video in future sessions too
+      if (as.character(ev$code) %in% c("2", "100", "101", "150")) add_yt_blocked(ev$id, ev$code)
+    }
+    listening(TRUE)
     showNotification(
-      "This YouTube video can't be played here (embedding disabled or removed) - try another youtube_url for it.",
+      paste0("YouTube can't play this song here: ", why,
+             ". Switching to another player; this video is skipped from now on ",
+             "(listed in data/youtube_blocked.csv)."),
       type = "warning", duration = 10)
   })
 
@@ -1159,13 +1200,15 @@ server <- function(input, output, session) {
 
       avail <- c(
         spotify_full = !is.na(sp_embed) && sdk_ready(),
-        youtube      = !is.na(yt_id),
+        youtube      = !is.na(yt_id) && !(yt_id %in% bad_yt()),
         soundcloud   = !is.na(sc_embed),
         spotify      = !is.na(sp_embed)
       )
       want <- input$play_source %||% "auto"
       order <- switch(want,
-        spotify    = c("spotify_full", "spotify", "youtube", "soundcloud"),
+        # Spotify is the default. Without Connect Spotify it only plays 30-s
+        # previews, so full-length YouTube/SoundCloud come before the preview.
+        spotify    = c("spotify_full", "youtube", "soundcloud", "spotify"),
         youtube    = c("youtube", "spotify_full", "soundcloud", "spotify"),
         soundcloud = c("soundcloud", "spotify_full", "youtube", "spotify"),
         c("spotify_full", "youtube", "soundcloud", "spotify")
@@ -1192,9 +1235,15 @@ server <- function(input, output, session) {
 
       source_note <- p(class = "muted", style = "font-size:0.8rem; margin:0.4rem 0 0;",
         paste0("Playing via ", label[[use]],
-               if (want != "auto" && !startsWith(use, want))
+               if (want != "auto" && !startsWith(use, want) &&
+                   !isTRUE(c(spotify = !is.na(sp_embed), youtube = !is.na(yt_id),
+                             soundcloud = !is.na(sc_embed))[[want]]))
                  paste0(" (no ", want_label[[want]], " link for this song)") else "",
-               if (use == "spotify") " \u2014 add a youtube_url or connect Spotify for the full song." else ""))
+               if (want == "youtube" && !is.na(yt_id) && yt_id %in% bad_yt())
+                 " (this YouTube video can't be embedded)" else "",
+               if (want == "spotify" && !sdk_ready() && use != "spotify")
+                 " \u2014 click Connect Spotify to play full songs via Spotify" else "",
+               if (use == "spotify") " \u2014 connect Spotify (Premium) or add a youtube_url for the full song." else ""))
 
       # Always one button per service: open the song if we have a link,
       # otherwise search that service for it.
@@ -1211,10 +1260,27 @@ server <- function(input, output, session) {
                if (!is.na(sc_open)) "☁️ Open in SoundCloud" else "🔎 Find on SoundCloud")
       )
 
+      # Spotify preferred but not connected: say so right at the player,
+      # with the one click that unlocks full songs.
+      connect_hint <- if (want %in% c("spotify", "auto") && !sdk_ready() &&
+                          !is.na(sp_embed) && spotify_configured()) {
+        div(class = "spotify-connect", style = "margin-top:0.75rem;",
+            if (isTRUE(sp_connected())) {
+              span(class = "muted", "Starting the Spotify player\u2026 (needs Spotify Premium)")
+            } else {
+              tagList(
+                actionButton("sp_connect_inline", "\u25B6 Connect Spotify to play the full song",
+                             class = "btn btn-spotify"),
+                div(class = "muted", style = "font-size:0.8rem; margin-top:0.3rem;",
+                    "One-time login. Without it Spotify only allows 30-s previews.")
+              )
+            })
+      }
+
       div(id = "bpm-player",
           `data-token`    = player_token(),
           `data-autoplay` = tolower(isolate(listening())),
-          header, player, source_note, links)
+          header, connect_hint, player, source_note, links)
 
     } else {
       # ----- Blank slot: keep the BPM/mood search buttons -----

@@ -163,5 +163,6 @@ log in. You only need to do that once; the login is remembered.
 | "YouTube daily quota used up" | Normal; run the script again tomorrow. |
 | "BPM (GetSongBPM) skipped: set GETSONGBPM_KEY" | Add the key to `.Renviron` and restart R. |
 | "GetSongBPM refused the request (HTTP 401/403)" | Key not activated yet (check the email) or suspended — check the backlink is still public. |
-| "This YouTube video can't be played here" | The uploader blocked embedding; paste a different YouTube link for that song. |
+| "YouTube can't play this song here: …" | The app switches to another player and lists the video in `data/youtube_blocked.csv`, so it's skipped next time. Many label videos block other websites; Spotify (connected) is the reliable way to get full songs. To use YouTube for that song anyway, paste a different `youtube_url` (e.g. the artist's "- Topic" upload) and remove its line from `youtube_blocked.csv`. |
+| Spotify plays only 30 s | You're not connected: click **Connect Spotify to play the full song** (one-time login, Premium). After login the panel says "✓ Spotify connected". |
 | Keys are `FALSE` in the check above | `.Renviron` must be in the project folder; restart R after editing it. |
