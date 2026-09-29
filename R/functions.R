@@ -670,6 +670,17 @@ playable_songs <- function(library) {
   library[!is.na(library$bpm) & (has_sp | has_sc | has_yt), , drop = FALSE]
 }
 
+#' Keep only songs with a usable Spotify link (Play via Spotify)
+#'
+#' @param library Tibble from playable_songs()
+#' @return The subset with a parseable Spotify track id (same columns)
+spotify_songs <- function(library) {
+  if (is.null(library) || nrow(library) == 0) return(library)
+  ok <- !is.na(vapply(library$spotify_uri, parse_spotify_id, character(1),
+                      USE.NAMES = FALSE))
+  library[ok, , drop = FALSE]
+}
+
 #' Keep only songs the app can play IN FULL (and auto-advance from)
 #'
 #' YouTube and SoundCloud always play full songs. Spotify only does when the

@@ -27,19 +27,51 @@
       Shiny.setInputValue(name, value, event ? { priority: "event" } : undefined);
     }
   }
-  function limitFor(dur) { return dur > 0 ? dur : 0; }   // full song, no cap
+  // ---- Song length: whole song (default) or short snippets ----------------
+  // Set from Shiny ("Song length" / "Snippets start at"), read live, so
+  // switching mid-song takes effect immediately.
+  var cfg = { snippet: false, lenMs: 30000, start: 30 };   // start: seconds, or -1 = middle
+  Shiny.addCustomMessageHandler("play_cfg", function (m) {
+    cfg.snippet = !!m.snippet;
+    cfg.lenMs   = (m.len || 30) * 1000;
+    cfg.start   = (m.start === undefined || m.start === null) ? 30 : Number(m.start);
+  });
+
+  // Where a snippet starts (ms) for a track of length dur (ms)
+  function snipStart(dur) {
+    if (!cfg.snippet || !(dur > 0)) return 0;
+    var s = cfg.start < 0 ? dur / 2 - cfg.lenMs / 2 : cfg.start * 1000;
+    return Math.max(0, Math.min(s, dur - cfg.lenMs));
+  }
+  // Where playback of this track ends (ms): whole song, or start + snippet length
+  function limitFor(dur) {
+    if (!(dur > 0)) return 0;
+    return cfg.snippet ? Math.min(dur, snipStart(dur) + cfg.lenMs) : dur;
+  }
 
   function report(myToken, pos, dur) {
     if (ended || myToken !== token) return;
     var limit = limitFor(dur);
     if (!limit) return;
-    var frac = Math.max(0, Math.min(1, pos / limit));
+    var start = snipStart(dur);
+    var span = Math.max(1, limit - start);
+    var frac = Math.max(0, Math.min(1, (pos - start) / span));
     var now = Date.now();
     if (now - lastSent >= SEND_EVERY_MS) {
       lastSent = now;
-      send("player_progress", { token: token, frac: frac, pos: pos, dur: limit });
+      send("player_progress", { token: token, frac: frac,
+                                pos: Math.max(0, pos - start), dur: span });
     }
     if (pos >= limit - 700) finish(myToken, limit);
+  }
+
+  // Jump to the snippet start once per song (players start at 0:00)
+  var seeked = false;
+  function maybeSeek(dur, pos, seekFn) {
+    if (seeked || !cfg.snippet || !(dur > 0)) return;
+    seeked = true;
+    var s = snipStart(dur);
+    if (s > 0 && pos < s - 1500) { try { seekFn(s); } catch (e) {} }
   }
 
   function finish(myToken, limit) {
@@ -51,7 +83,7 @@
     clearInterval(ytPoll);
     try { if (sdk.player && sdk.playingToken === myToken) sdk.player.pause(); } catch (e) {}
     setSdkButton(false);
-    send("player_progress", { token: token, frac: 1, pos: limit || 0, dur: limit || 0 });
+    send("player_progress", { token: token, frac: 1, pos: 0, dur: 0 });
     send("player_ended", { token: token, t: Date.now() }, true);
   }
 
@@ -127,6 +159,9 @@
         }
         setSdkButton(!st.paused);
         if (!st.paused && st.position > 0) {
+          if (!sdk.hasPlayed) {
+            maybeSeek(st.duration, st.position, function (ms) { sdk.player.seek(ms); });
+          }
           sdk.hasPlayed = true;
           report(myToken, st.position, st.duration);
         }
@@ -170,7 +205,8 @@
   }
 
   // ===========================================================================
-  // 2. Spotify embed (fallback) - never auto-played
+  // 2. Spotify embed (not connected): 30-s clips, auto-played once you've
+  //    pressed play in the app
   // ===========================================================================
   window.onSpotifyIframeApiReady = function (IFrameAPI) {
     embedApi = IFrameAPI;
@@ -208,7 +244,7 @@
       try { sdk.player.pause(); } catch (e) {}
       sdk.playingToken = null;
     }
-    token = newToken; ended = false; lastSent = 0; spLastPos = 0; scDur = 0;
+    token = newToken; ended = false; lastSent = 0; spLastPos = 0; scDur = 0; seeked = false;
     if (!box) return;
     box.setAttribute("data-mounted", "1");
 
@@ -254,6 +290,8 @@
             onStateChange: function (e) {
               if (myToken !== token) return;
               if (e.data === YT.PlayerState.PLAYING) {
+                maybeSeek(e.target.getDuration() * 1000, e.target.getCurrentTime() * 1000,
+                          function (ms) { e.target.seekTo(ms / 1000, true); });
                 startYtPoll(e.target, myToken);
               } else if (e.data === YT.PlayerState.ENDED) {
                 finish(myToken, limitFor(e.target.getDuration() * 1000));
@@ -282,6 +320,10 @@
       });
       w.bind(SC.Widget.Events.PLAY, function () {
         try { if (spController && myToken === token) spController.pause(); } catch (e) {}
+        w.getDuration(function (d) {
+          scDur = d;
+          w.getPosition(function (p) { maybeSeek(d, p, function (ms) { w.seekTo(ms); }); });
+        });
       });
       w.bind(SC.Widget.Events.PLAY_PROGRESS, function (e) {
         report(myToken, e.currentPosition, scDur);
@@ -301,9 +343,32 @@
         api.createController(spEl, { uri: euri, width: "100%", height: 152 }, function (c) {
           if (myToken !== token) { try { c.destroy(); } catch (e) {} return; }
           spController = c;
+          // Auto-play when the playlist is running (after your first ▶):
+          // Spotify's clip plays, then the next song starts by itself. A track
+          // with no playable clip never starts -> skip it after 8 s.
+          var started = false;
+          if (autoplay) {
+            setTimeout(function () {
+              if (myToken !== token) return;
+              try { c.play(); } catch (err) {}
+              setTimeout(function () {
+                if (!started && myToken === token && !ended) {
+                  send("sp_nostart", { token: myToken, t: Date.now() }, true);
+                  finish(myToken, 0);
+                }
+              }, 8000);
+            }, 300);
+          }
           c.addListener("playback_update", function (e) {
             var d = e && e.data;
             if (!d || !d.duration || myToken !== token) return;
+            if (!d.isPaused && d.position > 0) {
+              if (!started) {
+                started = true;
+                // logged-in embeds can play the whole track -> honour snippets
+                maybeSeek(d.duration, d.position, function (ms) { c.seek(ms / 1000); });
+              }
+            }
             if (!d.isPaused) {
               try { if (scWidget) scWidget.pause(); } catch (err) {}
               report(myToken, d.position, d.duration);

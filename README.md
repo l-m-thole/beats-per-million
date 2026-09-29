@@ -206,7 +206,16 @@ Saving from Excel is fine (columns can be reordered, extra columns are ignored).
   video in `data/youtube_blocked.csv` so it is skipped from then on.
 - Songs play in full; the ball on the CO₂ curve travels through the song's time
   window, and with *Auto-play next song* ticked the next slot starts when a song ends.
-- **Full songs only** (on by default) matches only songs that can play to the
+- **Play via Spotify stays on Spotify** (YouTube is only used if you pick it):
+  only songs with a Spotify link are matched. Not connected → Spotify's 30-s
+  clips, which auto-play one after another once you've pressed ▶ on the first
+  (songs without a clip are skipped). Connected → whole songs or snippets.
+- **Song length:** *Whole song* (default) or *30-s snippets* — a quick run
+  through a period so you really hear the tempo climb. Snippets start at the
+  beginning, at 0:30 (skip the intro, default) or in the middle of the song,
+  and auto-advance just like whole songs. Works with Spotify (connected),
+  YouTube and SoundCloud; you can switch mid-song.
+- **Skip preview-only songs** (on by default) matches only songs that can play to the
   end: those with a YouTube or SoundCloud link, plus Spotify-only songs once
   *Connect Spotify* is active. Untick it to also use Spotify-only songs, which
   play a 30-s preview and don't auto-advance when Spotify isn't connected.

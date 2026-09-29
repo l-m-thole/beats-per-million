@@ -27,7 +27,7 @@ with a similar BPM. The app uses one player per song, the first one that works:
    Spotify Premium).
 2. **YouTube**: full songs, no login needed.
 3. **SoundCloud**: full songs, no login needed.
-4. **Spotify preview**: 30 seconds only. The app never starts it by itself.
+4. **Spotify 30-s clip** (not connected): press ▶ on the first song; after that the clips play one after another.
 
 While a song plays, the ball on the CO₂ curve moves through that song's time
 window. When a song ends, the next one starts (untick *Auto-play next song*
@@ -35,6 +35,13 @@ to stop that). **Play via** lets you choose Spotify, YouTube or SoundCloud; if
 a song has no link for that service, the app uses the best one it has. Under
 the player there is always a Spotify, YouTube and SoundCloud button: *Open* if
 the song has a link, otherwise *Find* (a search on that site).
+
+**Song length** switches between *Whole song* and *30-s snippets* (start at
+the beginning, at 0:30 or in the middle). Snippets auto-advance too, so a whole
+period plays as a fast "tempo ramp". With Play via Spotify and *no* login, the
+app plays Spotify's own 30-s clips back to back (press ▶ on the first one;
+songs without a clip are skipped after 8 s). With *Connect Spotify* you choose
+where the 30 s start (beginning / 0:30 / middle) and can switch to whole songs.
 
 **➕ Save to Spotify** (next to 📥 CSV) saves the current period's songs as a
 private playlist in your Spotify account. It doesn't open anything; you get a
@@ -155,8 +162,8 @@ log in. You only need to do that once; the login is remembered.
 | What you see | What to do |
 |---|---|
 | Only 30-second previews | Tick *Full songs only* (default). Otherwise that song only has a Spotify link: add a `youtube_url` (re-run the enrichment the next day if the YouTube quota ran out), or connect Spotify (Premium). |
-| Next song does not start | Tick *Auto-play next song*. The Spotify 30-s preview never auto-plays (by design); YouTube and full Spotify do. |
-| Pressing play opens Spotify | Same as above: Spotify's preview player does this for songs without a preview. |
+| Next song does not start | Tick *Auto-play next song*, and press ▶ once on the first song (browsers block sound until you click). |
+| Pressing play opens Spotify | That song has no 30-s clip; Spotify's widget sends you to Spotify. During auto-play such songs are skipped. |
 | "INVALID_CLIENT: Invalid redirect URI" | In the Spotify dashboard, the Redirect URI must be exactly `http://127.0.0.1:4321/`. |
 | Spotify says 403 / "user not registered" | Ask Lena to add your Spotify email under *User Management*. |
 | "needs a Spotify Premium account" | The full player needs Premium; use YouTube links instead. |

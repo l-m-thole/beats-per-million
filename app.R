@@ -276,14 +276,16 @@ body {
   margin-top: 0.75rem;
 }
 
-#play_source .control-label {
+#play_source .control-label, #play_length .control-label,
+#snippet_start .control-label {
   color: #a1a1aa;
   font-size: 0.8rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
-#play_source .radio-inline {
+#play_source .radio-inline, #play_length .radio-inline,
+#snippet_start .radio-inline {
   margin-right: 0.75rem;
   font-size: 0.9rem;
 }
@@ -600,13 +602,28 @@ ui <- fluidPage(
                                                  "YouTube" = "youtube",
                                                  "SoundCloud" = "soundcloud"),
                                      selected = "spotify", inline = TRUE),
+                        # Whole songs, or short snippets for a faster feel of
+                        # the CO2 rise. Works with every full player (Spotify
+                        # connected, YouTube, SoundCloud) and auto-advances.
+                        radioButtons("play_length", "Song length",
+                                     choices = c("Whole song" = "full",
+                                                 "30-s snippets" = "snippet"),
+                                     selected = "full", inline = TRUE),
+                        conditionalPanel(
+                          "input.play_length == 'snippet'",
+                          radioButtons("snippet_start", "Snippets start at",
+                                       choices = c("Beginning" = "0",
+                                                   "0:30 (skip intro)" = "30",
+                                                   "Middle of the song" = "-1"),
+                                       selected = "30", inline = TRUE)
+                        ),
                         uiOutput("music_panel"),
                         uiOutput("play_status"),
                         checkboxInput("auto_advance",
                                       "Auto-play next song",
                                       value = TRUE),
                         checkboxInput("full_only",
-                                      "Full songs only (skip songs that would play a 30-s Spotify preview)",
+                                      "Skip songs that can only play the Spotify preview widget (it can't auto-play)",
                                       value = TRUE)
                     )
              ),
@@ -719,7 +736,12 @@ server <- function(input, output, session) {
     # once the full player is connected), so every song plays to the end and
     # auto-advances. Untick "Full songs only" to also use Spotify-only songs
     # (30-s preview when Spotify isn't connected).
-    lib <- if (isTRUE(input$full_only %||% TRUE)) {
+    # Play via Spotify: only songs with a Spotify link, so YouTube is never
+    # needed (full songs once connected, otherwise Spotify's 30-s clips).
+    lib <- if (identical(input$play_source %||% "spotify", "spotify")) {
+      sp <- spotify_songs(SONG_LIBRARY)
+      if (nrow(sp)) sp else SONG_LIBRARY
+    } else if (isTRUE(input$full_only %||% TRUE)) {
       # isolate: a video failing mid-session must not reshuffle the whole list
       full_song_songs(SONG_LIBRARY, spotify_full = sdk_ready(),
                       bad_youtube = isolate(bad_yt()))
@@ -919,7 +941,24 @@ server <- function(input, output, session) {
     play_pos(list(pos = as.numeric(ev$pos %||% 0), dur = as.numeric(ev$dur %||% 0)))
   })
 
-  # Song finished (or hit the 3-minute cap) -> next slot, which autoplays
+  # Song length for www/player.js (whole song or 30-s snippets); sent on
+  # start-up and whenever the setting changes - applies to the playing song too.
+  observe({
+    session$sendCustomMessage("play_cfg", list(
+      snippet = identical(input$play_length, "snippet"),
+      len     = 30,
+      start   = as.numeric(input$snippet_start %||% "30")
+    ))
+  })
+
+  # Spotify clip that never started (e.g. no preview for this track): skip it
+  observeEvent(input$sp_nostart, {
+    if (!identical(input$sp_nostart$token, player_token())) return()
+    showNotification("Spotify has no playable clip for this song - skipping to the next one.",
+                     type = "message", duration = 5)
+  })
+
+  # Song finished (or its snippet did) -> next slot, which autoplays
   observeEvent(input$player_ended, {
     if (!identical(input$player_ended$token, player_token())) return()
     if (!isTRUE(input$auto_advance)) return()
@@ -1206,9 +1245,9 @@ server <- function(input, output, session) {
       )
       want <- input$play_source %||% "auto"
       order <- switch(want,
-        # Spotify is the default. Without Connect Spotify it only plays 30-s
-        # previews, so full-length YouTube/SoundCloud come before the preview.
-        spotify    = c("spotify_full", "youtube", "soundcloud", "spotify"),
+        # Spotify is the default and stays on Spotify: the full player once
+        # connected, otherwise Spotify's 30-s clip (auto-plays + auto-advances).
+        spotify    = c("spotify_full", "spotify", "soundcloud", "youtube"),
         youtube    = c("youtube", "spotify_full", "soundcloud", "spotify"),
         soundcloud = c("soundcloud", "spotify_full", "youtube", "spotify"),
         c("spotify_full", "youtube", "soundcloud", "spotify")
@@ -1241,9 +1280,7 @@ server <- function(input, output, session) {
                  paste0(" (no ", want_label[[want]], " link for this song)") else "",
                if (want == "youtube" && !is.na(yt_id) && yt_id %in% bad_yt())
                  " (this YouTube video can't be embedded)" else "",
-               if (want == "spotify" && !sdk_ready() && use != "spotify")
-                 " \u2014 click Connect Spotify to play full songs via Spotify" else "",
-               if (use == "spotify") " \u2014 connect Spotify (Premium) or add a youtube_url for the full song." else ""))
+               if (use == "spotify") " \u2014 30-s clip; click Connect Spotify for whole songs." else ""))
 
       # Always one button per service: open the song if we have a link,
       # otherwise search that service for it.
