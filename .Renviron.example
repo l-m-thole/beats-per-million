@@ -19,3 +19,16 @@ GETSONGBPM_KEY=
 # https://developers.soundcloud.com
 SOUNDCLOUD_CLIENT_ID=
 SOUNDCLOUD_CLIENT_SECRET=
+
+# ---------------------------------------------------------------------------
+# App settings (optional; see R/settings.R). Locally you need none of these.
+# deploy/deploy_shinyapps.R writes the server's values for you.
+# ---------------------------------------------------------------------------
+# "Play via" choice visitors start with: spotify | youtube | soundcloud | auto
+# BPM_DEFAULT_PLAYER=spotify
+# Who sees "Connect Spotify": on | testers (only with ?testers in the URL) | off
+# BPM_SPOTIFY_LOGIN=on
+# Contact shown in About & privacy (email or URL)
+# BPM_CONTACT=
+# Spotify redirect for a deployed copy (the app's https:// address)
+# SPOTIFY_REDIRECT_URI=

@@ -1,6 +1,6 @@
 Package: climatePlaylists
 Title: Beats per Million - Dance While You Can
-Version: 3.2.0
+Version: 3.3.0
 Authors@R: c(
     person("Martin", "Wegmann", role = "aut"),
     person("Lena", "Thoele", role = c("aut", "cre"),
@@ -22,7 +22,11 @@ Imports:
     DT,
     writexl,
     here,
-    httr2
+    httr2,
+    openssl
 Suggests:
-    testthat (>= 3.0.0)
+    testthat (>= 3.0.0),
+    withr,
+    rsconnect,
+    jsonlite
 Config/testthat/edition: 3

@@ -182,9 +182,25 @@
     sdk.waiters.splice(0).forEach(function (cb) { cb(sdk.accessToken); });
     initSdk();
   });
-  Shiny.addCustomMessageHandler("sp_goto", function (m) { window.location.href = m.url; });
+  // Hosts such as shinyapps.io show the app inside a frame, and Spotify's
+  // login page refuses to load in a frame: navigate the top window instead
+  // (falls back to this frame if the browser doesn't allow it).
+  function topWin() {
+    try { if (window.top && window.top.location.href) return window.top; } catch (e) {}
+    return null;
+  }
+  Shiny.addCustomMessageHandler("sp_goto", function (m) {
+    var w = topWin();
+    try { (w || window).location.href = m.url; } catch (e) { window.location.href = m.url; }
+  });
+  // Remove ?code=&state= after a login (in this frame and, if allowed, the
+  // address bar), optionally keeping a flag such as ?testers
   Shiny.addCustomMessageHandler("sp_clean_url", function (m) {
-    history.replaceState(null, "", window.location.pathname);
+    var q = (m && m.keep) ? "?" + m.keep : "";
+    [window, topWin()].forEach(function (w) {
+      if (!w) return;
+      try { w.history.replaceState(null, "", w.location.pathname + q); } catch (e) {}
+    });
   });
 
   // ===========================================================================
