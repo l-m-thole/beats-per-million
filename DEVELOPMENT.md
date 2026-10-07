@@ -47,8 +47,12 @@ matcher (`pick_song_for_bpm` / `pick_song_widening` / `assign_songs_to_playlist`
 tolerance, widening, exclusion, empty library, seed reproducibility), and the
 song-library seed → Excel-style re-save → load round-trip, the Spotify / YouTube
 link parsing, the CO2-curve ball position, the song-library enrichment matching
-(`enrich_library.R`, offline with fake lookups), and the period context / key
-events (`period_context.R`: every event inside its period, ordering, window lookup).
+(`enrich_library.R`, offline with fake lookups), the period context / key
+events (`period_context.R`: every event inside its period, ordering, window
+lookup), the app settings and URL flags (`settings.R`), the Spotify login
+plumbing (random single-use login states, one token store per visitor when
+deployed, nothing on disk online), the library check (`library_check.R`: row
+issues, faked oEmbed link checks, coverage and gaps), and the About text.
 
 The enrichment test with Swedish characters needs a UTF-8 locale (it is on any
 normal Mac/RStudio setup).
@@ -75,6 +79,22 @@ modern events are written as CE years via `.yr()`.
 
 API keys live in `.Renviron` (git-ignored); `.Renviron.example` lists the
 variables. Never commit keys.
+
+## Local vs deployed
+
+`R/settings.R` detects a server (shinyapps.io / Posit Connect / Shiny Server,
+or `BPM_DEPLOYED=true`) and switches: no fixed port, one Spotify login per
+browser session kept in memory (locally: one login cached on disk, as before),
+*Connect Spotify* only for `?testers` visitors. `deploy/deploy_shinyapps.R`
+stages only the runtime files and writes the server's `.Renviron`; it refuses
+to deploy if `renv.lock` is missing an imported package or is out of sync.
+See [`LAUNCH.md`](LAUNCH.md).
+
+## Song-library check
+
+`source("data-raw/check_song_library.R")` — row issues, coverage simulation
+with the app's own matcher, BPM gaps, and a READY / NOT YET verdict
+(`R/library_check.R`).
 
 ## Regenerate playlist outputs
 

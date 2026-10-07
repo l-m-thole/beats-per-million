@@ -13,3 +13,10 @@ data/backups/
 
 # Local scratch
 _to_delete/
+
+# Deployment records (rsconnect) and library-check reports
+rsconnect/
+output/library_check/
+
+# Local previews of the Markdown docs (e.g. LAUNCH.html)
+/*.html

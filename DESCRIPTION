@@ -1,6 +1,6 @@
 Package: climatePlaylists
 Title: Beats per Million - Dance While You Can
-Version: 3.2.0
+Version: 3.3.0
 Authors@R: c(
     person("Martin", "Wegmann", role = "aut"),
     person("Lena", "Thoele", role = c("aut", "cre"),
@@ -10,6 +10,8 @@ Description: Converts atmospheric CO2 concentrations through geological time int
     app and a playlist-template generator. Data span modern Mauna Loa
     measurements, the 800 kyr Antarctic ice-core composite, and Cenozoic marine
     proxies.
+URL: https://beatspermillion.shinyapps.io/dance/,
+    https://github.com/l-m-thole/climate_playlist
 License: MIT
 Encoding: UTF-8
 Imports:
@@ -22,7 +24,11 @@ Imports:
     DT,
     writexl,
     here,
-    httr2
+    httr2,
+    openssl
 Suggests:
-    testthat (>= 3.0.0)
+    testthat (>= 3.0.0),
+    withr,
+    rsconnect,
+    jsonlite
 Config/testthat/edition: 3

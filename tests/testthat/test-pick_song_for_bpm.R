@@ -139,3 +139,14 @@ test_that("full_song_songs skips known-blocked YouTube videos", {
   )
   expect_equal(full_song_songs(lib, bad_youtube = "qDneDYFM3fk")$song_title, "ok")
 })
+
+test_that("spotify_songs keeps only songs with a Spotify track id", {
+  lib <- tibble::tibble(
+    song_title = c("sp", "yt"), artist = "a",
+    spotify_uri = c("https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC", NA),
+    soundcloud_url = NA_character_,
+    youtube_url = c(NA, "https://youtu.be/dQw4w9WgXcQ"),
+    bpm = 100, notes = NA
+  )
+  expect_equal(spotify_songs(lib)$song_title, "sp")
+})

@@ -5,11 +5,11 @@ links. Everything runs from the project root in RStudio.
 
 ## 1. Get the code
 
-The player work is on the branch `feature/player-progress`:
+Use `main`, or the branch Lena points you to:
 
 ```bash
 git fetch
-git checkout feature/player-progress
+git checkout main
 ```
 
 Then install the packages the app needs (first time only):
@@ -27,7 +27,7 @@ with a similar BPM. The app uses one player per song, the first one that works:
    Spotify Premium).
 2. **YouTube**: full songs, no login needed.
 3. **SoundCloud**: full songs, no login needed.
-4. **Spotify preview**: 30 seconds only. The app never starts it by itself.
+4. **Spotify 30-s clip** (not connected): press ▶ on the first song; after that the clips play one after another.
 
 While a song plays, the ball on the CO₂ curve moves through that song's time
 window. When a song ends, the next one starts (untick *Auto-play next song*
@@ -35,6 +35,13 @@ to stop that). **Play via** lets you choose Spotify, YouTube or SoundCloud; if
 a song has no link for that service, the app uses the best one it has. Under
 the player there is always a Spotify, YouTube and SoundCloud button: *Open* if
 the song has a link, otherwise *Find* (a search on that site).
+
+**Song length** switches between *Whole song* and *30-s snippets* (start at
+the beginning, at 0:30 or in the middle). Snippets auto-advance too, so a whole
+period plays as a fast "tempo ramp". With Play via Spotify and *no* login, the
+app plays Spotify's own 30-s clips back to back (press ▶ on the first one;
+songs without a clip are skipped after 8 s). With *Connect Spotify* you choose
+where the 30 s start (beginning / 0:30 / middle) and can switch to whole songs.
 
 **➕ Save to Spotify** (next to 📥 CSV) saves the current period's songs as a
 private playlist in your Spotify account. It doesn't open anything; you get a
@@ -74,7 +81,8 @@ Lena the **email address of your Spotify account**; she adds it in the
 [Spotify dashboard](https://developer.spotify.com/dashboard) → the app →
 *User Management* (max. 5 people). The full in-app player also needs **your**
 account to have Spotify Premium; without Premium, YouTube still plays full
-songs.
+songs. On the **online** version, open the app with `?testers` at the end of
+the address to see *Connect Spotify* (see [`LAUNCH.md`](LAUNCH.md)).
 
 **Your own YouTube key (optional, free):**
 [console.cloud.google.com](https://console.cloud.google.com) → create a
@@ -113,14 +121,12 @@ The GetSongBPM API is free, but **a public link back to
 suspended without notice. When you register you give a *Website URL* and a
 *Backlink URL* (the public page where the link is). For this project:
 
-1. Make sure a **public** page links to `https://getsongbpm.com`. The README
-   has a "BPM data: GetSongBPM" section and the app footer links to it too.
-   A private GitHub repo does **not** count — nobody outside can see it.
-   Options: make the repo public; or a public GitHub Pages / Quarto page,
-   personal website or public GitHub profile README with the link.
-2. Register at [getsongbpm.com/api](https://getsongbpm.com/api): Website URL =
-   the project page; Backlink URL = the exact page with the link (e.g.
-   `https://github.com/<user>/climate_playlist#-bpm-data-getsongbpm`); your email.
+1. The **live app** is the public page: its footer links to
+   `https://getsongbpm.com`. Keep that link in the static UI of `app.R` (not in
+   a `renderUI`) so link checkers can see it. A private GitHub repo does **not**
+   count — nobody outside can see it.
+2. Register at [getsongbpm.com/api](https://getsongbpm.com/api): Website URL and
+   Backlink URL = `https://beatspermillion.shinyapps.io/dance/`; your email.
 3. Activate the key from the email, add `GETSONGBPM_KEY=...` to `.Renviron`,
    restart R, and run `source("data-raw/enrich_song_library.R")`.
 
@@ -155,9 +161,10 @@ log in. You only need to do that once; the login is remembered.
 | What you see | What to do |
 |---|---|
 | Only 30-second previews | Tick *Full songs only* (default). Otherwise that song only has a Spotify link: add a `youtube_url` (re-run the enrichment the next day if the YouTube quota ran out), or connect Spotify (Premium). |
-| Next song does not start | Tick *Auto-play next song*. The Spotify 30-s preview never auto-plays (by design); YouTube and full Spotify do. |
-| Pressing play opens Spotify | Same as above: Spotify's preview player does this for songs without a preview. |
-| "INVALID_CLIENT: Invalid redirect URI" | In the Spotify dashboard, the Redirect URI must be exactly `http://127.0.0.1:4321/`. |
+| Next song does not start | Tick *Auto-play next song*, and press ▶ once on the first song (browsers block sound until you click). |
+| Pressing play opens Spotify | That song has no 30-s clip; Spotify's widget sends you to Spotify. During auto-play such songs are skipped. |
+| "INVALID_CLIENT: Invalid redirect URI" | In the Spotify dashboard, the Redirect URI must be exactly `http://127.0.0.1:4321/` (locally) and, for the online version, the app's address, `https://beatspermillion.shinyapps.io/dance/`. |
+| No *Connect Spotify* button online | By design: online it only shows with `?testers` at the end of the address. |
 | Spotify says 403 / "user not registered" | Ask Lena to add your Spotify email under *User Management*. |
 | "needs a Spotify Premium account" | The full player needs Premium; use YouTube links instead. |
 | "YouTube daily quota used up" | Normal; run the script again tomorrow. |

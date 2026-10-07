@@ -6,6 +6,9 @@ This project converts atmospheric CO₂ concentrations through geological time i
 
 A collaboration between **Martin Wegmann** and **Lena Thöle**.
 
+**▶ Try it (test version):** <https://beatspermillion.shinyapps.io/dance/> —
+Spotify plays 30-second previews; pick *Play via YouTube* for whole songs.
+
 ---
 
 ## 🎵 The Concept
@@ -66,6 +69,14 @@ filling song links/BPM automatically. Copy `.Renviron.example` to `.Renviron`,
 fill in the keys you have, and restart R. `.Renviron` is git-ignored — never
 commit it. Details: [`MUSIC_SETUP.md`](MUSIC_SETUP.md).
 
+| Key | Needed for | Lives in | Goes online? |
+|---|---|---|---|
+| `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET` | full Spotify player, *Save to Spotify*, finding Spotify links | your `.Renviron` | only when `SPOTIFY_LOGIN` in the deploy script isn't `"off"` |
+| `YOUTUBE_API_KEY` | finding YouTube links (enrichment) | your `.Renviron` | never |
+| `GETSONGBPM_KEY` | filling blank BPMs (enrichment); the live app's footer is the required backlink | your `.Renviron` | never |
+| `SOUNDCLOUD_CLIENT_ID`, `SOUNDCLOUD_CLIENT_SECRET` | finding SoundCloud links (optional) | your `.Renviron` | never |
+| shinyapps.io token | deploying | stored by `rsconnect` on your computer (`rsconnect::setAccountInfo()`) | — |
+
 ### 3. Run the Shiny app
 
 ```r
@@ -74,6 +85,27 @@ shiny::runApp()
 
 The app opens in your browser at `http://127.0.0.1:4321` (the Spotify player
 does not work in RStudio's Viewer).
+
+### 4. Put it online
+
+```r
+source("deploy/deploy_shinyapps.R")   # after the one-time setup in LAUNCH.md
+```
+
+Deploys to shinyapps.io: only the files the app needs, plus a server-only
+settings file (never your enrichment keys). Online, every visitor gets their own
+Spotify login (or none), *Connect Spotify* is only shown via the `?testers`
+link, and *About & privacy* is in the footer. Step-by-step setup, the player
+test table and the launch criteria: [`LAUNCH.md`](LAUNCH.md).
+
+**Live:** <https://beatspermillion.shinyapps.io/dance/> (shinyapps.io account
+`beatspermillion`, app `dance`; free plan, 25 active hours a month). The online
+settings are at the top of `deploy/deploy_shinyapps.R` — currently
+`DEFAULT_PLAYER = "spotify"` and `SPOTIFY_LOGIN = "off"` (no Spotify login
+online, so Spotify plays 30-s previews; `"testers"` enables the invited-tester
+login via `?testers`). Re-run the script after every change. The deployment
+record in `rsconnect/` is git-ignored. Logs:
+`rsconnect::showLogs(appName = "dance", account = "beatspermillion")`.
 
 ### Generate playlist templates
 
@@ -97,10 +129,15 @@ climate_playlist/
 │   ├── period_context.R       # Background texts + key events per period
 │   ├── functions.R            # CO2→BPM, playlist generation, song matcher
 │   ├── load_data.R            # Data + song-library loading
-│   ├── spotify.R              # Spotify login, player, Save to Spotify
+│   ├── settings.R             # Local vs deployed, default player, who may log in
+│   ├── spotify.R              # Spotify login (per visitor online), player, Save to Spotify
+│   ├── about.R                # "About & privacy" window
+│   ├── library_check.R        # Is the song library good enough to launch?
 │   ├── enrich_library.R       # Fills blank BPM / Spotify / SoundCloud / YouTube cells
 │   └── _disable_autoload.R    # Stops runApp() from sourcing everything in R/
 ├── www/player.js              # In-app players, progress + auto-advance
+├── deploy/deploy_shinyapps.R  # Puts the app online (shinyapps.io)
+├── rsconnect/                 # Deployment record (git-ignored)
 ├── data/
 │   ├── co2_data.xlsx          # Processed: 'maunaloa' + 'bereiter2014' sheets
 │   ├── song_library.csv       # Your songs + their real BPM (matched at run time)
@@ -109,10 +146,12 @@ climate_playlist/
 │   └── rawData/               # Raw CO2 files + provenance README
 ├── data-raw/
 │   ├── build_co2_data.R       # Rebuilds co2_data.xlsx from rawData/
-│   └── enrich_song_library.R  # Run the song-library enrichment
+│   ├── enrich_song_library.R  # Run the song-library enrichment
+│   └── check_song_library.R   # Library report: fixes, gaps, READY / NOT YET
 ├── tests/testthat/            # Unit tests
-├── output/                    # Generated playlist templates
-├── .Renviron.example          # Template for API keys (copy to .Renviron)
+├── output/                    # Generated playlist templates (+ library_check/, git-ignored)
+├── .Renviron.example          # Template for API keys and app settings (copy to .Renviron)
+├── LAUNCH.md                  # Going online: setup, player test, launch criteria
 ├── MUSIC_SETUP.md             # Players, keys, song links, troubleshooting
 ├── DEVELOPMENT.md             # renv, data rebuild, tests
 └── README.md
@@ -206,15 +245,42 @@ Saving from Excel is fine (columns can be reordered, extra columns are ignored).
   video in `data/youtube_blocked.csv` so it is skipped from then on.
 - Songs play in full; the ball on the CO₂ curve travels through the song's time
   window, and with *Auto-play next song* ticked the next slot starts when a song ends.
-- **Full songs only** (on by default) matches only songs that can play to the
+- **Play via Spotify stays on Spotify** (YouTube is only used if you pick it):
+  only songs with a Spotify link are matched. Not connected → Spotify's 30-s
+  clips, which auto-play one after another once you've pressed ▶ on the first
+  (songs without a clip are skipped). Connected → whole songs or snippets.
+- **Song length:** *Whole song* (default) or *30-s snippets* — a quick run
+  through a period so you really hear the tempo climb. Snippets start at the
+  beginning, at 0:30 (skip the intro, default) or in the middle of the song,
+  and auto-advance just like whole songs. Works with Spotify (connected),
+  YouTube and SoundCloud; you can switch mid-song.
+- **Skip preview-only songs** (on by default) matches only songs that can play to the
   end: those with a YouTube or SoundCloud link, plus Spotify-only songs once
   *Connect Spotify* is active. Untick it to also use Spotify-only songs, which
   play a 30-s preview and don't auto-advance when Spotify isn't connected.
 - **➕ Save to Spotify** saves the current period's songs (oldest → youngest)
   as a private playlist in your Spotify account.
+- **Settings, no code changes:** the player visitors start with
+  (`BPM_DEFAULT_PLAYER`) and who sees *Connect Spotify* (`BPM_SPOTIFY_LOGIN`:
+  everyone locally, only `?testers` visitors online) — see `.Renviron.example`.
+  `?player=youtube` in the URL picks a player directly.
 
 Setup of keys, the Spotify developer app and sharing with a colleague:
 [`MUSIC_SETUP.md`](MUSIC_SETUP.md).
+
+### Is the library ready?
+
+```r
+source("data-raw/check_song_library.R")
+```
+
+Lists rows to fix (no BPM, no or broken links, BPM outside 60–150, duplicates,
+YouTube videos that can't be embedded), simulates the matcher for every period
+and both scaling modes, shows which BPM ranges need more songs, and ends with a
+**READY / NOT YET** verdict. Details go to `output/library_check/`. With
+`CHECK_LINKS <- TRUE` it also tests every link online through the services'
+public oEmbed endpoints (no keys), including whether a link points to the right
+song. Launch criteria: [`LAUNCH.md`](LAUNCH.md#6-get-the-library-ready-ongoing).
 
 ### Finding a song's BPM
 
@@ -235,9 +301,10 @@ Setup of keys, the Spotify developer app and sharing with a colleague:
 Song tempos looked up automatically come from the **[GetSongBPM API](https://getsongbpm.com/api)**
 (`GETSONGBPM_KEY` in `.Renviron`). The API is free, but its terms require a
 **visible link back to [getsongbpm.com](https://getsongbpm.com)** on a public
-page of the project — this section (in a public repository) and the link in the
-app footer serve as that attribution. Please keep both if you fork or reuse the
-project. Rate limit: 3,000 requests per hour.
+page of the project. The link in the footer of the live app
+(<https://beatspermillion.shinyapps.io/dance/>) is the registered backlink, and
+this section repeats it. Please keep both if you fork or reuse the project.
+Rate limit: 3,000 requests per hour.
 
 ---
 

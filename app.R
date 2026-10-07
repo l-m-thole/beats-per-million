@@ -34,7 +34,13 @@ source(here::here("R", "config.R"))
 source(here::here("R", "functions.R"))
 source(here::here("R", "period_context.R"))
 source(here::here("R", "load_data.R"))
+source(here::here("R", "settings.R"))
 source(here::here("R", "spotify.R"))
+source(here::here("R", "about.R"))
+
+# Local vs deployed, default player, who may log in to Spotify, contact.
+# All from environment variables - see R/settings.R and .Renviron.example.
+SETTINGS <- app_settings()
 
 # -----------------------------------------------------------------------------
 # CSS FUNCTION
@@ -276,14 +282,16 @@ body {
   margin-top: 0.75rem;
 }
 
-#play_source .control-label {
+#play_source .control-label, #play_length .control-label,
+#snippet_start .control-label {
   color: #a1a1aa;
   font-size: 0.8rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
-#play_source .radio-inline {
+#play_source .radio-inline, #play_length .radio-inline,
+#snippet_start .radio-inline {
   margin-right: 0.75rem;
   font-size: 0.9rem;
 }
@@ -431,6 +439,23 @@ table.dataTable tbody tr.selected {
 .plotly .modebar {
   background: transparent !important;
 }
+
+/* Dialogs (About & privacy, Spotify setup): dark like the rest of the app */
+.modal-content {
+  background: #1a1a25;
+  color: #f5f5f7;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 16px;
+}
+.modal-header, .modal-footer { border-color: rgba(255,255,255,0.08); }
+.modal-title, .modal-content h4 { font-family: "Playfair Display", serif; }
+.modal-content h4 { margin-top: 1.25rem; }
+.modal-content p, .modal-content li { color: #d4d4d8; line-height: 1.6; }
+.modal-content a { color: #60a5fa; }
+.modal-content .close { color: #f5f5f7; opacity: 0.7; text-shadow: none; }
+.modal-content .btn-default {
+  background: rgba(255,255,255,0.1); color: #f5f5f7; border: none;
+}
 '
 }
 
@@ -455,6 +480,15 @@ SONG_LIBRARY <- load_song_library(here::here("data"))
 # Only match against songs that have a BPM *and* a Spotify/SoundCloud link,
 # otherwise slots get "matched" to rows the player can't play.
 SONG_LIBRARY <- playable_songs(SONG_LIBRARY)
+
+# "Play via" choices (SoundCloud only once the library has SoundCloud links)
+# and the one visitors start with (BPM_DEFAULT_PLAYER, default Spotify).
+PLAY_VIA_CHOICES <- c("Best available" = "auto", "Spotify" = "spotify",
+                      "YouTube" = "youtube", "SoundCloud" = "soundcloud")
+if (!any(!is.na(SONG_LIBRARY$soundcloud_url) & nzchar(trimws(SONG_LIBRARY$soundcloud_url)))) {
+  PLAY_VIA_CHOICES <- PLAY_VIA_CHOICES[PLAY_VIA_CHOICES != "soundcloud"]
+}
+DEFAULT_PLAYER <- if (SETTINGS$default_player %in% PLAY_VIA_CHOICES) SETTINGS$default_player else "auto"
 
 # YouTube videos that refused to play in the app (owner blocks embedding,
 # removed, ...). Remembered across sessions so they are skipped next time.
@@ -595,18 +629,30 @@ ui <- fluidPage(
                         ),
                         uiOutput("spotify_connect"),
                         radioButtons("play_source", "Play via",
-                                     choices = c("Best available" = "auto",
-                                                 "Spotify" = "spotify",
-                                                 "YouTube" = "youtube",
-                                                 "SoundCloud" = "soundcloud"),
-                                     selected = "spotify", inline = TRUE),
+                                     choices = PLAY_VIA_CHOICES,
+                                     selected = DEFAULT_PLAYER, inline = TRUE),
+                        # Whole songs, or short snippets for a faster feel of
+                        # the CO2 rise. Works with every full player (Spotify
+                        # connected, YouTube, SoundCloud) and auto-advances.
+                        radioButtons("play_length", "Song length",
+                                     choices = c("Whole song" = "full",
+                                                 "30-s snippets" = "snippet"),
+                                     selected = "full", inline = TRUE),
+                        conditionalPanel(
+                          "input.play_length == 'snippet'",
+                          radioButtons("snippet_start", "Snippets start at",
+                                       choices = c("Beginning" = "0",
+                                                   "0:30 (skip intro)" = "30",
+                                                   "Middle of the song" = "-1"),
+                                       selected = "30", inline = TRUE)
+                        ),
                         uiOutput("music_panel"),
                         uiOutput("play_status"),
                         checkboxInput("auto_advance",
                                       "Auto-play next song",
                                       value = TRUE),
                         checkboxInput("full_only",
-                                      "Full songs only (skip songs that would play a 30-s Spotify preview)",
+                                      "Skip songs that can only play the Spotify preview widget (it can't auto-play)",
                                       value = TRUE)
                     )
              ),
@@ -616,8 +662,8 @@ ui <- fluidPage(
                         div(class = "playlist-header",
                             h3(class = "card-title", "Playlist"),
                             div(
-                              actionButton("export_spotify", "➕ Save to Spotify",
-                                           class = "btn-download"),
+                              # Save to Spotify: only shown to visitors who can log in
+                              uiOutput("export_ui", inline = TRUE),
                               downloadButton("download_csv", "📥 CSV",
                                              class = "btn-download")
                             )
@@ -638,9 +684,12 @@ ui <- fluidPage(
         " • ",
         tags$a(href = "https://www.annualreviews.org/doi/10.1146/annurev-earth-082420-063026", target = "_blank", "Rae et al. 2021")
       ),
+      # Keep this backlink in the static UI (not renderUI): GetSongBPM's terms
+      # require a public link to getsongbpm.com that a crawler can see.
       p("Song tempos (BPM) partly from ",
         tags$a(href = "https://getsongbpm.com", target = "_blank", "GetSongBPM")),
-      p("A collaboration between Martin Wegmann and Lena Thöle")
+      p("A collaboration between Martin Wegmann and Lena Thöle",
+        " • ", actionLink("about", "About & privacy"))
   )
 )
 
@@ -719,7 +768,12 @@ server <- function(input, output, session) {
     # once the full player is connected), so every song plays to the end and
     # auto-advances. Untick "Full songs only" to also use Spotify-only songs
     # (30-s preview when Spotify isn't connected).
-    lib <- if (isTRUE(input$full_only %||% TRUE)) {
+    # Play via Spotify: only songs with a Spotify link, so YouTube is never
+    # needed (full songs once connected, otherwise Spotify's 30-s clips).
+    lib <- if (identical(input$play_source %||% "spotify", "spotify")) {
+      sp <- spotify_songs(SONG_LIBRARY)
+      if (nrow(sp)) sp else SONG_LIBRARY
+    } else if (isTRUE(input$full_only %||% TRUE)) {
       # isolate: a video failing mid-session must not reshuffle the whole list
       full_song_songs(SONG_LIBRARY, spotify_full = sdk_ready(),
                       bad_youtube = isolate(bad_yt()))
@@ -748,33 +802,64 @@ server <- function(input, output, session) {
 
   sp_connected <- reactiveVal(FALSE)
 
+  # Where this visitor's Spotify token lives: on your laptop one shared,
+  # disk-cached login; on a server one in-memory login per browser session
+  # (see R/spotify.R), so visitors never share an account.
+  sp_store <- spotify_session_store(session, deployed = SETTINGS$deployed)
+
+  # Opened with ?testers (or came back from a login started there): may see
+  # "Connect Spotify" when BPM_SPOTIFY_LOGIN = testers (default on a server).
+  tester <- reactiveVal(FALSE)
+
+  # May this visitor log in to Spotify? (keys set + login mode allows it)
+  login_ok <- reactive({
+    spotify_configured() &&
+      spotify_login_visible(SETTINGS$spotify_login, tester(), sp_connected())
+  })
+
   # Hand the browser a fresh access token for the Web Playback SDK
   send_sp_token <- function() {
-    tok <- spotify_access_token()
+    tok <- spotify_access_token(sp_store)
     if (is.null(tok)) { sp_connected(FALSE); return(invisible(FALSE)) }
     sp_connected(TRUE)
     session$sendCustomMessage("sp_token", list(
       token = tok,
-      expires_in = .spotify$token$expires_at - as.numeric(Sys.time())
+      expires_in = spotify_token_expires_in(sp_store)
     ))
     invisible(TRUE)
   }
 
-  # On page load: finish a login if Spotify just redirected back (?code=...),
-  # otherwise reuse a cached login.
+  # On page load: read the URL flags (?testers, ?player=, ?about), finish a
+  # login if Spotify just redirected back (?code=...), otherwise reuse a
+  # cached login (local only).
   observeEvent(session$clientData$url_search, {
-    q <- parseQueryString(session$clientData$url_search %||% "")
+    q  <- parseQueryString(session$clientData$url_search %||% "")
+    fl <- url_flags(q)
+    tester(fl$tester)
+    if (!is.null(fl$player) && fl$player %in% PLAY_VIA_CHOICES) {
+      updateRadioButtons(session, "play_source", selected = fl$player)
+    }
+    if (fl$about) show_about(SETTINGS, CO2_DATA)
+
     if (!is.null(q$error)) {
       showNotification(paste("Spotify login cancelled:", q$error), type = "warning")
     } else if (!is.null(q$code)) {
+      # remember ?testers first, so Connect stays visible even if the login fails
+      if (spotify_login_tester(q$state)) tester(TRUE)
       tryCatch({
-        spotify_complete_login(q$code, q$state)
+        spotify_complete_login(q$code, q$state, store = sp_store)
         showNotification("Connected to Spotify.", type = "message")
-      }, error = function(e) showNotification(conditionMessage(e), type = "error", duration = 15))
+      }, error = function(e) showNotification(conditionMessage(e), type = "warning", duration = 15))
     }
-    if (!is.null(q$code) || !is.null(q$error)) session$sendCustomMessage("sp_clean_url", list())
+    if (!is.null(q$code) || !is.null(q$error)) {
+      # tidy the address bar; keep ?testers so a reload still shows Connect
+      session$sendCustomMessage("sp_clean_url",
+                                list(keep = if (isTRUE(tester())) "testers" else ""))
+    }
     send_sp_token()
   }, once = TRUE, ignoreNULL = FALSE)
+
+  observeEvent(input$about, show_about(SETTINGS, CO2_DATA))
 
   observeEvent(input$sp_token_request, send_sp_token())
 
@@ -796,14 +881,21 @@ server <- function(input, output, session) {
   }
 
   start_spotify_login <- function() {
-    if (!spotify_configured()) return(spotify_setup_modal())
-    session$sendCustomMessage("sp_goto", list(url = spotify_begin_login()))
+    if (!spotify_configured()) {
+      if (SETTINGS$deployed) {
+        return(showNotification("Spotify login isn't available on this site.",
+                                type = "warning"))
+      }
+      return(spotify_setup_modal())
+    }
+    if (!isTRUE(login_ok())) return()
+    session$sendCustomMessage("sp_goto", list(url = spotify_begin_login(tester = tester())))
   }
   observeEvent(input$sp_connect, start_spotify_login())
   observeEvent(input$sp_connect_inline, start_spotify_login())
 
   observeEvent(input$sp_disconnect, {
-    spotify_forget_login()
+    spotify_forget_login(sp_store)
     sp_connected(FALSE)
     session$reload()
   })
@@ -852,10 +944,12 @@ server <- function(input, output, session) {
 
   output$spotify_connect <- renderUI({
     if (!spotify_configured()) {
+      if (SETTINGS$deployed) return(NULL)        # nothing visitors can set up
       return(div(class = "spotify-connect muted",
                  "Previews only. ",
                  actionLink("sp_connect", "Set up Spotify for full songs")))
     }
+    if (!login_ok()) return(NULL)                # public visitor, login is invite-only
     if (!sp_connected()) {
       return(div(class = "spotify-connect",
                  actionButton("sp_connect", "Connect Spotify (full songs)",
@@ -869,11 +963,18 @@ server <- function(input, output, session) {
         actionLink("sp_disconnect", "disconnect"))
   })
 
+  # The button only appears for visitors who can log in to Spotify (locally:
+  # always, so the setup instructions stay one click away).
+  output$export_ui <- renderUI({
+    if (SETTINGS$deployed && !isTRUE(login_ok())) return(NULL)
+    actionButton("export_spotify", "➕ Save to Spotify", class = "btn-download")
+  })
+
   # Save the current period's matched songs as a private Spotify playlist.
   # Nothing opens by itself: you get a notification with a link.
   observeEvent(input$export_spotify, {
     if (!spotify_configured()) return(spotify_setup_modal())
-    if (is.null(spotify_access_token())) {
+    if (is.null(spotify_access_token(sp_store))) {
       showNotification("Connect Spotify first (button in the Listen panel).",
                        type = "warning", duration = 8)
       return()
@@ -884,7 +985,7 @@ server <- function(input, output, session) {
                    if (input$scaling_mode == "global") " (global scale)" else "")
     desc <- paste0("CO2 through time as tempo, oldest to youngest. ",
                    length(uris), " songs matched by BPM. Made with Beats per Million.")
-    res <- tryCatch(spotify_export_playlist(name, desc, uris),
+    res <- tryCatch(spotify_export_playlist(name, desc, uris, store = sp_store),
                     error = function(e) { showNotification(conditionMessage(e), type = "error",
                                                            duration = 15); NULL })
     if (!is.null(res)) {
@@ -919,7 +1020,24 @@ server <- function(input, output, session) {
     play_pos(list(pos = as.numeric(ev$pos %||% 0), dur = as.numeric(ev$dur %||% 0)))
   })
 
-  # Song finished (or hit the 3-minute cap) -> next slot, which autoplays
+  # Song length for www/player.js (whole song or 30-s snippets); sent on
+  # start-up and whenever the setting changes - applies to the playing song too.
+  observe({
+    session$sendCustomMessage("play_cfg", list(
+      snippet = identical(input$play_length, "snippet"),
+      len     = 30,
+      start   = as.numeric(input$snippet_start %||% "30")
+    ))
+  })
+
+  # Spotify clip that never started (e.g. no preview for this track): skip it
+  observeEvent(input$sp_nostart, {
+    if (!identical(input$sp_nostart$token, player_token())) return()
+    showNotification("Spotify has no playable clip for this song - skipping to the next one.",
+                     type = "message", duration = 5)
+  })
+
+  # Song finished (or its snippet did) -> next slot, which autoplays
   observeEvent(input$player_ended, {
     if (!identical(input$player_ended$token, player_token())) return()
     if (!isTRUE(input$auto_advance)) return()
@@ -1206,9 +1324,9 @@ server <- function(input, output, session) {
       )
       want <- input$play_source %||% "auto"
       order <- switch(want,
-        # Spotify is the default. Without Connect Spotify it only plays 30-s
-        # previews, so full-length YouTube/SoundCloud come before the preview.
-        spotify    = c("spotify_full", "youtube", "soundcloud", "spotify"),
+        # Spotify is the default and stays on Spotify: the full player once
+        # connected, otherwise Spotify's 30-s clip (auto-plays + auto-advances).
+        spotify    = c("spotify_full", "spotify", "soundcloud", "youtube"),
         youtube    = c("youtube", "spotify_full", "soundcloud", "spotify"),
         soundcloud = c("soundcloud", "spotify_full", "youtube", "spotify"),
         c("spotify_full", "youtube", "soundcloud", "spotify")
@@ -1241,9 +1359,11 @@ server <- function(input, output, session) {
                  paste0(" (no ", want_label[[want]], " link for this song)") else "",
                if (want == "youtube" && !is.na(yt_id) && yt_id %in% bad_yt())
                  " (this YouTube video can't be embedded)" else "",
-               if (want == "spotify" && !sdk_ready() && use != "spotify")
-                 " \u2014 click Connect Spotify to play full songs via Spotify" else "",
-               if (use == "spotify") " \u2014 connect Spotify (Premium) or add a youtube_url for the full song." else ""))
+               if (use == "spotify") {
+                 if (isTRUE(login_ok())) " \u2014 30-s clip; click Connect Spotify for whole songs."
+                 else if (!is.na(yt_id) && !(yt_id %in% bad_yt())) " \u2014 30-s clip; Play via YouTube for the whole song."
+                 else " \u2014 30-s clip."
+               } else ""))
 
       # Always one button per service: open the song if we have a link,
       # otherwise search that service for it.
@@ -1263,7 +1383,7 @@ server <- function(input, output, session) {
       # Spotify preferred but not connected: say so right at the player,
       # with the one click that unlocks full songs.
       connect_hint <- if (want %in% c("spotify", "auto") && !sdk_ready() &&
-                          !is.na(sp_embed) && spotify_configured()) {
+                          !is.na(sp_embed) && isTRUE(login_ok())) {
         div(class = "spotify-connect", style = "margin-top:0.75rem;",
             if (isTRUE(sp_connected())) {
               span(class = "muted", "Starting the Spotify player\u2026 (needs Spotify Premium)")
@@ -1369,7 +1489,12 @@ server <- function(input, output, session) {
 # RUN THE APP
 # -----------------------------------------------------------------------------
 
-# Fixed port (the Spotify Redirect URI points here) and the system browser:
-# the Spotify player can't run inside the RStudio Viewer.
-shinyApp(ui = ui, server = server,
-         options = list(port = SPOTIFY_PORT, launch.browser = TRUE))
+# Locally: fixed port (the Spotify Redirect URI points here) and the system
+# browser - the Spotify player can't run inside the RStudio Viewer.
+# On a server the host chooses the port, so no options there.
+if (SETTINGS$deployed) {
+  shinyApp(ui = ui, server = server)
+} else {
+  shinyApp(ui = ui, server = server,
+           options = list(port = SPOTIFY_PORT, launch.browser = TRUE))
+}

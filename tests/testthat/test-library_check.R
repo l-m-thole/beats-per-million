@@ -1,0 +1,146 @@
+# Song-library check: row issues, link checks (faked, offline), coverage.
+
+lib_row <- function(song_title = "Song", artist = "Artist", spotify_uri = "",
+                    youtube_url = "", soundcloud_url = "", bpm = "100", notes = "") {
+  tibble::tibble(song_title, artist, spotify_uri, soundcloud_url, youtube_url, bpm, notes)
+}
+SP <- "https://open.spotify.com/track/0COqiPhxzoWICwFCS4eZcp"     # 22-char id
+YT <- "https://www.youtube.com/watch?v=Yhwal9i1uyw"
+
+test_that("a clean library has no issues", {
+  lib <- dplyr::bind_rows(
+    lib_row("Bring Me To Life", "Evanescence", spotify_uri = SP, bpm = "95"),
+    lib_row("Other Song", "Other Artist", youtube_url = YT, bpm = "120")
+  )
+  expect_equal(nrow(check_song_library(lib)), 0)
+})
+
+test_that("row problems are found and explained", {
+  lib <- dplyr::bind_rows(
+    lib_row("No BPM", spotify_uri = SP, bpm = ""),                          # line 2
+    lib_row("Text BPM", spotify_uri = SP, bpm = "fast"),                    # line 3
+    lib_row("Too Fast", spotify_uri = SP, bpm = "164"),                     # line 4
+    lib_row("No Link"),                                                     # line 5
+    lib_row("Album Link", spotify_uri = "https://open.spotify.com/album/abc"),  # 6
+    lib_row("Bad YT", youtube_url = "https://vimeo.com/123"),               # line 7
+    lib_row("Blocked", youtube_url = YT),                                   # line 8
+    lib_row("", spotify_uri = SP)                                           # line 9
+  )
+  iss <- check_song_library(lib, blocked_youtube = "Yhwal9i1uyw")
+  has <- function(line, issue) any(iss$line == line & iss$issue == issue)
+
+  expect_true(has(2, "missing_bpm"))
+  expect_true(has(3, "bpm_not_a_number"))
+  expect_true(has(4, "bpm_out_of_range"))
+  expect_match(iss$detail[iss$line == 4 & iss$issue == "bpm_out_of_range"], "82 BPM")
+  expect_true(has(5, "no_link"))
+  expect_true(has(6, "bad_spotify_link"))
+  expect_true(has(7, "bad_youtube_link"))
+  expect_true(has(8, "youtube_blocked"))
+  expect_true(has(9, "missing_title"))
+  # errors come first
+  expect_equal(iss$severity[1], "error")
+  expect_false(is.unsorted(match(iss$severity, c("error", "warning", "info"))))
+})
+
+test_that("duplicates: same song, same title, same link", {
+  lib <- dplyr::bind_rows(
+    lib_row("Hello", "Adele", spotify_uri = SP),
+    lib_row("Hello (Remastered)", "ADELE", youtube_url = YT),
+    lib_row("Hello", "Lionel Richie", youtube_url = YT)
+  )
+  iss <- check_song_library(lib)
+  expect_equal(sum(iss$issue == "duplicate_song"), 2)       # Adele twice
+  expect_true(any(iss$issue == "same_title" & iss$line == 4))
+  expect_equal(sum(iss$issue == "duplicate_youtube"), 2)
+})
+
+test_that("link check reads oEmbed answers (faked, no network)", {
+  lib <- dplyr::bind_rows(
+    lib_row("Bring Me To Life", "Evanescence", spotify_uri = SP, youtube_url = YT),
+    lib_row("Wrong Song", "X", youtube_url = "https://youtu.be/AAAAAAAAAAA"),
+    lib_row("Gone", "Y", youtube_url = "https://youtu.be/BBBBBBBBBBB")
+  )
+  fake <- function(service, link) {
+    if (service == "spotify") return(list(status = 200L, title = "Bring Me To Life"))
+    if (grepl("Yhwal9i1uyw", link)) return(list(status = 401L, title = NA))
+    if (grepl("AAAAAAAAAAA", link)) return(list(status = 200L, title = "Never Gonna Give You Up"))
+    list(status = NA_integer_, title = NA)
+  }
+  res <- check_song_links(lib, fetch = fake, progress = FALSE)
+  expect_equal(nrow(res), 4)
+  sp <- res[res$service == "spotify", ]
+  expect_true(sp$ok)
+  expect_true(sp$title_match)
+  blocked <- res[grepl("Yhwal9i1uyw", res$link), ]
+  expect_false(blocked$ok)
+  expect_match(blocked$detail, "other websites")
+  wrong <- res[grepl("AAAAAAAAAAA", res$link), ]
+  expect_true(wrong$ok)
+  expect_false(wrong$title_match)
+  offline <- res[grepl("BBBBBBBBBBB", res$link), ]
+  expect_true(is.na(offline$ok))
+})
+
+test_that("pools: Spotify links / whole songs without login / everything", {
+  lib <- dplyr::bind_rows(
+    lib_row("A", spotify_uri = SP, bpm = "100"),
+    lib_row("B", youtube_url = YT, bpm = "100"),
+    lib_row("C", spotify_uri = SP, youtube_url = "https://youtu.be/CCCCCCCCCCC", bpm = "100"),
+    lib_row("D", bpm = "100")                                   # unplayable
+  )
+  lib$bpm <- as.numeric(lib$bpm)
+  p <- library_pools(lib, blocked_youtube = "CCCCCCCCCCC")
+  expect_equal(p$spotify$song_title, c("A", "C"))
+  expect_equal(p$youtube$song_title, "B")                       # C's video is blocked
+  expect_equal(p$all$song_title, c("A", "B", "C"))
+})
+
+test_that("coverage uses the app's matcher and reports gaps", {
+  slots <- tibble::tibble(song_number = 1:4, bpm = c(60, 62, 100, 150))
+  pls <- list(per_period = list(test = list(songs = slots)))
+  mk <- function(bpm) {
+    tibble::tibble(song_title = paste("S", seq_along(bpm)), artist = "A",
+                   spotify_uri = SP, soundcloud_url = NA_character_,
+                   youtube_url = NA_character_, bpm = bpm, notes = NA_character_)
+  }
+  pools <- list(good = mk(c(59, 61, 63, 64, 100, 101, 102, 148, 149, 150)),
+                thin = mk(c(100)),
+                empty = mk(numeric(0)))
+  cov <- library_coverage(pls, pools, shuffles = 0:1)
+
+  good <- cov[cov$pool == "good", ]
+  expect_true(all(good$status == "within 5"))
+  expect_true(all(good$choice >= 3))
+
+  # one song: the first slot takes it as its "nearest" match, the rest get none
+  # (the matcher walks the slots in order and never repeats a song)
+  thin <- cov[cov$pool == "thin", ]
+  expect_equal(thin$status, c("nearest", "none", "none", "none"))
+
+  expect_true(all(cov$status[cov$pool == "empty"] == "none"))
+
+  gaps <- library_gaps(cov, pools, variety = 3)
+  g60 <- gaps[gaps$pool == "thin" & gaps$bin == "60-64", ]
+  expect_equal(g60$busiest, 2L)
+  expect_gte(g60$add_at_least, 2)
+  expect_equal(gaps$add_at_least[gaps$pool == "good" & gaps$bin == "60-64"], 0)
+
+  v_good <- library_verdict(tibble::tibble(line = integer(), severity = character()),
+                            cov, pool = "good")
+  expect_true(v_good$ready)
+  v_thin <- library_verdict(tibble::tibble(line = 5L, severity = "error"), cov, pool = "thin")
+  expect_false(v_thin$ready)
+  expect_length(v_thin$lines, 3)
+})
+
+test_that("identical pools are simulated once but reported for both names", {
+  slots <- tibble::tibble(song_number = 1:2, bpm = c(90, 110))
+  pls <- list(per_period = list(test = list(songs = slots)))
+  lib <- tibble::tibble(song_title = c("a", "b"), artist = "x", spotify_uri = SP,
+                        soundcloud_url = NA_character_, youtube_url = NA_character_,
+                        bpm = c(90, 110), notes = NA_character_)
+  cov <- library_coverage(pls, list(spotify = lib, all = lib), shuffles = 0)
+  expect_setequal(unique(cov$pool), c("spotify", "all"))
+  expect_equal(cov$status[cov$pool == "spotify"], cov$status[cov$pool == "all"])
+})
