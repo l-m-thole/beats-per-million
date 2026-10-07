@@ -25,7 +25,7 @@ APP_TITLE <- "Beats per Million"
 DEFAULT_PLAYER <- "spotify"   # what visitors start with: "spotify" | "youtube" | "auto"
 SPOTIFY_LOGIN  <- "off"   # "testers": Connect Spotify only via the ?testers link
                               # "off": no Spotify login online | "on": everyone
-CONTACT        <- "lena.thole@nrm.se"          # email or URL shown in About & privacy
+CONTACT        <- "lena.thoele@gmail.com"          # email or URL shown in About & privacy
 RUN_TESTS      <- TRUE
 
 # ---- checks ---------------------------------------------------------------

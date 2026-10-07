@@ -121,14 +121,12 @@ The GetSongBPM API is free, but **a public link back to
 suspended without notice. When you register you give a *Website URL* and a
 *Backlink URL* (the public page where the link is). For this project:
 
-1. Make sure a **public** page links to `https://getsongbpm.com`. The README
-   has a "BPM data: GetSongBPM" section and the app footer links to it too.
-   A private GitHub repo does **not** count — nobody outside can see it.
-   Options: make the repo public; or a public GitHub Pages / Quarto page,
-   personal website or public GitHub profile README with the link.
-2. Register at [getsongbpm.com/api](https://getsongbpm.com/api): Website URL =
-   the project page; Backlink URL = the exact page with the link (e.g.
-   `https://github.com/<user>/climate_playlist#-bpm-data-getsongbpm`); your email.
+1. The **live app** is the public page: its footer links to
+   `https://getsongbpm.com`. Keep that link in the static UI of `app.R` (not in
+   a `renderUI`) so link checkers can see it. A private GitHub repo does **not**
+   count — nobody outside can see it.
+2. Register at [getsongbpm.com/api](https://getsongbpm.com/api): Website URL and
+   Backlink URL = `https://beatspermillion.shinyapps.io/dance/`; your email.
 3. Activate the key from the email, add `GETSONGBPM_KEY=...` to `.Renviron`,
    restart R, and run `source("data-raw/enrich_song_library.R")`.
 

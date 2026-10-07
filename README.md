@@ -6,6 +6,9 @@ This project converts atmospheric CO₂ concentrations through geological time i
 
 A collaboration between **Martin Wegmann** and **Lena Thöle**.
 
+**▶ Try it (test version):** <https://beatspermillion.shinyapps.io/dance/> —
+Spotify plays 30-second previews; pick *Play via YouTube* for whole songs.
+
 ---
 
 ## 🎵 The Concept
@@ -66,6 +69,14 @@ filling song links/BPM automatically. Copy `.Renviron.example` to `.Renviron`,
 fill in the keys you have, and restart R. `.Renviron` is git-ignored — never
 commit it. Details: [`MUSIC_SETUP.md`](MUSIC_SETUP.md).
 
+| Key | Needed for | Lives in | Goes online? |
+|---|---|---|---|
+| `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET` | full Spotify player, *Save to Spotify*, finding Spotify links | your `.Renviron` | only when `SPOTIFY_LOGIN` in the deploy script isn't `"off"` |
+| `YOUTUBE_API_KEY` | finding YouTube links (enrichment) | your `.Renviron` | never |
+| `GETSONGBPM_KEY` | filling blank BPMs (enrichment); the live app's footer is the required backlink | your `.Renviron` | never |
+| `SOUNDCLOUD_CLIENT_ID`, `SOUNDCLOUD_CLIENT_SECRET` | finding SoundCloud links (optional) | your `.Renviron` | never |
+| shinyapps.io token | deploying | stored by `rsconnect` on your computer (`rsconnect::setAccountInfo()`) | — |
+
 ### 3. Run the Shiny app
 
 ```r
@@ -86,6 +97,15 @@ settings file (never your enrichment keys). Online, every visitor gets their own
 Spotify login (or none), *Connect Spotify* is only shown via the `?testers`
 link, and *About & privacy* is in the footer. Step-by-step setup, the player
 test table and the launch criteria: [`LAUNCH.md`](LAUNCH.md).
+
+**Live:** <https://beatspermillion.shinyapps.io/dance/> (shinyapps.io account
+`beatspermillion`, app `dance`; free plan, 25 active hours a month). The online
+settings are at the top of `deploy/deploy_shinyapps.R` — currently
+`DEFAULT_PLAYER = "spotify"` and `SPOTIFY_LOGIN = "off"` (no Spotify login
+online, so Spotify plays 30-s previews; `"testers"` enables the invited-tester
+login via `?testers`). Re-run the script after every change. The deployment
+record in `rsconnect/` is git-ignored. Logs:
+`rsconnect::showLogs(appName = "dance", account = "beatspermillion")`.
 
 ### Generate playlist templates
 
@@ -117,6 +137,7 @@ climate_playlist/
 │   └── _disable_autoload.R    # Stops runApp() from sourcing everything in R/
 ├── www/player.js              # In-app players, progress + auto-advance
 ├── deploy/deploy_shinyapps.R  # Puts the app online (shinyapps.io)
+├── rsconnect/                 # Deployment record (git-ignored)
 ├── data/
 │   ├── co2_data.xlsx          # Processed: 'maunaloa' + 'bereiter2014' sheets
 │   ├── song_library.csv       # Your songs + their real BPM (matched at run time)
@@ -280,9 +301,10 @@ song. Launch criteria: [`LAUNCH.md`](LAUNCH.md#6-get-the-library-ready-ongoing).
 Song tempos looked up automatically come from the **[GetSongBPM API](https://getsongbpm.com/api)**
 (`GETSONGBPM_KEY` in `.Renviron`). The API is free, but its terms require a
 **visible link back to [getsongbpm.com](https://getsongbpm.com)** on a public
-page of the project — this section (in a public repository) and the link in the
-app footer serve as that attribution. Please keep both if you fork or reuse the
-project. Rate limit: 3,000 requests per hour.
+page of the project. The link in the footer of the live app
+(<https://beatspermillion.shinyapps.io/dance/>) is the registered backlink, and
+this section repeats it. Please keep both if you fork or reuse the project.
+Rate limit: 3,000 requests per hour.
 
 ---
 

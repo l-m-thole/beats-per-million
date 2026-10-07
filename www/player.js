@@ -182,9 +182,9 @@
     sdk.waiters.splice(0).forEach(function (cb) { cb(sdk.accessToken); });
     initSdk();
   });
-  // Hosts such as shinyapps.io show the app inside a frame, and Spotify's
-  // login page refuses to load in a frame: navigate the top window instead
-  // (falls back to this frame if the browser doesn't allow it).
+  // If the app is ever shown inside a frame (some hosts and embeds do that),
+  // Spotify's login page refuses to load there: navigate the top window
+  // instead (falls back to this frame if the browser doesn't allow it).
   function topWin() {
     try { if (window.top && window.top.location.href) return window.top; } catch (e) {}
     return null;

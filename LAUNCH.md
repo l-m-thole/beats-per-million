@@ -5,15 +5,34 @@ once the song library is ready. Steps 1–3 take about 20 minutes and only need
 doing once; after that a re-deploy is one line.
 
 **Current plan:** personal project · test version on shinyapps.io · Spotify
-full songs for ≤ 5 invited testers · test Spotify vs YouTube, then pick the
-default player.
+login off for now (invited testers later) · test Spotify vs YouTube, then pick
+the default player.
+
+## Status (7 Oct 2026)
+
+- [x] Launch-prep code on branch `feature/launch-prep`, pushed to GitHub
+- [x] `renv.lock` complete (`httr2`, `openssl`)
+- [x] shinyapps.io account `beatspermillion`, app `dance` deployed:
+      <https://beatspermillion.shinyapps.io/dance/>
+- [x] Keys in your local `.Renviron`: Spotify ID + secret, YouTube, GetSongBPM
+- [x] Live app shows the gmail contact, no Spotify login, Spotify as default
+      player (checked 7 Oct, 14:08)
+- [ ] Commit + push the latest edits (contact → gmail, docs) so GitHub matches
+      what's online
+- [ ] Player test with friends (step 4) → set `DEFAULT_PLAYER`
+- [ ] Spotify tester login (optional): `SPOTIFY_LOGIN <- "testers"`, step 2,
+      re-deploy
+- [ ] Library (step 6): fix the 11 unlinked rows, add ~3 songs at 60–69 BPM,
+      run the check once with `CHECK_LINKS <- TRUE`
+- [ ] Merge `feature/launch-prep` into `main` after the test round
 
 ---
 
 ## 0. Before the first deploy (5 min)
 
-`renv.lock` doesn't list `httr2` yet (it predates the Spotify work), so the
-server wouldn't install it. In RStudio, from the project:
+`renv.lock` must list every package the app imports — the server installs
+exactly what it lists (it was missing `httr2` until 7 Oct). In RStudio, from the
+project:
 
 ```r
 install.packages("rsconnect")   # if needed
@@ -109,10 +128,10 @@ the required backlink.
 2. Activate the key from the email, add `GETSONGBPM_KEY=...` to your **local**
    `.Renviron`, restart R, run `source("data-raw/enrich_song_library.R")`.
 
-If they don't accept it (shinyapps.io shows apps inside a frame, which some
-link checkers don't follow), use a public page instead: make the GitHub repo
-public (the README has a GetSongBPM section) or a one-page GitHub Pages / Quarto
-site with the link.
+Checked on 7 Oct: the link is in the plain HTML served at that address, so a
+link checker can see it. If they still don't accept it, use a public page
+instead: make the GitHub repo public (the README has a GetSongBPM section) or a
+one-page GitHub Pages / Quarto site with the link.
 
 ## 6. Get the library ready (ongoing)
 
