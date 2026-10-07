@@ -165,7 +165,7 @@ log in. You only need to do that once; the login is remembered.
 | Only 30-second previews | Tick *Full songs only* (default). Otherwise that song only has a Spotify link: add a `youtube_url` (re-run the enrichment the next day if the YouTube quota ran out), or connect Spotify (Premium). |
 | Next song does not start | Tick *Auto-play next song*, and press ▶ once on the first song (browsers block sound until you click). |
 | Pressing play opens Spotify | That song has no 30-s clip; Spotify's widget sends you to Spotify. During auto-play such songs are skipped. |
-| "INVALID_CLIENT: Invalid redirect URI" | In the Spotify dashboard, the Redirect URI must be exactly `http://127.0.0.1:4321/` (locally) and, for the online version, the app's address, e.g. `https://<account>.shinyapps.io/beats-per-million/`. |
+| "INVALID_CLIENT: Invalid redirect URI" | In the Spotify dashboard, the Redirect URI must be exactly `http://127.0.0.1:4321/` (locally) and, for the online version, the app's address, `https://beatspermillion.shinyapps.io/dance/`. |
 | No *Connect Spotify* button online | By design: online it only shows with `?testers` at the end of the address. |
 | Spotify says 403 / "user not registered" | Ask Lena to add your Spotify email under *User Management*. |
 | "needs a Spotify Premium account" | The full player needs Premium; use YouTube links instead. |

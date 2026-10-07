@@ -18,14 +18,14 @@
 # One-time setup (account, token, Spotify dashboard): LAUNCH.md, step 1-2.
 
 # ---- settings -------------------------------------------------------------
-ACCOUNT   <- ""                    # your shinyapps.io account name (see LAUNCH.md)
-APP_NAME  <- "beats-per-million"   # last part of the URL
+ACCOUNT   <- "beatspermillion"                    # your shinyapps.io account name (see LAUNCH.md)
+APP_NAME  <- "dance"               # last part of the URL: https://beatspermillion.shinyapps.io/dance/
 APP_TITLE <- "Beats per Million"
 
 DEFAULT_PLAYER <- "spotify"   # what visitors start with: "spotify" | "youtube" | "auto"
-SPOTIFY_LOGIN  <- "testers"   # "testers": Connect Spotify only via the ?testers link
+SPOTIFY_LOGIN  <- "off"   # "testers": Connect Spotify only via the ?testers link
                               # "off": no Spotify login online | "on": everyone
-CONTACT        <- ""          # email or URL shown in About & privacy
+CONTACT        <- "lena.thole@nrm.se"          # email or URL shown in About & privacy
 RUN_TESTS      <- TRUE
 
 # ---- checks ---------------------------------------------------------------

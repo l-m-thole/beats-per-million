@@ -28,20 +28,23 @@ incomplete or out of sync with your library, so you can't forget this.
 
 1. Sign up at [shinyapps.io](https://www.shinyapps.io) (free plan: 5 apps,
    25 active hours a month).
-2. Pick the **account name** carefully: it is part of the URL,
-   `https://<account>.shinyapps.io/beats-per-million/`.
+2. Account name: **beatspermillion**. The app name (`dance`) isn't chosen on
+   the website: it is `APP_NAME` in the deploy script, and shinyapps.io creates
+   the app on the first deploy. Together:
+   `https://beatspermillion.shinyapps.io/dance/`.
 3. *Account → Tokens → Show → Copy to clipboard*, paste the
    `rsconnect::setAccountInfo(...)` line into the R console and run it. The
    token is stored on your Mac, not in the repo.
-4. In `deploy/deploy_shinyapps.R` set `ACCOUNT` and `CONTACT` (an email or
+4. In `deploy/deploy_shinyapps.R` check `ACCOUNT` and `APP_NAME`, set `CONTACT` (an email or
    URL people can reach you at; it appears in *About & privacy*).
 
 ## 2. Spotify dashboard (5 min, once)
 
 At [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard) → your app:
 
-1. *Settings → Redirect URIs*: **add**
-   `https://<account>.shinyapps.io/beats-per-million/` (keep
+1. *Settings → Edit → Redirect URIs*: **add**
+   `https://beatspermillion.shinyapps.io/dance/` — exactly, with `https` and the
+   final `/` (keep
    `http://127.0.0.1:4321/` for running locally). Save.
 2. *User Management*: add the Spotify email of each tester (max. 5 accounts in
    development mode). Full songs in the app also need **their** Spotify Premium.
@@ -61,10 +64,10 @@ SoundCloud keys), and prints the links:
 
 | Link | For |
 |---|---|
-| `…/beats-per-million/` | everyone (no Spotify login shown) |
-| `…/beats-per-million/?testers` | your ≤ 5 testers: shows *Connect Spotify* and *Save to Spotify* |
-| `…/beats-per-million/?player=youtube` | opens with *Play via YouTube* (handy for testing) |
-| `…/beats-per-million/?about` | opens *About & privacy* (use as privacy-policy link) |
+| `…/dance/` | everyone (no Spotify login shown) |
+| `…/dance/?testers` | your ≤ 5 testers: shows *Connect Spotify* and *Save to Spotify* |
+| `…/dance/?player=youtube` | opens with *Play via YouTube* (handy for testing) |
+| `…/dance/?about` | opens *About & privacy* (use as privacy-policy link) |
 
 Re-run the same line after changing code or `data/song_library.csv`.
 
@@ -161,7 +164,7 @@ Status on 7 Oct 2026 (231 songs):
   anyone has it open (plus 15 min), so one hour of listening ≈ one active hour,
   however many people listen at once. Check usage in the shinyapps.io
   dashboard; upgrade if a launch needs more.
-- **Logs:** `rsconnect::showLogs(appName = "beats-per-million", account = "<account>")`.
+- **Logs:** `rsconnect::showLogs(appName = "dance", account = "beatspermillion")`.
 - **Blocked YouTube videos** found by visitors are remembered only until the
   server restarts or you re-deploy; the link check (`CHECK_LINKS <- TRUE`)
   finds them up front so you can fix them in the CSV.
