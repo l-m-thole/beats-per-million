@@ -9,7 +9,8 @@
 #   1. Checks: shinyapps.io account known to rsconnect, renv.lock complete and
 #      in sync with your library, tests pass.
 #   2. Works out which tempos need more songs (data/wanted_bpm.csv, shown
-#      under "Suggest a song"), then copies ONLY the files the app needs into
+#      under "Suggest a song") and looks up album covers for new songs
+#      (data/song_covers.csv), then copies ONLY the files the app needs into
 #      a temporary folder.
 #   3. Writes a server-only .Renviron there: the app settings below, the
 #      production Spotify redirect URI and - only if the tester login is on -
@@ -107,6 +108,25 @@ local({
           else "none - every tempo is covered")
 })
 
+# ---- album covers ("Show covers on the plot") ---------------------------------
+# Looks up covers for songs that aren't in data/song_covers.csv yet (Spotify
+# oEmbed, no key; a second or two), so the online app never has to.
+message("Updating album covers...")
+local({
+  suppressPackageStartupMessages(library(dplyr))
+  for (f in c("config.R", "functions.R", "load_data.R", "covers.R")) {
+    sys.source(file.path("R", f), envir = environment())
+  }
+  lib <- suppressMessages(load_song_library("data"))
+  covers <- tryCatch(update_cover_cache(lib, file.path("data", COVERS_CSV)),
+                     error = function(e) { message("  skipped: ", conditionMessage(e)); NULL })
+  if (!is.null(covers)) {
+    message("  ", length(covers), " covers (", attr(covers, "asked"), " looked up now",
+            if (length(attr(covers, "missing")))
+              paste0(", ", length(attr(covers, "missing")), " songs without one"), ")")
+  }
+})
+
 # ---- stage the app ----------------------------------------------------------
 APP_FILES <- c(
   "app.R", "DESCRIPTION", "renv.lock",
@@ -117,6 +137,8 @@ APP_FILES <- c(
 )
 absent <- APP_FILES[!file.exists(APP_FILES)]
 if (length(absent)) stop("Missing file(s): ", paste(absent, collapse = ", "))
+# optional: without it the app looks covers up itself when they're switched on
+if (file.exists("data/song_covers.csv")) APP_FILES <- c(APP_FILES, "data/song_covers.csv")
 
 stage <- file.path(tempdir(), APP_NAME)
 unlink(stage, recursive = TRUE)

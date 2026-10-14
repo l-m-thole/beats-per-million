@@ -150,3 +150,49 @@ test_that("spotify_songs keeps only songs with a Spotify track id", {
   )
   expect_equal(spotify_songs(lib)$song_title, "sp")
 })
+
+test_that("the widening matcher reports how it found the song", {
+  lib <- make_lib()
+  set.seed(1)
+  w <- pick_song_widening(lib, target_bpm = 100)        # B/C/D within ±5
+  expect_equal(w$match_tol, 5)
+  expect_equal(w$n_candidates, 3)
+
+  w <- pick_song_widening(lib, target_bpm = 110)        # C (100) and D (103) within ±10
+  expect_equal(w$match_tol, 10)
+  expect_equal(w$n_candidates, 2)
+
+  w <- pick_song_widening(lib, target_bpm = 118)        # nothing within ±10 -> nearest
+  expect_true(is.na(w$match_tol))
+  expect_equal(w$song_title, "D")
+
+  # used titles don't count as candidates
+  w <- pick_song_widening(lib, target_bpm = 100, exclude = c("B", "C"))
+  expect_equal(w$n_candidates, 1)
+})
+
+test_that("reporting the match doesn't change which song is picked", {
+  lib <- make_lib()
+  set.seed(7); a <- pick_song_for_bpm(lib, target_bpm = 100, tol = 5)
+  set.seed(7); b <- pick_song_widening(lib, target_bpm = 100)
+  expect_equal(a$song_title, b$song_title)
+})
+
+test_that("assign_songs_to_playlist carries the match info", {
+  lib   <- make_lib()
+  songs <- tibble::tibble(song_number = 1:3, bpm = c(60, 100, 118))
+  out <- assign_songs_to_playlist(songs, lib, period = "roman")
+  expect_true(all(c("match_tol", "n_candidates") %in% names(out)))
+  expect_equal(out$match_tol[out$song_number == 1], 5)
+  expect_type(out$n_candidates, "integer")
+})
+
+test_that("match_explanation says how far off the song is and how it was chosen", {
+  expect_equal(match_explanation(66, 63, 5, 8),
+               "+3 BPM from the target · picked at random from 8 songs within ±5 BPM")
+  expect_equal(match_explanation(73, 73, 5, 21),
+               "exactly on target · picked at random from 21 songs within ±5 BPM")
+  expect_match(match_explanation(95, 100, 10, 1),
+               "−5 BPM from the target · the only unused song within ±10 BPM", fixed = TRUE)
+  expect_match(match_explanation(80, 66, NA, 1), "closest one was taken", fixed = TRUE)
+})

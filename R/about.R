@@ -67,26 +67,12 @@ about_content <- function(settings = app_settings(), co2_data = NULL, wanted = N
   tagList(
     tags$h4("What is this?"),
     p("Beats per Million turns atmospheric CO₂ through Earth's history into tempo:",
-      "the more CO₂, the faster the music. Pick a period, press play and listen to",
+      "the more CO₂, the faster the music. Pick an era, press play and listen to",
       "the climate speed up or slow down – from the end of the dinosaurs to the",
       "Keeling Curve today."),
-
-    tags$h4("How CO₂ becomes tempo"),
-    tags$ul(
-      tags$li("Each period's CO₂ record is cut into song-length windows: 3 minutes of",
-              "music stand for anything from 3 years (Modern) to 750,000 years (Cenozoic)."),
-      tags$li("The mean CO₂ of each window is mapped linearly onto 60–150 BPM.",
-              tags$b("Per period:"), "the period's lowest CO₂ becomes 60 BPM and its highest",
-              "150 BPM, for the most contrast.", tags$b("Global:"), "one scale for all periods,",
-              "so tempos can be compared across eras."),
-      tags$li("Every window then gets a real song from our hand-picked library whose tempo",
-              "is within ±5 BPM where possible (then ±10, then the nearest).",
-              tags$b("Shuffle"), "picks different songs.")
-    ),
-    p(class = "muted", "Caveats: per-period scaling exaggerates small changes (e.g. the nearly",
-      "flat Roman era); the Cenozoic record is averaged in 100,000-year bins, which smooths",
-      "short events such as the PETM; tempos from song databases can be off by half or",
-      "double time."),
+    p("How CO₂ becomes tempo, how the songs are picked and how the CO₂ was measured:",
+      "see", tags$b("How it works", .noWS = "after"), " at the top of the app, and",
+      tags$b("About this era", .noWS = "after"), " on the CO₂ plot."),
 
     tags$h4("Data"),
     tags$ul(
@@ -123,8 +109,8 @@ about_content <- function(settings = app_settings(), co2_data = NULL, wanted = N
     tags$ul(
       tags$li("The app itself uses no analytics and no tracking cookies, and keeps no",
               "record of who you are."),
-      tags$li("The page loads code and players from Spotify, YouTube (Google) and",
-              "SoundCloud, and fonts from Google Fonts. These services receive your IP",
+      tags$li("The page loads code, players and album covers from Spotify, YouTube (Google)",
+              "and SoundCloud, and fonts from Google Fonts. These services receive your IP",
               "address and may set their own cookies under their own policies:",
               .ext("https://www.spotify.com/legal/privacy-policy/", "Spotify"), "·",
               .ext("https://policies.google.com/privacy", "Google/YouTube"), "·",

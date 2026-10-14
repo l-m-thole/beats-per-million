@@ -2,9 +2,10 @@
 # CLIMATE PLAYLISTS - PERIOD CONTEXT & KEY EVENTS
 # =============================================================================
 #
-# Longer background text and a timeline of key events for each time period.
-# Shown in the app ("About This Period" card, markers on the CO2 plot, and
-# "During this song" under the selected song).
+# Longer background text, a timeline of key events and how the CO2 was
+# measured, for each time period. Shown in the app ("About this era" window,
+# markers on the CO2 plot, "During this song" in the Listen panel, and the
+# "How it works" window).
 #
 # Ages are in years BP (before 1950, the paleoclimate convention used by the
 # data): age = 1950 - year CE. Modern-era events therefore have NEGATIVE ages
@@ -198,8 +199,81 @@ PERIOD_CONTEXT <- list(
 )
 
 # -----------------------------------------------------------------------------
+# HOW THE CO2 WAS MEASURED
+# -----------------------------------------------------------------------------
+# One entry per data source (config.R: DATA_SOURCE_*), shown in the "About this
+# era" window (CO2_MEASUREMENT_NOTES add a sentence for the eras that come from
+# a particular part of a source). "How it works" has a short summary.
+
+CO2_MEASUREMENT <- list(
+
+  modern = list(
+    title  = "Measured directly in the air",
+    method = "Direct air measurements, Mauna Loa Observatory (Hawaii)",
+    how = c(
+      "Since March 1958, air has been drawn in high up on a tower at the Mauna Loa Observatory, 3,400 m up a Hawaiian volcano, and analysed for CO₂ around the clock – first with infrared gas analysers, today with laser instruments, all checked against reference gases of known CO₂ content.",
+      "The site is far from cities and forests, so it samples well-mixed air. Hours affected by gas from the volcano or by plants on the island are filtered out. The app uses NOAA's monthly means."
+    ),
+    resolution = "monthly values",
+    source = "NOAA Global Monitoring Laboratory (data before 1974: C. D. Keeling, Scripps Institution of Oceanography)",
+    url = "https://gml.noaa.gov/ccgg/trends/"
+  ),
+
+  icecore = list(
+    title  = "Air bubbles trapped in Antarctic ice",
+    method = "Air bubbles in Antarctic ice cores",
+    how = c(
+      "Snow that falls on Antarctica is slowly buried and pressed into ice. About 50 to 120 m down, the gaps between the snow grains close and seal off tiny bubbles of air – real samples of the atmosphere of the time.",
+      "In the lab, pieces of the core are crushed, melted or evaporated in a vacuum and the CO₂ of the released air is measured. The ages come from counting yearly layers, from volcanic ash and dust layers that can be matched between cores, and from ice-flow models.",
+      "Because the bubbles close slowly, each sample averages a few decades of air where lots of snow falls, and several centuries where little does – and the air is always younger than the ice around it."
+    ),
+    resolution = "decades to centuries per sample",
+    source = "Bereiter et al. (2015): a composite of several Antarctic cores (among them Law Dome, WAIS Divide, EPICA Dome C and Vostok)",
+    url = "https://doi.org/10.1002/2014GL061957"
+  ),
+
+  cenozoic = list(
+    title  = "Chemical fingerprints in deep-sea mud",
+    method = "Proxies in marine sediments (boron isotopes, alkenones)",
+    how = c(
+      "No ice is this old, so CO₂ is worked out from 'proxies' – chemical traces kept in the sediments on the sea floor.",
+      "Boron isotopes: tiny plankton called foraminifera build their shells from seawater. The ratio of two boron isotopes in a shell records how acidic the surface ocean was, and from that – plus an estimate of the ocean's carbonate chemistry – the CO₂ of the air above it can be calculated.",
+      "Alkenones: fat molecules made by microscopic algae (coccolithophores). How strongly the algae prefer the lighter carbon isotope during photosynthesis depends on how much CO₂ is dissolved in the water.",
+      "These estimates are much less precise than ice-core measurements, and the uncertainty grows the further back you go. The app averages them into 100,000-year steps."
+    ),
+    resolution = "100,000-year averages (in this app)",
+    source = "Rae et al. (2021), a compilation of boron-isotope and alkenone records",
+    url = "https://doi.org/10.1146/annurev-earth-082420-063026"
+  )
+)
+
+# Extra sentence for eras that use a particular part of a source
+CO2_MEASUREMENT_NOTES <- c(
+  roman   = "This era comes mostly from the Law Dome cores in East Antarctica. So much snow falls there that the bubbles close quickly, and the record shows changes of just a few decades.",
+  lgm     = "The end of the ice age comes from the WAIS Divide core in West Antarctica – a high-snowfall site that shows the steps of the deglaciation in detail – and most of the Holocene from EPICA Dome C.",
+  humans  = "Several Antarctic cores are stitched together here; in the older part each value averages a few centuries of air.",
+  icecore = "The older part comes from EPICA Dome C and Vostok, high on the East Antarctic plateau: little snow, so each sample averages several centuries – but the ice reaches 800,000 years back."
+)
+
+# -----------------------------------------------------------------------------
 # ACCESSORS
 # -----------------------------------------------------------------------------
+
+#' How the CO2 of a period was measured
+#'
+#' @param period_id Period id (names(TIME_PERIODS))
+#' @return The CO2_MEASUREMENT entry of the period's data source (title,
+#'   method, how, resolution, source, url) plus `note` (era-specific sentence
+#'   or NULL); NULL for an unknown period
+period_measurement <- function(period_id) {
+  per <- TIME_PERIODS[[period_id]]
+  if (is.null(per)) return(NULL)
+  m <- CO2_MEASUREMENT[[per$data_source]]
+  if (is.null(m)) return(NULL)
+  note <- unname(CO2_MEASUREMENT_NOTES[period_id])
+  m$note <- if (length(note) && !is.na(note)) note else NULL
+  m
+}
 
 #' Background paragraphs for a period (character vector; empty if none)
 period_context_text <- function(period_id) {

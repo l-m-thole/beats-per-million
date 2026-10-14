@@ -76,7 +76,13 @@ issues, faked oEmbed link checks, coverage and gaps), the About text, the
 sharing helpers (`share.R`: link-preview tags, preview image size, the
 *Suggest a song* link, wanted tempo ranges and their file), and the Mauna Loa
 refresh (`refresh_co2.R`: reading NOAA's file, the sanity checks, replacing
-the file only on real changes; the download is faked).
+the file only on real changes; the download is faked), the *How it works* /
+*About this era* windows and how each era's CO₂ was measured, the album-cover
+cache (`covers.R`, offline with a fake lookup), the playlist helpers (tempo
+*Feel*, which song a point on the curve belongs to, the CSV download), and the
+app's server logic (`test-app_server.R`, via `shiny::testServer()`: a new song
+only starts by itself while music plays, Previous / Next, the playlist table,
+how each song was matched).
 
 The enrichment test with Swedish characters needs a UTF-8 locale (it is on any
 normal Mac/RStudio setup).
@@ -103,9 +109,33 @@ exporting the templates.
 
 ## Period texts & key events
 
-Background texts and key events per period live in `R/period_context.R`
-(sourced by `app.R` after `functions.R`). Ages are years BP (before 1950);
-modern events are written as CE years via `.yr()`.
+Background texts, key events and how the CO₂ was measured (`CO2_MEASUREMENT`
+per data source, `CO2_MEASUREMENT_NOTES` per era) live in
+`R/period_context.R` (sourced by `app.R` after `functions.R`). Ages are years
+BP (before 1950); modern events are written as CE years via `.yr()`. The
+windows that show them are built in `R/how_it_works.R`, which also holds the
+app's story and the makers (`APP_STORY`, `APP_MAKERS`).
+
+## Layout & player logic (app.R, www/player.js)
+
+- **Layout:** header, era buttons (`radioButtons` styled as buttons), then a
+  CSS grid: plot and playlist on the left, the Listen card on the right
+  (`position: sticky`). Below 992 px it is one column: plot, Listen, playlist.
+- **Font sizes:** Bootstrap 3 sets the root font to 10 px; `app_css()` resets it
+  to 16 px so the `rem` sizes mean what they say (Bootstrap itself uses px).
+- **Selected song:** `selected_idx()` is the only source of truth. The table has
+  no DT selection: `player.js` sends row clicks as `input$playlist_row_click`
+  (the song number from the first column, so sorting and filtering are safe)
+  and highlights the row the server names (`bpm_select_row`), scrolling only the
+  table. Previous / Next move by the click difference, so quick clicks add up.
+- **Plot:** fixed axes, no mode bar; the selected slice is a shape. Clicking
+  the curve or a cover uses the points' `customdata` (song number). Covers use
+  a hidden second y-axis (`y2`) above the CO₂ axis.
+- **Autoplay:** `listening()` is TRUE only while music plays. `player.js`
+  reports play / pause (`input$player_state`, never for its own end-of-song
+  pause or a player that hasn't started); a newly rendered player gets
+  `data-autoplay` from `listening()`. At the end of a song, *Auto-play the next
+  song* decides whether the playlist continues.
 
 ## Secrets
 
@@ -121,6 +151,14 @@ browser session kept in memory (locally: one login cached on disk, as before),
 stages only the runtime files and writes the server's `.Renviron`; it refuses
 to deploy if `renv.lock` is missing an imported package or is out of sync.
 See [`LAUNCH.md`](LAUNCH.md).
+
+## Album covers
+
+`R/covers.R`: `update_cover_cache()` (used by `data-raw/fetch_covers.R` and the
+deploy script) fills `data/song_covers.csv` from Spotify's oEmbed
+`thumbnail_url`; in the app `cover_store()` / `store_cover_urls()` read it and
+look up missing ones once per R process (in parallel), with the YouTube
+thumbnail as fallback.
 
 ## Song-library check
 

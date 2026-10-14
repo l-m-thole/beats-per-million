@@ -56,3 +56,19 @@ test_that("unknown periods return empty results, not errors", {
   expect_equal(nrow(period_key_events("nope")), 0)
   expect_length(period_context_text("nope"), 0)
 })
+
+test_that("every period says how its CO2 was measured", {
+  for (pid in names(TIME_PERIODS)) {
+    m <- period_measurement(pid)
+    expect_false(is.null(m), info = pid)
+    expect_true(nzchar(m$title) && length(m$how) >= 2 && nzchar(m$resolution), info = pid)
+    expect_match(m$url, "^https://", info = pid)
+  }
+  expect_match(period_measurement("modern")$title, "air")
+  expect_match(period_measurement("icecore")$title, "ice")
+  expect_match(paste(period_measurement("cenozoic")$how, collapse = " "), "Boron")
+  # era notes only where they add something
+  expect_null(period_measurement("modern")$note)
+  expect_match(period_measurement("roman")$note, "Law Dome")
+  expect_null(period_measurement("nope"))
+})
