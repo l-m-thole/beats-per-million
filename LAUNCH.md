@@ -8,7 +8,7 @@ doing once; after that a re-deploy is one line.
 login off for now (invited testers later) · test Spotify vs YouTube, then pick
 the default player.
 
-## Status (13 Oct 2026)
+## Status (14 Oct 2026)
 
 - [x] Launch prep + Spotify snippets merged into `main` (v3.3.0), pushed
 - [x] `renv.lock` complete (`httr2`, `openssl`)
@@ -17,17 +17,21 @@ the default player.
 - [x] Keys in your local `.Renviron`: Spotify ID + secret, YouTube, GetSongBPM
 - [x] Live app shows the gmail contact, no Spotify login, Spotify as default
       player (checked 7 Oct, 14:08)
-- [ ] v3.4.0 (link previews, *Suggest a song*, tests on GitHub, Mauna Loa
-      refresh): commit on a branch, push, merge, re-deploy
-- [ ] GitHub, once: *Settings → Actions → General → Workflow permissions →*
-      allow Actions to create pull requests; then *Actions → refresh-co2 → Run
-      workflow* (the Modern data ends Nov 2024), merge its PR, re-deploy
+- [x] v3.4.0–v3.6.0 (link previews, *Suggest a song*, tester feedback, legal &
+      privacy fixes, YouTube fix) merged into `main`, pushed and deployed;
+      tests on GitHub green (14 Oct)
+- [x] GitHub allows Actions to create pull requests (14 Oct). Mauna Loa data
+      runs through Sep 2026; from now on `refresh-co2` opens a PR on the 9th
+      of each month → merge it, re-deploy
+- [x] *About & privacy* read through (14 Oct)
+- [x] Platform rules guarded by `tests/testthat/test-platform_rules.R`
+- [ ] Player test with friends (step 4) — running since 14 Oct → set
+      `DEFAULT_PLAYER`
 - [ ] Send the link to yourself in WhatsApp/Signal to see the preview card
-- [ ] Player test with friends (step 4) → set `DEFAULT_PLAYER`
+- [ ] Library (step 6): links for 29 rows (mostly one enrichment run), ~2 more
+      songs at 60–69 BPM, swap 3 unofficial + 3 blocked YouTube uploads
 - [ ] Spotify tester login (optional): `SPOTIFY_LOGIN <- "testers"`, step 2,
       re-deploy
-- [ ] Library (step 6): fix the 11 unlinked rows, add ~3 songs at 60–69 BPM,
-      run the check once with `CHECK_LINKS <- TRUE`
 
 ---
 
@@ -95,7 +99,8 @@ Re-run the same line after changing code or `data/song_library.csv`.
 
 ## 4. Test the players, then decide (30–45 min)
 
-Open the links on each device and fill in the table: ✓ works, ✗ doesn't,
+Open the links on each device (and ask the friends testing since 14 Oct) and
+fill in the table: ✓ works, ✗ doesn't,
 **30s** = only a preview, **stops** = doesn't go on to the next song.
 Press **▶ Play via …** once on the first song (nothing from Spotify / YouTube
 loads before that), then let it run into the second and third.
@@ -116,7 +121,7 @@ For each cell, check: does it **play**, **whole song or 30 s**, does it
 - B gives whole songs and keeps going on most desktops → keep
   `DEFAULT_PLAYER <- "spotify"`.
 - Only YouTube plays whole songs and keeps going → `DEFAULT_PLAYER <- "youtube"`
-  — and the library needs many more YouTube links (step 6).
+  — the YouTube pool is nearly as complete as Spotify's now (step 6).
 - Auto-advance stops on phones for every player → tell Claude: the fix is to
   reuse one player per page instead of rebuilding it for every song.
 
@@ -151,41 +156,50 @@ to test every link online (no keys needed).
 **Launch criteria** (per-period scaling, the app default): no rows with errors ·
 every slot gets a song within ±5 BPM · at least 3 songs within ±5 BPM per slot.
 
-Status on 7 Oct 2026 (231 songs):
+Status on 14 Oct 2026 (268 songs; link check run the same day):
 
-- **11 songs have no link at all.** Most look like typos, which is why the
-  enrichment found nothing — fix the spelling and re-run
-  `data-raw/enrich_song_library.R`:
-  *Another Bites The Dust* → Another **One** Bites the Dust ·
-  *Dirt Off Your Sholder* → Shoulder · *A Whola Lotta Love* → Whole Lotta Love ·
-  *Fleetwod Mac* → Fleetwood Mac · *I Know I'm No Good* → **You** Know I'm No Good ·
-  *Tell Your Girlfriend* (Robyn) → **Call** Your Girlfriend ·
-  *Since You've Been Gone* (Kelly Clarkson) → Since U Been Gone ·
-  *Labrynth* → Labrinth · *Tom Rosentahl* → Tom Rosenthal.
-  Check the other two by hand (*Back In The Mudd*, *How Do You Love Me Now*).
-- **Spotify pool: nearly there.** 5 of 385 slots fall back; add about
-  **3 songs at 60–69 BPM**.
-- **YouTube pool: far off** — 127 of 385 slots fall back; roughly 70 more
-  songs with a working YouTube link are needed, spread over 60–150 BPM. Only
-  matters if YouTube becomes the default.
-- 10 songs are outside 60–150 BPM — probably half/double time (the report
-  suggests the value).
+- **29 songs have no link at all** → run `data-raw/enrich_song_library.R` on
+  your Mac (it needs your keys), then check its log for rows to fill by hand:
+  - 18 new songs from Martin (*Straight Up* … *Alone*, end of the file);
+  - 9 old rows whose typos are fixed now (14 Oct): Another One Bites the Dust,
+    Dirt Off Your Shoulder, Whole Lotta Love, Fleetwood Mac, You Know I'm No
+    Good, Call Your Girlfriend (Robyn), Since U Been Gone (Kelly Clarkson),
+    Labrinth, Tom Rosenthal;
+  - 2 to check by hand: *Back In The Mudd*, *How Do You Love Me Now*.
+- **Spotify pool: nearly there.** 3 of 385 slots fall back; add about
+  **1 song at 60–64 and 1 at 65–69 BPM**.
+- **YouTube pool: close too** — 13 of 385 slots fall back (127 on 7 Oct); add
+  about **3 songs at 60–64 and 4 at 65–69 BPM** with a YouTube link.
+- **Links:** all 446 work. Three YouTube links are fan uploads — swap them for
+  the artist's own, VEVO or "- Topic" upload: *Jailhouse Rock*, *From Eden*
+  (lyric video), *Layla* (pick the same version as the Spotify link).
+  *Nightcall* and *Händerna Mot Himlen* come from the labels (Record Makers,
+  Razzia Records) and are marked "label upload".
+- **3 YouTube videos refuse other sites** (`data/youtube_blocked.csv`):
+  *Arsonist's Lullabye*, *Take Me To Church* (Hozier), *Against All Odds*
+  (Phil Collins) → try another upload, e.g. the "- Topic" one.
+- **13 songs are outside 60–150 BPM** — probably half/double time;
+  `issues.csv` suggests the value (e.g. *Jailhouse Rock* 169 → 84.5). Decide
+  the felt tempo per song.
+- Duplicates removed (14 Oct): the second *Thunderstruck* (kept the 133 BPM row
+  with both links) and the second *She Wants To Move*.
 - *Global* scaling can't be fully covered by any library: on the global scale
   every ice-core era sits at ~60–66 BPM, so those playlists drift to faster
   songs. Expected, not a launch criterion.
 
 ## 7. Go public
 
-1. `CONTACT` set, *About & privacy* read through (`?about`) — it is a
-   reasonable starting text for a personal project, not legal advice.
-2. `DEFAULT_PLAYER` set from step 4; library check says READY.
-3. Library check with `CHECK_LINKS <- TRUE`: no broken links and no YouTube
-   uploads from unofficial channels left (or checked by hand: "label upload"
-   in the notes).
-4. The platform rules in [`DEVELOPMENT.md`](DEVELOPMENT.md#platform-rules--privacy-keep-these)
-   still hold (one service per playlist, nothing third-party before ▶ Play,
-   non-commercial, no video export with the music).
-5. Re-deploy, then share the plain link (keep `?testers` for testers).
+- [x] `CONTACT` set, *About & privacy* read through (`?about`, 14 Oct) — it is
+      a reasonable starting text for a personal project, not legal advice.
+- [ ] `DEFAULT_PLAYER` set from step 4; library check says READY.
+- [ ] Library check with `CHECK_LINKS <- TRUE`: no broken links (✓ 14 Oct) and
+      no YouTube uploads from unofficial channels left (3 to swap, step 6; or
+      checked by hand: "label upload" in the notes).
+- [x] The platform rules in [`DEVELOPMENT.md`](DEVELOPMENT.md#platform-rules--privacy-keep-these)
+      still hold (one service per playlist, nothing third-party before ▶ Play,
+      non-commercial, no video export with the music) — the tripwire test
+      checks them on every push.
+- [ ] Re-deploy, then share the plain link (keep `?testers` for testers).
 
 ## Good to know
 
