@@ -82,8 +82,12 @@ The enrichment test with Swedish characters needs a UTF-8 locale (it is on any
 normal Mac/RStudio setup).
 
 **On GitHub:** `.github/workflows/tests.yml` runs the whole suite on every push
-(docs-only pushes skipped) with the packages from `renv.lock` plus `testthat`.
-Results: the badge in the README, or the repo's *Actions* tab.
+(docs-only pushes skipped). It installs the app's packages from `DESCRIPTION`
+(Imports + Suggests) as ready-made Linux binaries with pak and switches renv
+off (`RENV_CONFIG_AUTOLOADER_ENABLED=false`): `renv::restore()` from the Mac's
+lockfile failed there on the compiled packages. `renv.lock` is still what your
+Mac and shinyapps.io use. Results: the badge in the README, or the repo's
+*Actions* tab.
 
 ## Song library (in-app playback)
 
