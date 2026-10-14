@@ -97,7 +97,8 @@ Re-run the same line after changing code or `data/song_library.csv`.
 
 Open the links on each device and fill in the table: ✓ works, ✗ doesn't,
 **30s** = only a preview, **stops** = doesn't go on to the next song.
-Press ▶ once on the first song, then let it run into the second and third.
+Press **▶ Play via …** once on the first song (nothing from Spotify / YouTube
+loads before that), then let it run into the second and third.
 
 | Device / browser | A. Spotify, not logged in | B. Spotify, logged in at open.spotify.com in the same browser | C. YouTube (`?player=youtube`) | D. Tester (`?testers` → Connect Spotify) |
 |---|---|---|---|---|
@@ -178,7 +179,13 @@ Status on 7 Oct 2026 (231 songs):
 1. `CONTACT` set, *About & privacy* read through (`?about`) — it is a
    reasonable starting text for a personal project, not legal advice.
 2. `DEFAULT_PLAYER` set from step 4; library check says READY.
-3. Re-deploy, then share the plain link (keep `?testers` for testers).
+3. Library check with `CHECK_LINKS <- TRUE`: no broken links and no YouTube
+   uploads from unofficial channels left (or checked by hand: "label upload"
+   in the notes).
+4. The platform rules in [`DEVELOPMENT.md`](DEVELOPMENT.md#platform-rules--privacy-keep-these)
+   still hold (one service per playlist, nothing third-party before ▶ Play,
+   non-commercial).
+5. Re-deploy, then share the plain link (keep `?testers` for testers).
 
 ## Good to know
 

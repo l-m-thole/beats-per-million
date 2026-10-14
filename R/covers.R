@@ -8,10 +8,13 @@
 # data-raw/fetch_covers.R and the deploy script keep up to date - so the app
 # normally never has to ask Spotify while someone is using it. A song missing
 # from the file is looked up once per R session when covers are switched on.
-# Songs without a Spotify cover fall back to their YouTube video thumbnail
-# (a fixed address, no request needed).
 #
-# Needs functions.R (parse_spotify_id, parse_youtube_id). httr2 for fetching.
+# Covers are only shown while playing via Spotify, and only Spotify covers:
+# Spotify's terms allow cover art next to Spotify's own player (credited, with
+# a link back), not next to songs played from another service. Songs without
+# a Spotify cover simply get none - no YouTube thumbnails mixed in.
+#
+# Needs functions.R (parse_spotify_id). httr2 for fetching.
 # =============================================================================
 
 COVERS_CSV <- "song_covers.csv"   # in data/
@@ -121,25 +124,18 @@ update_cover_cache <- function(lib, path, refetch = FALSE, fetch = fetch_spotify
   invisible(cache)
 }
 
-#' Cover image for each song
+#' Cover image for each song: its Spotify cover from the cache, otherwise NA
 #'
-#' Spotify cover from the cache if there is one, otherwise the YouTube video
-#' thumbnail, otherwise NA.
-#'
-#' @param spotify_uri,youtube_url Song links (vectors of the same length)
+#' @param spotify_uri Song links (Spotify URI / URL / id)
 #' @param cache Named character vector (read_cover_cache())
 #' @return Character vector of image addresses (NA = no image)
-song_cover_urls <- function(spotify_uri, youtube_url, cache = .no_covers()) {
+song_cover_urls <- function(spotify_uri, cache = .no_covers()) {
   n <- length(spotify_uri)
   if (!n) return(character(0))
-  if (is.null(youtube_url)) youtube_url <- rep(NA_character_, n)
   sp <- vapply(spotify_uri, parse_spotify_id, character(1), USE.NAMES = FALSE)
-  yt <- vapply(youtube_url, parse_youtube_id, character(1), USE.NAMES = FALSE)
   out <- rep(NA_character_, n)
   hit <- !is.na(sp) & sp %in% names(cache)
   out[hit] <- unname(cache[sp[hit]])
-  use_yt <- is.na(out) & !is.na(yt)
-  out[use_yt] <- paste0("https://i.ytimg.com/vi/", yt[use_yt], "/mqdefault.jpg")
   out
 }
 
@@ -161,7 +157,7 @@ cover_store <- function(path) {
 #' Covers for a set of songs, looking up missing Spotify covers on the way
 #'
 #' @param store cover_store()
-#' @param picks Matched songs (needs spotify_uri; youtube_url optional)
+#' @param picks Matched songs (needs spotify_uri)
 #' @param fetch function(ids) -> named character vector; NULL = cache only
 #' @return Character vector of image addresses, one per row of `picks`
 store_cover_urls <- function(store, picks, fetch = fetch_spotify_covers) {
@@ -174,5 +170,5 @@ store_cover_urls <- function(store, picks, fetch = fetch_spotify_covers) {
     if (length(got)) store$cache[names(got)] <- got
     store$tried <- union(store$tried, todo)
   }
-  song_cover_urls(picks$spotify_uri, picks$youtube_url, store$cache)
+  song_cover_urls(picks$spotify_uri, store$cache)
 }

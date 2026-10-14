@@ -80,9 +80,39 @@ test_that("link check reads oEmbed answers (faked, no network)", {
   expect_false(wrong$title_match)
   offline <- res[grepl("BBBBBBBBBBB", res$link), ]
   expect_true(is.na(offline$ok))
+  expect_true(all(is.na(res$official)))                 # no channel names in this fake
 })
 
-test_that("pools: Spotify links / whole songs without login / everything", {
+test_that("link check flags YouTube uploads from channels that don't look official", {
+  lib <- dplyr::bind_rows(
+    lib_row("Dancing On My Own", "Robyn", youtube_url = "https://youtu.be/AAAAAAAAAAA"),
+    lib_row("Ho Hey", "The Lumineers", youtube_url = "https://youtu.be/BBBBBBBBBBB"),
+    lib_row("Titanium", "David Guetta feat. Sia", youtube_url = "https://youtu.be/CCCCCCCCCCC"),
+    lib_row("Cheer Up, My Brother", "HNNY", youtube_url = "https://youtu.be/DDDDDDDDDDD",
+            notes = "YouTube: label upload (Omena Records)")
+  )
+  fake <- function(service, link) {
+    ch <- c(AAAAAAAAAAA = "7clouds", BBBBBBBBBBB = "The Lumineers",
+            CCCCCCCCCCC = "David Guetta", DDDDDDDDDDD = "Omena Records")[[sub(".*v=", "", link)]]
+    list(status = 200L, title = "x", author = ch)
+  }
+  res <- check_song_links(lib, services = "youtube", fetch = fake, progress = FALSE)
+  expect_equal(res$channel, c("7clouds", "The Lumineers", "David Guetta", "Omena Records"))
+  expect_equal(res$official, c(FALSE, TRUE, TRUE, TRUE))   # label checked by hand (notes)
+})
+
+test_that("official channels: Topic, VEVO, or named like the artist", {
+  expect_equal(
+    youtube_channel_official(
+      c("Robyn - Topic", "RobynVEVO", "alt-J", "ratatatmusic", "francisandthelights",
+        "7clouds", "Lounge Lyrics", "electronaut", "asiancoverstation", NA, ""),
+      c("Robyn", "Robyn", "Alt-J", "Ratatat", "Francis and the Lights",
+        "Robyn", "The Lumineers", "Sia", "Sia", "Sia", "Sia")),
+    c(TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE, NA, NA))
+  expect_equal(youtube_channel_official(character(0), character(0)), logical(0))
+})
+
+test_that("pools: one per service, never mixed", {
   lib <- dplyr::bind_rows(
     lib_row("A", spotify_uri = SP, bpm = "100"),
     lib_row("B", youtube_url = YT, bpm = "100"),
@@ -93,7 +123,8 @@ test_that("pools: Spotify links / whole songs without login / everything", {
   p <- library_pools(lib, blocked_youtube = "CCCCCCCCCCC")
   expect_equal(p$spotify$song_title, c("A", "C"))
   expect_equal(p$youtube$song_title, "B")                       # C's video is blocked
-  expect_equal(p$all$song_title, c("A", "B", "C"))
+  expect_equal(nrow(p$soundcloud), 0)
+  expect_setequal(names(p), names(LIBRARY_POOLS))
 })
 
 test_that("coverage uses the app's matcher and reports gaps", {

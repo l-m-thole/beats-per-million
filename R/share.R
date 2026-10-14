@@ -115,11 +115,12 @@ suggest_song_tag <- function(settings, text = "Suggest a song", ...) {
 # -----------------------------------------------------------------------------
 
 #' Which library pool visitors draw from, given the default player
-#' (see LIBRARY_POOLS in R/library_check.R)
+#' (see LIBRARY_POOLS in R/library_check.R; one pool per service, since a
+#' playlist never mixes services)
 pool_for_player <- function(player) {
   switch(tolower(player %||% ""),
-         spotify = "spotify", youtube = "youtube", soundcloud = "youtube",
-         "all")
+         youtube = "youtube", soundcloud = "soundcloud",
+         "spotify")
 }
 
 .no_wanted <- function() tibble::tibble(lo = numeric(), hi = numeric(), add = integer())

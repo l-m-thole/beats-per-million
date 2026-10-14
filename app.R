@@ -440,13 +440,32 @@ body {
 }
 .listen-options .seg { margin-bottom: 0.6rem; }
 .listen-options .checkbox { margin: 0.3rem 0; font-size: 0.9rem; }
-.more-options summary {
-  cursor: pointer;
-  color: #a1a1aa;
-  font-size: 0.85rem;
-  margin-top: 0.3rem;
+/* "Play" gate: nothing from Spotify / YouTube / SoundCloud loads before the
+   visitor presses it (www/player.js then swaps it for the player) */
+.player-gate {
+  margin-top: 0.75rem;
+  padding: 1rem;
+  min-height: 152px;            /* the Spotify player\'s height: nothing jumps */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.6rem;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.04);
+  border: 1px dashed rgba(255,255,255,0.15);
 }
-.more-options .checkbox label { font-size: 0.85rem; color: #d4d4d8; }
+.player-gate .gate-play { align-self: flex-start; font-size: 1rem !important; }
+.gate-note { color: #a1a1aa; font-size: 0.8rem; line-height: 1.45; margin: 0; }
+.gate-note a { color: #3b82f6; }
+.player-slot { display: none; }
+.player-slot.is-on { display: block; }
+.covers-credit {
+  color: #a1a1aa;
+  font-size: 0.75rem;
+  margin: 0.25rem 0 0;
+  text-align: right;
+}
+.covers-credit a { color: #3b82f6; }
 
 /* Period context + key events (About this era window) */
 .events-title {
@@ -722,12 +741,19 @@ SONG_LIBRARY <- playable_songs(SONG_LIBRARY)
 
 # "Play via" choices (SoundCloud only once the library has SoundCloud links)
 # and the one visitors start with (BPM_DEFAULT_PLAYER, default Spotify).
-PLAY_VIA_CHOICES <- c("Best available" = "auto", "Spotify" = "spotify",
-                      "YouTube" = "youtube", "SoundCloud" = "soundcloud")
+# A playlist plays from ONE service only - no "best available" mix of
+# services: Spotify's and SoundCloud's terms don't allow mixing their music
+# with another service's (see service_songs() in R/functions.R).
+SERVICE_LABELS   <- c(spotify = "Spotify", youtube = "YouTube", soundcloud = "SoundCloud")
+PLAY_VIA_CHOICES <- stats::setNames(names(SERVICE_LABELS), SERVICE_LABELS)
 if (!any(!is.na(SONG_LIBRARY$soundcloud_url) & nzchar(trimws(SONG_LIBRARY$soundcloud_url)))) {
   PLAY_VIA_CHOICES <- PLAY_VIA_CHOICES[PLAY_VIA_CHOICES != "soundcloud"]
 }
-DEFAULT_PLAYER <- if (SETTINGS$default_player %in% PLAY_VIA_CHOICES) SETTINGS$default_player else "auto"
+DEFAULT_PLAYER <- if (SETTINGS$default_player %in% PLAY_VIA_CHOICES) {
+  SETTINGS$default_player
+} else {
+  unname(PLAY_VIA_CHOICES[1])
+}
 
 # Tempos the library is short of, for "Suggest a song" in About & privacy.
 # Worked out by the deploy script (data/wanted_bpm.csv); NULL until then.
@@ -755,10 +781,13 @@ add_yt_blocked <- function(id, code) {
   ), silent = TRUE)
 }
 
-# player.js with its checksum in the address: after a deploy, browsers that
-# still hold the old file in their cache load the new one.
-PLAYER_JS <- paste0("player.js?v=",
-                    substr(unname(tools::md5sum(here::here("www", "player.js"))), 1, 8))
+# player.js and the font CSS with their checksums in the address: after a
+# deploy, browsers that still hold the old file in their cache load the new one.
+.versioned <- function(file) {
+  paste0(file, "?v=", substr(unname(tools::md5sum(here::here("www", file))), 1, 8))
+}
+PLAYER_JS <- .versioned("player.js")
+FONTS_CSS <- .versioned("fonts/fonts.css")
 
 # Trimmed text, or NULL when empty/NA
 .txt <- function(x) {
@@ -772,20 +801,18 @@ PLAYER_JS <- paste0("player.js?v=",
 ui <- fluidPage(
   title = APP_TITLE_LONG,   # browser tab and bookmarks
 
+  # Nothing in <head> comes from another site: the fonts are served by the
+  # app (www/fonts/), and the players' code from Spotify, YouTube and
+  # SoundCloud is loaded by www/player.js only after the visitor presses
+  # ▶ Play (or connects Spotify) - so opening the page tells no one else.
   tags$head(
     # Link previews when someone shares the address (see R/share.R)
     social_meta_tags(SETTINGS$public_url),
-    tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=JetBrains+Mono:wght@300;400;500&family=DM+Sans:wght@400;500;600&display=swap"),
+    tags$link(rel = "stylesheet", href = FONTS_CSS),
     # App styles (defined inline in app_css())
     tags$style(HTML(app_css())),
-    # Player APIs: progress events + auto-advance (see www/player.js)
-    # player.js must load BEFORE the Spotify API: the API calls
-    # window.onSpotifyIframeApiReady once, as soon as it has loaded.
-    tags$script(src = PLAYER_JS),
-    tags$script(src = "https://sdk.scdn.co/spotify-player.js"),
-    tags$script(src = "https://open.spotify.com/embed/iframe-api/v1"),
-    tags$script(src = "https://w.soundcloud.com/player/api.js"),
-    tags$script(src = "https://www.youtube.com/iframe_api")
+    # Players: consent gate, progress events + auto-advance (see www/player.js)
+    tags$script(src = PLAYER_JS)
   ),
 
   # ---- Header: title, what to do, info buttons ----
@@ -831,7 +858,8 @@ ui <- fluidPage(
                   div(class = "card-head-actions",
                       actionButton("era_info", "📖 About this era", class = "btn-ghost btn-accent"))
               ),
-              plotlyOutput("timeline_plot", height = "300px")
+              plotlyOutput("timeline_plot", height = "300px"),
+              uiOutput("covers_credit")
           )
       ),
 
@@ -873,12 +901,7 @@ ui <- fluidPage(
                   ),
                   checkboxInput("auto_advance",
                                 "Auto-play the next song when one ends",
-                                value = TRUE),
-                  tags$details(class = "more-options",
-                    tags$summary("More options"),
-                    checkboxInput("full_only",
-                                  "When playing via YouTube or SoundCloud: skip songs that only have a Spotify preview (it can't auto-play)",
-                                  value = TRUE))
+                                value = TRUE)
               )
           )
       ),
@@ -903,9 +926,14 @@ ui <- fluidPage(
                       span(class = "filter-label", "Songs"),
                       actionButton("shuffle", "🔀 Shuffle songs", class = "btn-ghost",
                                    title = "Swap in other songs with the same tempos. The order (oldest → youngest) stays the same.")),
-                  div(class = "filter-block",
-                      span(class = "filter-label", "On the CO₂ plot"),
-                      checkboxInput("show_covers", "🖼 Show album covers", value = FALSE))
+                  # Covers come from Spotify, so only next to Spotify's player
+                  # (Spotify's terms; see R/covers.R)
+                  conditionalPanel(
+                    "input.play_source == 'spotify'",
+                    div(class = "filter-block",
+                        title = "Loads the album covers from Spotify",
+                        span(class = "filter-label", "On the CO₂ plot"),
+                        checkboxInput("show_covers", "🖼 Show album covers", value = FALSE)))
               ),
               p(class = "playlist-hint",
                 "Each row is a song and a slice of time, oldest first: the slice's CO₂ sets",
@@ -953,6 +981,12 @@ server <- function(input, output, session) {
   # Get current period config
   current_period <- reactive({
     TIME_PERIODS[[input$selected_period]]
+  })
+
+  # The one service this playlist plays from ("Play via")
+  play_service <- reactive({
+    s <- input$play_source %||% DEFAULT_PLAYER
+    if (s %in% PLAY_VIA_CHOICES) s else DEFAULT_PLAYER
   })
 
   # Selected song index
@@ -1009,22 +1043,11 @@ server <- function(input, output, session) {
   curated_picks <- reactive({
     pl <- current_playlist()
     if (is.null(pl) || nrow(pl$songs) == 0) return(NULL)
-    # Default: only songs that play in full (YouTube / SoundCloud, or Spotify
-    # once the full player is connected), so every song plays to the end and
-    # auto-advances. Untick "Full songs only" to also use Spotify-only songs
-    # (30-s preview when Spotify isn't connected).
-    # Play via Spotify: only songs with a Spotify link, so YouTube is never
-    # needed (full songs once connected, otherwise Spotify's 30-s clips).
-    lib <- if (identical(input$play_source %||% "spotify", "spotify")) {
-      sp <- spotify_songs(SONG_LIBRARY)
-      if (nrow(sp)) sp else SONG_LIBRARY
-    } else if (isTRUE(input$full_only %||% TRUE)) {
-      # isolate: a video failing mid-session must not reshuffle the whole list
-      full_song_songs(SONG_LIBRARY, spotify_full = sdk_ready(),
-                      bad_youtube = isolate(bad_yt()))
-    } else {
-      SONG_LIBRARY
-    }
+    # Only songs the chosen service can play: a playlist never mixes services
+    # (Play via Spotify -> Spotify links only, via YouTube -> YouTube only).
+    # isolate: a video failing mid-session must not reshuffle the whole list
+    lib <- service_songs(SONG_LIBRARY, play_service(),
+                         bad_youtube = isolate(bad_yt()))
     assign_songs_to_playlist(
       pl$songs, lib,
       period          = input$selected_period,
@@ -1122,6 +1145,7 @@ server <- function(input, output, session) {
 
   observeEvent(input$about, show_about(SETTINGS, CO2_DATA, WANTED_BPMS))
   observeEvent(input$about_top, show_about(SETTINGS, CO2_DATA, WANTED_BPMS))
+  observeEvent(input$about_gate, show_about(SETTINGS, CO2_DATA, WANTED_BPMS))   # link at ▶ Play
 
   observeEvent(input$sp_token_request, send_sp_token())
 
@@ -1163,10 +1187,10 @@ server <- function(input, output, session) {
   })
 
   # YouTube refused to play this video (removed, or embedding disabled by the
-  # uploader). player.js then ends the song, so auto-play moves on.
-  # The video is remembered as broken for this session and the Listen panel
-  # re-renders with the next player for the same song (Spotify first), which
-  # starts playing right away.
+  # uploader). The video is remembered as broken (for good if the problem is
+  # permanent) and left out of playlists from now on. The song is NOT handed
+  # to another service - a playlist never mixes services - so while music is
+  # meant to play, the playlist simply moves on to the next song.
   bad_yt <- reactiveVal(read_yt_blocked())
   observeEvent(input$yt_error, {
     ev <- input$yt_error
@@ -1183,12 +1207,18 @@ server <- function(input, output, session) {
       # permanent problems -> skip this video in future sessions too
       if (as.character(ev$code) %in% c("2", "100", "101", "150")) add_yt_blocked(ev$id, ev$code)
     }
-    listening(TRUE)
+    idx <- selected_idx()
+    skip <- (isTRUE(ev$autoplay) || isTRUE(listening())) && isTRUE(input$auto_advance) &&
+      idx < nrow(current_playlist()$songs)
     showNotification(
-      paste0("YouTube can't play this song here: ", why,
-             ". Switching to another player; this video is skipped from now on ",
-             "(listed in data/youtube_blocked.csv)."),
+      paste0("YouTube can't play this song here: ", why, ". ",
+             if (skip) "Skipping to the next song. " else "Press Next ⏭ for the next song. ",
+             "This video is left out from now on (data/youtube_blocked.csv)."),
       type = "warning", duration = 10)
+    if (skip) {
+      listening(TRUE)
+      selected_idx(idx + 1L)
+    }
   })
 
   observeEvent(input$sp_error, {
@@ -1398,8 +1428,10 @@ server <- function(input, output, session) {
 
   # ----- ALBUM COVERS ON THE PLOT -----
 
+  # Only while playing via Spotify, and only Spotify's covers (credited under
+  # the plot; each song links back to Spotify in the Listen panel)
   covers <- reactive({
-    if (!isTRUE(input$show_covers)) return(NULL)
+    if (!isTRUE(input$show_covers) || !identical(play_service(), "spotify")) return(NULL)
     picks <- curated_picks()
     if (is.null(picks) || !nrow(picks)) return(NULL)
     sp <- vapply(picks$spotify_uri, parse_spotify_id, character(1), USE.NAMES = FALSE)
@@ -1599,7 +1631,8 @@ server <- function(input, output, session) {
           marker = list(size = 22, color = "rgba(0,0,0,0)", symbol = "square"),
           text = paste0("<b>", cs$song_number, ". ", htmltools::htmlEscape(cs$title), "</b><br>",
                         htmltools::htmlEscape(cs$artist), "<br>",
-                        cs$bpm, " BPM slot · song ", cs$song_bpm, " BPM"),
+                        cs$bpm, " BPM slot · song ", cs$song_bpm, " BPM",
+                        "<br><i>Cover: Spotify · click to select</i>"),
           hovertemplate = "%{text}<extra></extra>"
         ) %>%
         layout(images = images,
@@ -1612,6 +1645,18 @@ server <- function(input, output, session) {
       config(displayModeBar = FALSE, scrollZoom = FALSE, doubleClick = FALSE,
              showTips = FALSE, responsive = TRUE) %>%
       event_register("plotly_click")
+  })
+
+  # Under the plot while covers are shown: where they come from (Spotify's
+  # terms: credit Spotify, link back - the Listen panel's Spotify player and
+  # "Open in Spotify" link to the song)
+  output$covers_credit <- renderUI({
+    cov <- covers()
+    if (is.null(cov) || !any(!is.na(cov$url))) return(NULL)
+    p(class = "covers-credit",
+      "Album covers from ",
+      tags$a(href = "https://open.spotify.com", target = "_blank", rel = "noopener", "Spotify"),
+      " · click a cover to select its song; the player links to it on Spotify.")
   })
 
   # Listen panel, top: the selected song
@@ -1701,60 +1746,57 @@ server <- function(input, output, session) {
       title_txt  <- .txt(cur$song_title)
       artist_txt <- .txt(cur$artist)
 
-      # ONE player per song. "Play via" picks the service; if this song has
-      # no link for it, fall back to the best available one:
-      #   Spotify full player (connected) > YouTube > SoundCloud > Spotify preview
-      # www/player.js wires each one up for progress / end-of-song events.
+      # ONE player per song, always from the service picked in "Play via" -
+      # never another service's player (Spotify's and SoundCloud's terms don't
+      # allow mixing). The playlist only holds songs that service can play;
+      # the one exception is a YouTube video that failed mid-session, which
+      # gets a short note instead of a player (the playlist moves on).
+      # www/player.js wires each player up for progress / end-of-song events.
       sp_uri <- if (!is.na(sp_embed)) paste0("spotify:track:", parse_spotify_id(cur$spotify_uri))
 
-      avail <- c(
-        spotify_full = !is.na(sp_embed) && sdk_ready(),
-        youtube      = !is.na(yt_id) && !(yt_id %in% bad_yt()),
-        soundcloud   = !is.na(sc_embed),
-        spotify      = !is.na(sp_embed)
+      want <- play_service()
+      use <- switch(want,
+        # Spotify: the full player once connected, otherwise Spotify's 30-s
+        # clip (auto-plays + auto-advances)
+        spotify    = if (is.na(sp_embed)) NA_character_ else if (sdk_ready()) "spotify_full" else "spotify",
+        youtube    = if (!is.na(yt_id) && !(yt_id %in% bad_yt())) "youtube" else NA_character_,
+        soundcloud = if (!is.na(sc_embed)) "soundcloud" else NA_character_,
+        NA_character_
       )
-      want <- input$play_source %||% "auto"
-      order <- switch(want,
-        # Spotify is the default and stays on Spotify: the full player once
-        # connected, otherwise Spotify's 30-s clip (auto-plays + auto-advances).
-        spotify    = c("spotify_full", "spotify", "soundcloud", "youtube"),
-        youtube    = c("youtube", "spotify_full", "soundcloud", "spotify"),
-        soundcloud = c("soundcloud", "spotify_full", "youtube", "spotify"),
-        c("spotify_full", "youtube", "soundcloud", "spotify")
-      )
-      use <- order[avail[order]][1]
-      label <- c(spotify_full = "Spotify", spotify = "Spotify (30-s preview)",
+      label <- c(spotify_full = "Spotify", spotify = "Spotify",
                  youtube = "YouTube", soundcloud = "SoundCloud")
-      want_label <- c(spotify = "Spotify", youtube = "YouTube", soundcloud = "SoundCloud")
+      want_label <- SERVICE_LABELS
 
-      player <- switch(use,
+      # Embedded players stay empty placeholders until the visitor presses
+      # the ▶ Play gate (player_gate(), R/about.R): only then does
+      # www/player.js load anything from Spotify / YouTube / SoundCloud.
+      player <- if (is.na(use)) NULL else switch(use,
         spotify_full = div(id = "bpm-sdk", `data-uri` = sp_uri, style = "margin-top:0.75rem;",
                            tags$button(id = "bpm-sdk-toggle", type = "button",
                                        class = "btn btn-spotify", "▶ Play")),
         youtube = div(style = "border-radius:12px; overflow:hidden; margin-top:0.75rem;",
                       div(id = "bpm-youtube", `data-id` = yt_id)),
-        soundcloud = tags$iframe(
-          id = "bpm-soundcloud", src = sc_embed,
-          width = "100%", height = "166", frameborder = "no", scrolling = "no",
-          allow = "autoplay", style = "margin-top:0.75rem;"
-        ),
+        soundcloud = div(style = "margin-top:0.75rem;",
+                         div(id = "bpm-soundcloud", `data-src` = sc_embed)),
         spotify = div(style = "border-radius:12px; overflow:hidden; margin-top:0.75rem;",
                       div(id = "bpm-spotify", `data-uri` = sp_uri))
       )
+      gated <- !is.na(use) && use != "spotify_full"     # the SDK needs a login first anyway
+      service <- if (is.na(use)) want else sub("_full$", "", use)
 
       source_note <- p(class = "muted", style = "font-size:0.8rem; margin:0.4rem 0 0;",
-        paste0("Playing via ", label[[use]],
-               if (want != "auto" && !startsWith(use, want) &&
-                   !isTRUE(c(spotify = !is.na(sp_embed), youtube = !is.na(yt_id),
-                             soundcloud = !is.na(sc_embed))[[want]]))
-                 paste0(" (no ", want_label[[want]], " link for this song)") else "",
-               if (want == "youtube" && !is.na(yt_id) && yt_id %in% bad_yt())
-                 " (this YouTube video can't be embedded)" else "",
-               if (use == "spotify") {
-                 if (isTRUE(login_ok())) " — 30-s clip; click Connect Spotify for whole songs."
-                 else if (!is.na(yt_id) && !(yt_id %in% bad_yt())) " — 30-s clip; Play via YouTube for the whole song."
-                 else " — 30-s clip."
-               } else ""))
+        if (is.na(use)) {
+          paste0("This song can't be played via ", want_label[[want]], " here",
+                 if (want == "youtube" && !is.na(yt_id)) " (YouTube won't play this video on other websites)" else "",
+                 ". Press Next ⏭ for the next song.")
+        } else {
+          paste0("Playing via ", label[[use]],
+                 if (use == "spotify") {
+                   if (isTRUE(login_ok())) " — 30-s clips; click Connect Spotify for whole songs."
+                   else if (!is.na(yt_id) && !(yt_id %in% bad_yt())) " — 30-s clips; Play via YouTube for whole songs."
+                   else " — 30-s clips."
+                 } else "")
+        })
 
       # Always one button per service: open the song if we have a link,
       # otherwise search that service for it.
@@ -1777,7 +1819,7 @@ server <- function(input, output, session) {
 
       # Spotify preferred but not connected: say so right at the player,
       # with the one click that unlocks full songs.
-      connect_hint <- if (want %in% c("spotify", "auto") && !sdk_ready() &&
+      connect_hint <- if (want == "spotify" && !sdk_ready() &&
                           !is.na(sp_embed) && isTRUE(login_ok())) {
         div(class = "spotify-connect", style = "margin-top:0.75rem;",
             if (isTRUE(sp_connected())) {
@@ -1795,23 +1837,32 @@ server <- function(input, output, session) {
       div(id = "bpm-player",
           `data-token`    = player_token(),
           `data-autoplay` = tolower(isolate(listening())),
-          connect_hint, player, source_note, links)
+          `data-service`  = service,
+          connect_hint,
+          if (gated) player_gate(service),
+          if (gated) div(class = "player-slot", player) else player,
+          source_note, links)
 
     } else {
       # ----- Blank slot: search buttons for this tempo -----
       query <- paste(song$bpm, "bpm", song$feel)
       spotify_search    <- paste0("https://open.spotify.com/search/",
                                   utils::URLencode(query, reserved = TRUE))
+      youtube_search    <- paste0("https://www.youtube.com/results?search_query=",
+                                  utils::URLencode(query, reserved = TRUE))
       soundcloud_search <- paste0("https://soundcloud.com/search?q=",
                                   utils::URLencode(query, reserved = TRUE))
 
       tagList(
         p(class = "description-text",
-          "No song in the library fits this slot yet. Search for a song near",
+          "No", SERVICE_LABELS[[play_service()]],
+          "song in the library fits this slot yet. Search for a song near",
           paste0(song$bpm, " BPM:")),
         div(class = "button-row",
             tags$a(href = spotify_search, target = "_blank",
                    class = "btn btn-spotify", "🎵 Spotify"),
+            tags$a(href = youtube_search, target = "_blank",
+                   class = "btn btn-youtube", "▶ YouTube"),
             tags$a(href = soundcloud_search, target = "_blank",
                    class = "btn btn-soundcloud", "☁️ SoundCloud")
         )

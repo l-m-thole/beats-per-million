@@ -13,6 +13,38 @@ test_that("About text renders with citations, backlink and privacy notes", {
   expect_no_match(as.character(about_content(list(contact = ""))), "mailto:")
 })
 
+test_that("Privacy: players only after Play, YouTube's required lines, rights", {
+  skip_if_not_installed("shiny")
+  library(shiny)
+  html <- as.character(about_content(list(contact = "me@example.org")))
+  expect_match(html, "Nothing from Spotify, YouTube (Google) or SoundCloud loads until", fixed = TRUE)
+  expect_match(html, "YouTube API Services", fixed = TRUE)          # YouTube policy III.A.2
+  expect_match(html, YOUTUBE_TERMS_URL, fixed = TRUE)              # III.A.1
+  expect_match(html, GOOGLE_PRIVACY_URL, fixed = TRUE)
+  expect_match(html, "imy.se", fixed = TRUE)                        # right to complain
+  expect_match(html, "one service per playlist", fixed = TRUE)
+  expect_no_match(html, "Google Fonts", fixed = TRUE)               # fonts are self-hosted now
+})
+
+test_that("the Play gate says who gets what before any player loads", {
+  skip_if_not_installed("shiny")
+  library(shiny)
+  yt <- as.character(player_gate("youtube"))
+  expect_match(yt, "▶ Play via YouTube", fixed = TRUE)
+  expect_match(yt, 'data-service="youtube"', fixed = TRUE)
+  expect_match(yt, "Google then gets your IP address", fixed = TRUE)
+  expect_match(yt, YOUTUBE_TERMS_URL, fixed = TRUE)
+  expect_match(yt, GOOGLE_PRIVACY_URL, fixed = TRUE)
+  expect_match(yt, 'id="about_gate"', fixed = TRUE)
+
+  sp <- as.character(player_gate("spotify"))
+  expect_match(sp, "▶ Play via Spotify", fixed = TRUE)
+  expect_match(sp, "spotify.com/legal/privacy-policy", fixed = TRUE)
+  expect_no_match(sp, "youtube", fixed = TRUE)
+
+  expect_null(player_gate("winamp"))
+})
+
 test_that("Suggest a song: the link, plus the tempos the library is short of", {
   skip_if_not_installed("shiny")
   library(shiny)

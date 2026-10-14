@@ -5,7 +5,8 @@
 #   check_song_library()  rows with problems: missing BPM or links, broken
 #                         links, BPM outside 60-150, duplicates, blocked videos
 #   check_song_links()    online: does each link still work, may it be embedded,
-#                         is it the right song? (free oEmbed endpoints, no keys)
+#                         is it the right song, and does a YouTube upload come
+#                         from an official channel? (free oEmbed endpoints, no keys)
 #   library_coverage()    does every playlist slot get a song close to its BPM,
 #                         with enough choice for Shuffle? Uses the app's own
 #                         matcher (assign_songs_to_playlist), all periods, both
@@ -20,11 +21,13 @@
 LIBRARY_COLS <- c("song_title", "artist", "spotify_uri", "soundcloud_url",
                   "youtube_url", "bpm", "notes")
 
-# Pools of songs the app draws from, depending on how a visitor listens
+# Pools of songs the app draws from, depending on how a visitor listens.
+# One pool per service: a playlist never mixes services (Spotify's and
+# SoundCloud's terms don't allow it), see service_songs() in functions.R.
 LIBRARY_POOLS <- c(
-  spotify = "Play via Spotify: songs with a Spotify link (30-s clips, or whole songs for connected testers)",
-  youtube = "Play via YouTube/SoundCloud: whole songs without any login",
-  all     = "Everything playable (Spotify connected + YouTube + SoundCloud)"
+  spotify    = "Play via Spotify: songs with a Spotify link (30-s clips, or whole songs for connected testers)",
+  youtube    = "Play via YouTube: songs with an embeddable YouTube video (whole songs, no login)",
+  soundcloud = "Play via SoundCloud: songs with a SoundCloud link (whole songs, no login)"
 )
 
 .blank <- function(x) is.na(x) | !nzchar(trimws(as.character(x)))
@@ -181,7 +184,8 @@ check_song_library <- function(lib, bpm_range = c(BPM_MIN, BPM_MAX),
 
 #' Ask a service's public oEmbed endpoint about one link
 #'
-#' @return list(status = HTTP status or NA, title = what the service calls it)
+#' @return list(status = HTTP status or NA, title = what the service calls it,
+#'   author = who uploaded it - for YouTube the channel name)
 oembed_fetch <- function(service, link) {
   endpoint <- switch(service,
     spotify    = "https://open.spotify.com/oembed",
@@ -202,11 +206,45 @@ oembed_fetch <- function(service, link) {
                 error = conditionMessage(resp)))
   }
   status <- httr2::resp_status(resp)
-  title <- if (status == 200) {
-    tryCatch(httr2::resp_body_json(resp)$title %||% NA_character_,
-             error = function(e) NA_character_)
-  } else NA_character_
-  list(status = status, title = title)
+  body <- if (status == 200) tryCatch(httr2::resp_body_json(resp), error = function(e) NULL)
+  list(status = status,
+       title  = body$title %||% NA_character_,
+       author = body$author_name %||% NA_character_)
+}
+
+#' Does a YouTube upload come from an official channel?
+#'
+#' Official here = YouTube's auto-generated "Artist - Topic" channel (licensed
+#' audio), a VEVO channel, or a channel named like the artist ("Taylor Swift",
+#' "ratatatmusic", "alt-J"). Lyrics, promo and fan channels ("7clouds", ...)
+#' come out FALSE: embedding uploads the rights holders didn't authorise is
+#' where the (small) copyright risk of the app sits, so swap those for an
+#' official upload. Label channels also come out FALSE - check them by hand
+#' and write "label upload" (or "official upload") in the song's notes;
+#' check_song_links() then counts them as official.
+#'
+#' @param channel Channel name(s) (oEmbed author_name)
+#' @param artist The library's artist(s), same length
+#' @return Logical vector; NA where the channel is unknown
+youtube_channel_official <- function(channel, artist) {
+  squash <- function(x) gsub("[^[:alnum:]]", "", .lib_norm(x))
+  one <- function(ch, ar) {
+    if (is.na(ch) || !nzchar(trimws(ch))) return(NA)
+    low <- tolower(trimws(ch))
+    if (grepl(" - topic$", low) || grepl("vevo", low, fixed = TRUE)) return(TRUE)
+    c_sq <- squash(ch)
+    ar <- if (is.na(ar)) "" else as.character(ar)
+    main <- strsplit(tolower(ar), "\\s+(feat\\.?|ft\\.?|featuring|with|x|&|and)\\s+|,")[[1]]
+    names_sq <- unique(squash(c(ar, if (length(main)) main[1] else "")))
+    names_sq <- names_sq[nzchar(names_sq)]
+    if (!nzchar(c_sq) || !length(names_sq)) return(FALSE)
+    any(vapply(names_sq, function(a) {
+      identical(c_sq, a) || startsWith(c_sq, a) || endsWith(c_sq, a) ||
+        (nchar(a) >= 5 && grepl(a, c_sq, fixed = TRUE))
+    }, logical(1)))
+  }
+  if (!length(channel)) return(logical(0))
+  unname(mapply(one, channel, rep_len(artist, length(channel))))
 }
 
 # What an oEmbed status means for the app
@@ -233,8 +271,9 @@ oembed_fetch <- function(service, link) {
 #'   for tests
 #' @param progress Print a progress line per service
 #' @return Tibble: line, song_title, artist, service, link, status, ok,
-#'   found_title, title_match, detail. ok is NA when the service couldn't be
-#'   reached.
+#'   found_title, title_match, channel, official, detail. ok is NA when the
+#'   service couldn't be reached; official (YouTube only, see
+#'   youtube_channel_official()) is NA for other services or unknown channels.
 check_song_links <- function(lib, services = c("spotify", "youtube", "soundcloud"),
                              fetch = oembed_fetch, progress = interactive()) {
   services <- match.arg(services, several.ok = TRUE)
@@ -267,11 +306,19 @@ check_song_links <- function(lib, services = c("spotify", "youtube", "soundcloud
       want  <- .lib_norm(lib$song_title[i])
       match <- if (is.na(found) || !nzchar(want)) NA else
         grepl(want, .lib_norm(found), fixed = TRUE)
+      channel <- as.character(r$author %||% NA_character_)
       rows[[length(rows) + 1]] <- tibble::tibble(
         line = i + 1L, song_title = as.character(lib$song_title[i]),
         artist = as.character(lib$artist[i]), service = svc, link = jb$link[k],
         status = as.integer(r$status), ok = if (is.na(r$status)) NA else r$status == 200,
         found_title = found, title_match = match,
+        channel = channel,
+        official = if (svc == "youtube") {
+          # checked by hand: a label's or a featured artist's channel, noted in
+          # the library as "official upload" / "label upload"
+          youtube_channel_official(channel, lib$artist[i]) |
+            grepl("(official|label) upload", lib$notes[i] %||% "", ignore.case = TRUE)
+        } else NA,
         detail = .link_meaning(svc, r$status))
     }
   }
@@ -279,7 +326,8 @@ check_song_links <- function(lib, services = c("spotify", "youtube", "soundcloud
     return(tibble::tibble(line = integer(), song_title = character(), artist = character(),
                           service = character(), link = character(), status = integer(),
                           ok = logical(), found_title = character(),
-                          title_match = logical(), detail = character()))
+                          title_match = logical(), channel = character(),
+                          official = logical(), detail = character()))
   }
   dplyr::bind_rows(rows)
 }
@@ -290,21 +338,21 @@ check_song_links <- function(lib, services = c("spotify", "youtube", "soundcloud
 
 #' The song pools the app draws from (see LIBRARY_POOLS)
 #'
+#' The same subsets the app uses (service_songs()), so the check simulates
+#' exactly what visitors get.
+#'
 #' @param lib Library as loaded by load_song_library() (numeric bpm)
 #' @param blocked_youtube YouTube ids that can't be embedded
-#' @return Named list of tibbles: spotify, youtube, all
+#' @return Named list of tibbles: spotify, youtube, soundcloud
 library_pools <- function(lib, blocked_youtube = character(0)) {
   play <- playable_songs(lib)
   if (is.null(play) || !nrow(play)) {
-    return(list(spotify = play, youtube = play, all = play))
+    return(list(spotify = play, youtube = play, soundcloud = play))
   }
-  sp <- !is.na(vapply(play$spotify_uri, parse_spotify_id, character(1), USE.NAMES = FALSE))
-  yt <- vapply(play$youtube_url, parse_youtube_id, character(1), USE.NAMES = FALSE)
-  sc <- !.blank(play$soundcloud_url)
   list(
-    spotify = play[sp, , drop = FALSE],
-    youtube = play[(!is.na(yt) & !(yt %in% blocked_youtube)) | sc, , drop = FALSE],
-    all     = play
+    spotify    = service_songs(play, "spotify"),
+    youtube    = service_songs(play, "youtube", bad_youtube = blocked_youtube),
+    soundcloud = service_songs(play, "soundcloud")
   )
 }
 

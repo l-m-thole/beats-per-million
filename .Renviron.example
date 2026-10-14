@@ -24,7 +24,8 @@ SOUNDCLOUD_CLIENT_SECRET=
 # App settings (optional; see R/settings.R). Locally you need none of these.
 # deploy/deploy_shinyapps.R writes the server's values for you.
 # ---------------------------------------------------------------------------
-# "Play via" choice visitors start with: spotify | youtube | soundcloud | auto
+# "Play via" choice visitors start with: spotify | youtube | soundcloud
+# (a playlist only ever plays from that one service)
 # BPM_DEFAULT_PLAYER=spotify
 # Who sees "Connect Spotify": on | testers (only with ?testers in the URL) | off
 # BPM_SPOTIFY_LOGIN=on

@@ -8,7 +8,10 @@
 # .Renviron for you.
 #
 #   BPM_DEFAULT_PLAYER  "Play via" choice a visitor starts with:
-#                       spotify (default) | youtube | soundcloud | auto
+#                       spotify (default) | youtube | soundcloud
+#                       (a playlist only ever plays from that one service:
+#                       Spotify's and SoundCloud's terms don't allow mixing
+#                       their music with another service's)
 #   BPM_SPOTIFY_LOGIN   who sees "Connect Spotify":
 #                       on      - everyone (default when running locally)
 #                       testers - only visitors who open the app with ?testers
@@ -24,7 +27,7 @@
 #                       detected automatically
 # =============================================================================
 
-PLAYER_CHOICES      <- c("auto", "spotify", "youtube", "soundcloud")
+PLAYER_CHOICES      <- c("spotify", "youtube", "soundcloud")
 SPOTIFY_LOGIN_MODES <- c("on", "testers", "off")
 
 #' TRUE when the app runs on a server rather than on your own machine

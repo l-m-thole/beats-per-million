@@ -113,31 +113,35 @@ test_that("an empty library gives an empty, correctly-shaped assignment", {
                     "soundcloud_url", "bpm", "notes") %in% names(out)))
 })
 
-test_that("full_song_songs keeps only songs that play in full", {
+test_that("service_songs: each service only gets its own songs (no mixing)", {
   lib <- tibble::tibble(
-    song_title     = c("yt", "sc", "sp"),
+    song_title     = c("yt", "sc", "sp", "sp+yt"),
     artist         = "a",
-    spotify_uri    = c(NA, NA, "spotify:track:4uLU6hMCjMI75M1A2tKUQC"),
-    soundcloud_url = c(NA, "https://soundcloud.com/artist/track", NA),
-    youtube_url    = c("https://www.youtube.com/watch?v=dQw4w9WgXcQ", NA, NA),
-    bpm            = c(100, 100, 100),
+    spotify_uri    = c(NA, NA, "spotify:track:4uLU6hMCjMI75M1A2tKUQC",
+                       "spotify:track:4uLU6hMCjMI75M1A2tKUQC"),
+    soundcloud_url = c(NA, "https://soundcloud.com/artist/track", NA, NA),
+    youtube_url    = c("https://www.youtube.com/watch?v=dQw4w9WgXcQ", NA, NA,
+                       "https://youtu.be/qDneDYFM3fk"),
+    bpm            = 100,
     notes          = NA
   )
-  expect_setequal(full_song_songs(lib)$song_title, c("yt", "sc"))
-  expect_setequal(full_song_songs(lib, spotify_full = TRUE)$song_title, c("yt", "sc", "sp"))
-  # only Spotify-only songs -> fall back to the whole library, never empty
-  expect_equal(nrow(full_song_songs(lib[3, ])), 1)
-  expect_equal(nrow(full_song_songs(lib[0, ])), 0)
+  expect_setequal(service_songs(lib, "spotify")$song_title, c("sp", "sp+yt"))
+  expect_setequal(service_songs(lib, "youtube")$song_title, c("yt", "sp+yt"))
+  expect_equal(service_songs(lib, "soundcloud")$song_title, "sc")
+  # a service without songs gets none - never another service's songs
+  expect_equal(nrow(service_songs(lib[3, ], "youtube")), 0)
+  expect_equal(nrow(service_songs(lib[0, ], "spotify")), 0)
+  expect_error(service_songs(lib, "auto"))
 })
 
-test_that("full_song_songs skips known-blocked YouTube videos", {
+test_that("service_songs skips known-blocked YouTube videos", {
   lib <- tibble::tibble(
     song_title = c("ok", "blocked"), artist = "a",
     spotify_uri = NA_character_, soundcloud_url = NA_character_,
     youtube_url = c("https://youtu.be/dQw4w9WgXcQ", "https://youtu.be/qDneDYFM3fk"),
     bpm = 100, notes = NA
   )
-  expect_equal(full_song_songs(lib, bad_youtube = "qDneDYFM3fk")$song_title, "ok")
+  expect_equal(service_songs(lib, "youtube", bad_youtube = "qDneDYFM3fk")$song_title, "ok")
 })
 
 test_that("spotify_songs keeps only songs with a Spotify track id", {

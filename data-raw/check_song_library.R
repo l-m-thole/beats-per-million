@@ -17,11 +17,16 @@
 #   2. every slot gets a song within ±5 BPM (no ±10 / "nearest" fallbacks)
 #   3. at least VARIETY songs within ±5 BPM per slot, so Shuffle has choice
 #   4. (with CHECK_LINKS) every link works and may be embedded
+#
+# With CHECK_LINKS it also lists YouTube links from channels that don't look
+# official (lyrics / promo / fan uploads): swap those for the artist's own,
+# VEVO or "Artist - Topic" upload (not a launch criterion, but do it).
 
 CHECK_LINKS <- FALSE      # TRUE = also test every link online (no keys; ~1-2 min)
 PUBLIC_POOL <- "spotify"  # what public visitors get by default:
                           #   "spotify" = Play via Spotify (BPM_DEFAULT_PLAYER=spotify)
                           #   "youtube" = Play via YouTube, whole songs without login
+                          #   (a playlist never mixes services: one pool each)
 SHUFFLES    <- 0:2        # Shuffle re-rolls to test (0 = what visitors see first)
 VARIETY     <- 3          # songs within ±5 BPM wanted per slot
 OUT_DIR     <- file.path("output", "library_check")
@@ -41,6 +46,8 @@ lib_raw <- read_library_raw("data/song_library.csv")
 lib     <- load_song_library("data")
 blocked <- read_blocked_youtube("data/youtube_blocked.csv")
 pools   <- library_pools(lib, blocked)
+# simulate only services that have songs (SoundCloud may have none)
+pools   <- pools[vapply(pools, NROW, integer(1)) > 0 | names(pools) == PUBLIC_POOL]
 
 # ---- checks -----------------------------------------------------------------
 issues <- check_song_library(lib_raw, blocked_youtube = blocked)
@@ -55,7 +62,7 @@ rule <- function(title) cat("\n", title, "\n", strrep("-", nchar(title)), "\n", 
 
 rule("SONG LIBRARY")
 cat(sprintf("%d songs | %d playable | Spotify %d | YouTube %d (%d blocked) | SoundCloud %d\n",
-            nrow(lib_raw), nrow(pools$all), nrow(pools$spotify),
+            nrow(lib_raw), nrow(playable_songs(lib)), NROW(pools$spotify),
             sum(!is.na(vapply(lib$youtube_url, parse_youtube_id, character(1)))),
             length(blocked), sum(!is.na(lib$soundcloud_url) & nzchar(trimws(lib$soundcloud_url)))))
 
@@ -99,6 +106,17 @@ if (!is.null(links)) {
               sum(is.na(links$ok)), sum(links$title_match %in% FALSE)))
   if (nrow(bad)) print(as.data.frame(bad[, c("line", "song_title", "service", "detail", "found_title")]),
                        row.names = FALSE)
+
+  rule("YOUTUBE UPLOADS FROM CHANNELS THAT DON'T LOOK OFFICIAL")
+  unoff <- links[links$service == "youtube" & links$official %in% FALSE, ]
+  if (!nrow(unoff)) {
+    cat("None - every YouTube link comes from a Topic, VEVO or artist channel.\n")
+  } else {
+    print(as.data.frame(unoff[, c("line", "song_title", "artist", "channel")]), row.names = FALSE)
+    cat("Swap these for the artist's own, VEVO or 'Artist - Topic' upload (label channels\n",
+        "are often fine too - check by hand). Embedding unofficial uploads is where the\n",
+        "app's copyright risk sits.\n", sep = "")
+  }
 }
 
 rule(paste0("VERDICT [", PUBLIC_POOL, " pool]"))

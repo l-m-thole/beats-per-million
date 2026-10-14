@@ -25,7 +25,7 @@ test_that("playback, Previous/Next and the playlist table behave", {
 
   shiny::testServer(app, {
     session$setInputs(selected_period = "modern", scaling_mode = "per_period",
-                      play_source = "spotify", auto_advance = TRUE, full_only = TRUE,
+                      play_source = "spotify", auto_advance = TRUE,
                       play_length = "full", show_covers = FALSE)
     tok <- function() player_token()
     expect_equal(selected_idx(), 1L)
@@ -90,4 +90,81 @@ test_that("playback, Previous/Next and the playlist table behave", {
     expect_true(all(c("match_tol", "n_candidates") %in% names(pk)))
     expect_true(all(pk$n_candidates >= 1))
   })
+})
+
+test_that("one service per playlist; players wait behind the Play gate", {
+  skip_if_not_installed("plotly")
+  skip_if_not_installed("DT")
+  root <- app_root()
+  skip_if(is.null(root), "app.R not found")
+  withr::local_envvar(BPM_DEPLOYED = "true", BPM_SPOTIFY_LOGIN = "off")
+  app <- suppressMessages(suppressWarnings(shiny::shinyAppDir(root)))
+
+  shiny::testServer(app, {
+    session$setInputs(selected_period = "modern", scaling_mode = "per_period",
+                      play_source = "spotify", auto_advance = TRUE,
+                      play_length = "full", show_covers = FALSE)
+    has <- function(col) !is.na(curated_picks()[[col]]) & nzchar(curated_picks()[[col]])
+
+    # Spotify: Spotify songs only, Spotify's gate, no player loaded yet
+    expect_true(all(has("spotify_uri")))
+    html <- as.character(output$music_panel$html)
+    expect_match(html, 'class="player-gate"', fixed = TRUE)
+    expect_match(html, 'data-service="spotify"', fixed = TRUE)
+    expect_match(html, "Play via Spotify", fixed = TRUE)
+    expect_no_match(html, "<iframe", fixed = TRUE)
+    expect_no_match(html, "open.spotify.com/embed", fixed = TRUE)
+
+    # YouTube: YouTube songs only - and no Spotify covers next to YouTube
+    session$setInputs(play_source = "youtube", show_covers = TRUE)
+    expect_true(all(!is.na(vapply(curated_picks()$youtube_url, parse_youtube_id,
+                                  character(1)))))
+    html <- as.character(output$music_panel$html)
+    expect_match(html, 'data-service="youtube"', fixed = TRUE)
+    expect_match(html, "youtube.com/t/terms", fixed = TRUE)
+    expect_null(covers())
+
+    # a YouTube video that fails: never another service; skip only while
+    # music is meant to play
+    tok <- player_token()
+    vid <- parse_youtube_id(selected_curated()$youtube_url)
+    session$setInputs(yt_error = list(token = tok, code = 5, id = vid, autoplay = FALSE))
+    expect_equal(selected_idx(), 1L)                      # stopped: stays
+    html <- as.character(output$music_panel$html)
+    expect_match(html, "can't be played via YouTube here", fixed = TRUE)
+    expect_no_match(html, "bpm-spotify", fixed = TRUE)
+    session$setInputs(next_song = 1)
+    tok <- player_token()
+    vid <- parse_youtube_id(selected_curated()$youtube_url)
+    session$setInputs(yt_error = list(token = tok, code = 5, id = vid, autoplay = TRUE))
+    expect_equal(selected_idx(), 3L)                      # meant to play: next song
+    expect_true(listening())
+  })
+})
+
+test_that("opening the page loads nothing from other sites", {
+  skip_if_not_installed("plotly")
+  skip_if_not_installed("DT")
+  root <- app_root()
+  skip_if(is.null(root), "app.R not found")
+  withr::local_envvar(BPM_DEPLOYED = "true", BPM_SPOTIFY_LOGIN = "off")
+  env <- new.env()
+  withr::with_dir(root, suppressMessages(suppressWarnings(
+    sys.source(file.path(root, "app.R"), envir = env))))
+  page <- htmltools::renderTags(env$ui)
+  head <- paste(as.character(page$head), collapse = "\n")
+  body <- paste(as.character(page$html), collapse = "\n")
+
+  # no fonts, styles or scripts from Google, Spotify, YouTube or SoundCloud
+  expect_no_match(head, paste0("googleapis\\.com|gstatic\\.com|scdn\\.co|spotify\\.com|",
+                               "youtube\\.com|youtube-nocookie\\.com|soundcloud\\.com"))
+  expect_no_match(paste(head, body), '(src|href)="https?://[^"]+\\.(js|css)', perl = TRUE)
+  expect_no_match(body, "<iframe", fixed = TRUE)
+  expect_match(head, "fonts/fonts.css?v=", fixed = TRUE)
+  expect_match(head, "player.js?v=", fixed = TRUE)
+
+  # "Best available" (which mixed services) is gone
+  expect_false("auto" %in% env$PLAY_VIA_CHOICES)
+  expect_true(env$DEFAULT_PLAYER %in% env$PLAY_VIA_CHOICES)
+  expect_true(file.exists(file.path(root, "www", "fonts", "fonts.css")))
 })

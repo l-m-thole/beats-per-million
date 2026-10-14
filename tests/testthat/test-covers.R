@@ -57,13 +57,12 @@ test_that("a missing or broken cache file means no covers, not an error", {
   expect_length(read_cover_cache(bad), 0)
 })
 
-test_that("covers: Spotify from the cache, else the YouTube thumbnail, else NA", {
+test_that("covers: only Spotify covers from the cache - never YouTube thumbnails", {
   cache <- c(AAA = "https://img/a")
-  out <- song_cover_urls(lib$spotify_uri, lib$youtube_url, cache)
-  expect_equal(out, c("https://img/a", NA,
-                      "https://i.ytimg.com/vi/dQw4w9WgXcQ/mqdefault.jpg",
-                      "https://i.ytimg.com/vi/qDneDYFM3fk/mqdefault.jpg"))
-  expect_equal(song_cover_urls(character(0), character(0)), character(0))
+  out <- song_cover_urls(lib$spotify_uri, cache)
+  expect_equal(out, c("https://img/a", NA, NA, NA))
+  expect_false(any(grepl("ytimg", out)))
+  expect_equal(song_cover_urls(character(0)), character(0))
 })
 
 test_that("the app's cover store looks each missing cover up only once", {
