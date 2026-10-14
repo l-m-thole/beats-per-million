@@ -8,7 +8,9 @@
 # What it does
 #   1. Checks: shinyapps.io account known to rsconnect, renv.lock complete and
 #      in sync with your library, tests pass.
-#   2. Copies ONLY the files the app needs into a temporary folder.
+#   2. Works out which tempos need more songs (data/wanted_bpm.csv, shown
+#      under "Suggest a song"), then copies ONLY the files the app needs into
+#      a temporary folder.
 #   3. Writes a server-only .Renviron there: the app settings below, the
 #      production Spotify redirect URI and - only if the tester login is on -
 #      the Spotify app keys. Your YouTube / GetSongBPM / SoundCloud keys and
@@ -26,6 +28,8 @@ DEFAULT_PLAYER <- "spotify"   # what visitors start with: "spotify" | "youtube" 
 SPOTIFY_LOGIN  <- "off"   # "testers": Connect Spotify only via the ?testers link
                               # "off": no Spotify login online | "on": everyone
 CONTACT        <- "lena.thoele@gmail.com"          # email or URL shown in About & privacy
+SUGGEST_URL    <- ""          # "Suggest a song": "" = pre-filled email to CONTACT,
+                              # or a form's address (e.g. a Google Form)
 RUN_TESTS      <- TRUE
 
 # ---- checks ---------------------------------------------------------------
@@ -76,13 +80,40 @@ if (!nzchar(CONTACT)) {
           call. = FALSE)
 }
 
+# ---- songs wanted (About & privacy -> Suggest a song) -----------------------
+# Tempo ranges where the library is thin for the player visitors start with,
+# from the library check's coverage simulation (~10 s). Redone on every
+# deploy, so it always matches the library that goes online
+# (data/wanted_bpm.csv is git-ignored).
+message("Working out which tempos need more songs...")
+local({
+  suppressPackageStartupMessages(library(dplyr))
+  for (f in c("config.R", "functions.R", "load_data.R", "library_check.R", "share.R")) {
+    sys.source(file.path("R", f), envir = environment())
+  }
+  quiet <- function(expr) {                 # these print progress; not needed here
+    out <- NULL
+    utils::capture.output(out <- suppressMessages(expr))
+    out
+  }
+  pool  <- pool_for_player(DEFAULT_PLAYER)
+  co2   <- quiet(load_co2_data("data"))
+  pls   <- quiet(list(per_period = generate_all_playlists(co2)))
+  lib   <- quiet(load_song_library("data"))
+  pools <- library_pools(lib, read_blocked_youtube("data/youtube_blocked.csv"))[pool]
+  ranges <- wanted_bpm_ranges(library_gaps(library_coverage(pls, pools), pools), pool)
+  write_wanted_bpms(ranges, pool, file.path("data", "wanted_bpm.csv"))
+  message("  ", if (nrow(ranges)) paste(wanted_bpm_labels(ranges), collapse = ", ")
+          else "none - every tempo is covered")
+})
+
 # ---- stage the app ----------------------------------------------------------
 APP_FILES <- c(
   "app.R", "DESCRIPTION", "renv.lock",
   list.files("R", pattern = "\\.R$", full.names = TRUE),   # incl. _disable_autoload.R
-  "www/player.js",
+  "www/player.js", "www/og-image.png",
   "data/co2_data.xlsx", "data/rawData/rae2021co2.xlsx",
-  "data/song_library.csv", "data/youtube_blocked.csv"
+  "data/song_library.csv", "data/youtube_blocked.csv", "data/wanted_bpm.csv"
 )
 absent <- APP_FILES[!file.exists(APP_FILES)]
 if (length(absent)) stop("Missing file(s): ", paste(absent, collapse = ", "))
@@ -98,7 +129,9 @@ for (f in APP_FILES) {
 env <- c(BPM_DEPLOYED       = "true",
          BPM_DEFAULT_PLAYER = DEFAULT_PLAYER,
          BPM_SPOTIFY_LOGIN  = SPOTIFY_LOGIN,
-         BPM_CONTACT        = CONTACT)
+         BPM_CONTACT        = CONTACT,
+         BPM_PUBLIC_URL     = APP_URL,          # link previews need absolute addresses
+         BPM_SUGGEST_URL    = SUGGEST_URL)
 if (SPOTIFY_LOGIN != "off") {
   env <- c(env,
            SPOTIFY_CLIENT_ID     = Sys.getenv("SPOTIFY_CLIENT_ID"),

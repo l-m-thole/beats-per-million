@@ -14,7 +14,8 @@ test_that("deployed is detected from the host's environment, and can be forced",
 })
 
 test_that("defaults: Spotify player; login for everyone locally, testers only when deployed", {
-  withr::with_envvar(c(BPM_DEFAULT_PLAYER = "", BPM_SPOTIFY_LOGIN = "", BPM_CONTACT = ""), {
+  withr::with_envvar(c(BPM_DEFAULT_PLAYER = "", BPM_SPOTIFY_LOGIN = "", BPM_CONTACT = "",
+                       BPM_PUBLIC_URL = "", BPM_SUGGEST_URL = ""), {
     local <- app_settings(deployed = FALSE)
     srv   <- app_settings(deployed = TRUE)
   })
@@ -22,16 +23,22 @@ test_that("defaults: Spotify player; login for everyone locally, testers only wh
   expect_equal(local$spotify_login, "on")
   expect_equal(srv$spotify_login, "testers")
   expect_equal(srv$contact, "")
+  expect_equal(srv$public_url, "")
+  expect_equal(srv$suggest_url, "")
 })
 
 test_that("settings are read from the environment; bad values fall back with a warning", {
   withr::with_envvar(c(BPM_DEFAULT_PLAYER = "YouTube", BPM_SPOTIFY_LOGIN = "off",
-                       BPM_CONTACT = " me@example.org "), {
+                       BPM_CONTACT = " me@example.org ",
+                       BPM_PUBLIC_URL = "https://example.shinyapps.io/dance/",
+                       BPM_SUGGEST_URL = "https://forms.example/songs"), {
     s <- app_settings(deployed = TRUE)
   })
   expect_equal(s$default_player, "youtube")
   expect_equal(s$spotify_login, "off")
   expect_equal(s$contact, "me@example.org")
+  expect_equal(s$public_url, "https://example.shinyapps.io/dance/")
+  expect_equal(s$suggest_url, "https://forms.example/songs")
 
   withr::with_envvar(c(BPM_DEFAULT_PLAYER = "napster"), {
     expect_warning(s2 <- app_settings(deployed = FALSE), "not one of")

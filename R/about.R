@@ -27,12 +27,37 @@ modern_data_through <- function(modern) {
   if (is.null(after)) a else tagList(a, after)
 }
 
+#' "Suggest a song": the link, plus the tempos the library is short of
+#'
+#' @param settings app_settings()
+#' @param wanted read_wanted_bpms(): NULL = unknown (tempos not mentioned),
+#'   zero rows = every tempo covered
+#' @return tagList, or NULL when there is nowhere to send a suggestion
+suggest_section <- function(settings, wanted = NULL) {
+  link <- suggest_song_tag(settings, "✉️ Suggest a song")
+  if (is.null(link)) return(NULL)
+  need <- wanted_bpm_labels(wanted)
+  tagList(
+    tags$h4("Suggest a song"),
+    p("Know a song that would fit? Send us the title, the artist and a Spotify or",
+      "YouTube link (and its tempo, if you know it).",
+      if (length(need)) {
+        tagList("Right now we're short of songs at", tags$b(paste(need, collapse = ", "),
+                                                           .noWS = "after"), ".")
+      } else if (!is.null(wanted)) {
+        "Every tempo is covered right now, but more choice always helps."
+      }),
+    p(link)
+  )
+}
+
 #' Contents of the About & privacy window
 #'
 #' @param settings app_settings()
 #' @param co2_data CO2 data list (for the Modern record's end date), optional
+#' @param wanted Tempos that need songs (read_wanted_bpms()), optional
 #' @return tagList
-about_content <- function(settings = app_settings(), co2_data = NULL) {
+about_content <- function(settings = app_settings(), co2_data = NULL, wanted = NULL) {
   through <- modern_data_through(co2_data$modern)
   contact <- trimws(settings$contact %||% "")
   contact_href <- if (grepl("@", contact) && !grepl("^https?://", contact)) {
@@ -92,6 +117,8 @@ about_content <- function(settings = app_settings(), co2_data = NULL) {
       "is in beta, an invitation: Spotify only allows a handful of test accounts for",
       "apps like this one."),
 
+    suggest_section(settings, wanted),
+
     tags$h4("Privacy"),
     tags$ul(
       tags$li("The app itself uses no analytics and no tracking cookies, and keeps no",
@@ -123,10 +150,10 @@ about_content <- function(settings = app_settings(), co2_data = NULL) {
 }
 
 #' Show the About & privacy window
-show_about <- function(settings = app_settings(), co2_data = NULL) {
+show_about <- function(settings = app_settings(), co2_data = NULL, wanted = NULL) {
   showModal(modalDialog(
     title = "About & privacy",
-    about_content(settings, co2_data),
+    about_content(settings, co2_data, wanted),
     size = "l", easyClose = TRUE, footer = modalButton("Close")
   ))
 }

@@ -8,23 +8,26 @@ doing once; after that a re-deploy is one line.
 login off for now (invited testers later) · test Spotify vs YouTube, then pick
 the default player.
 
-## Status (7 Oct 2026)
+## Status (13 Oct 2026)
 
-- [x] Launch-prep code on branch `feature/launch-prep`, pushed to GitHub
+- [x] Launch prep + Spotify snippets merged into `main` (v3.3.0), pushed
 - [x] `renv.lock` complete (`httr2`, `openssl`)
 - [x] shinyapps.io account `beatspermillion`, app `dance` deployed:
       <https://beatspermillion.shinyapps.io/dance/>
 - [x] Keys in your local `.Renviron`: Spotify ID + secret, YouTube, GetSongBPM
 - [x] Live app shows the gmail contact, no Spotify login, Spotify as default
       player (checked 7 Oct, 14:08)
-- [ ] Commit + push the latest edits (contact → gmail, docs) so GitHub matches
-      what's online
+- [ ] v3.4.0 (link previews, *Suggest a song*, tests on GitHub, Mauna Loa
+      refresh): commit on a branch, push, merge, re-deploy
+- [ ] GitHub, once: *Settings → Actions → General → Workflow permissions →*
+      allow Actions to create pull requests; then *Actions → refresh-co2 → Run
+      workflow* (the Modern data ends Nov 2024), merge its PR, re-deploy
+- [ ] Send the link to yourself in WhatsApp/Signal to see the preview card
 - [ ] Player test with friends (step 4) → set `DEFAULT_PLAYER`
 - [ ] Spotify tester login (optional): `SPOTIFY_LOGIN <- "testers"`, step 2,
       re-deploy
 - [ ] Library (step 6): fix the 11 unlinked rows, add ~3 songs at 60–69 BPM,
       run the check once with `CHECK_LINKS <- TRUE`
-- [ ] Merge `feature/launch-prep` into `main` after the test round
 
 ---
 
@@ -191,3 +194,9 @@ Status on 7 Oct 2026 (231 songs):
   Mac as before; on the server each browser gets its own, kept in memory only.
 - **Settings without code changes:** see `.Renviron.example` (`BPM_*`
   variables) — the deploy script writes them for the server.
+- **Link previews** are cached by WhatsApp, Signal, Slack etc., so after
+  changing `www/og-image.png` an old card can show for a while. If the app was
+  asleep, the very first preview may come out blank — share it again.
+- **Suggest a song** goes to `CONTACT` by email; set `SUGGEST_URL` in the
+  deploy script to use a form instead. The tempos listed with it are worked
+  out on every deploy for the pool of `DEFAULT_PLAYER`.

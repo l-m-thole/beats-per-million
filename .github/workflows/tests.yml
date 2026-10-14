@@ -1,0 +1,43 @@
+# Runs the testthat suite on every push (any branch), so a broken change shows
+# up on GitHub before it is deployed. Packages come from renv.lock (binaries
+# from Posit Package Manager, cached between runs).
+name: tests
+
+on:
+  push:
+    paths-ignore:          # docs-only pushes don't need a test run
+      - "**.md"
+      - "output/**"
+  workflow_dispatch:       # Actions tab -> tests -> Run workflow
+
+permissions:
+  contents: read
+
+jobs:
+  testthat:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      LANG: C.UTF-8          # the enrichment tests use Swedish characters
+      LC_ALL: C.UTF-8
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: System libraries
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            libcurl4-openssl-dev libssl-dev libxml2-dev libicu-dev
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: renv          # the R version in renv.lock
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-renv@v2
+
+      - name: Install testthat (not in renv.lock - only Imports are locked)
+        run: Rscript -e 'renv::install("testthat")'
+
+      - name: Run the tests
+        run: Rscript -e 'testthat::test_dir("tests/testthat", reporter = "summary", stop_on_failure = TRUE)'

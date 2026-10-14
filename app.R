@@ -37,6 +37,7 @@ source(here::here("R", "load_data.R"))
 source(here::here("R", "settings.R"))
 source(here::here("R", "spotify.R"))
 source(here::here("R", "about.R"))
+source(here::here("R", "share.R"))
 
 # Local vs deployed, default player, who may log in to Spotify, contact.
 # All from environment variables - see R/settings.R and .Renviron.example.
@@ -490,6 +491,10 @@ if (!any(!is.na(SONG_LIBRARY$soundcloud_url) & nzchar(trimws(SONG_LIBRARY$soundc
 }
 DEFAULT_PLAYER <- if (SETTINGS$default_player %in% PLAY_VIA_CHOICES) SETTINGS$default_player else "auto"
 
+# Tempos the library is short of, for "Suggest a song" in About & privacy.
+# Worked out by the deploy script (data/wanted_bpm.csv); NULL until then.
+WANTED_BPMS <- read_wanted_bpms(here::here("data", "wanted_bpm.csv"))
+
 # YouTube videos that refused to play in the app (owner blocks embedding,
 # removed, ...). Remembered across sessions so they are skipped next time.
 YT_BLOCKED_FILE <- here::here("data", "youtube_blocked.csv")
@@ -512,9 +517,12 @@ add_yt_blocked <- function(id, code) {
 # -----------------------------------------------------------------------------
 
 ui <- fluidPage(
-  
+  title = APP_TITLE_LONG,   # browser tab and bookmarks
+
   # Custom CSS
   tags$head(
+    # Link previews when someone shares the address (see R/share.R)
+    social_meta_tags(SETTINGS$public_url),
     tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=JetBrains+Mono:wght@300;400;500&family=DM+Sans:wght@400;500;600&display=swap"),
     # App styles (defined inline in app_css())
     tags$style(HTML(app_css())),
@@ -689,7 +697,10 @@ ui <- fluidPage(
       p("Song tempos (BPM) partly from ",
         tags$a(href = "https://getsongbpm.com", target = "_blank", "GetSongBPM")),
       p("A collaboration between Martin Wegmann and Lena Thöle",
-        " • ", actionLink("about", "About & privacy"))
+        " • ", actionLink("about", "About & privacy"),
+        if (!is.null(suggest_song_link(SETTINGS))) {
+          tagList(" • ", suggest_song_tag(SETTINGS, "Suggest a song"))
+        })
   )
 )
 
@@ -839,7 +850,7 @@ server <- function(input, output, session) {
     if (!is.null(fl$player) && fl$player %in% PLAY_VIA_CHOICES) {
       updateRadioButtons(session, "play_source", selected = fl$player)
     }
-    if (fl$about) show_about(SETTINGS, CO2_DATA)
+    if (fl$about) show_about(SETTINGS, CO2_DATA, WANTED_BPMS)
 
     if (!is.null(q$error)) {
       showNotification(paste("Spotify login cancelled:", q$error), type = "warning")
@@ -859,7 +870,7 @@ server <- function(input, output, session) {
     send_sp_token()
   }, once = TRUE, ignoreNULL = FALSE)
 
-  observeEvent(input$about, show_about(SETTINGS, CO2_DATA))
+  observeEvent(input$about, show_about(SETTINGS, CO2_DATA, WANTED_BPMS))
 
   observeEvent(input$sp_token_request, send_sp_token())
 

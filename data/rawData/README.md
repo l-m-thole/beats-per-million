@@ -5,7 +5,7 @@ built from these by `data-raw/build_co2_data.R`.
 
 | File | What it is | Used by |
 |------|------------|---------|
-| `co2_mm_mlo.csv` | Monthly mean atmospheric CO2 at Mauna Loa, 1958–present (the "Keeling Curve"). | Builds the `maunaloa` sheet → Modern playlist. |
+| `co2_mm_mlo.csv` | Monthly mean atmospheric CO2 at Mauna Loa, 1958–present (the "Keeling Curve"). Refreshed from NOAA by `data-raw/update_maunaloa.R` (monthly GitHub Action). | Builds the `maunaloa` sheet → Modern playlist. |
 | `rae2021co2.xlsx` | Cenozoic (0–66 Ma) CO2 from marine proxies: alkenone δ13C + boron δ11B. | Read directly by `load_rae2021_data()` → Cenozoic playlist. |
 | `eggleston2016.xlsx` | Antarctic ice-core CO2 + carbon-isotope (δ13CO2) record, ~155 kyr (EDC / EDML / Talos cores). | **Not currently used** — kept as a reference dataset; overlaps the Bereiter record for 0–155 kyr. |
 

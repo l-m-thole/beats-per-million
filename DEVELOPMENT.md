@@ -34,6 +34,26 @@ source("data-raw/build_co2_data.R")
   (see the script header for the NCEI download). Until then the existing sheet
   is preserved and the script warns, so it still runs end to end.
 
+### Newer Mauna Loa months
+
+```r
+source("data-raw/update_maunaloa.R")
+```
+
+Downloads NOAA's `co2_mm_mlo.csv`, checks it (`check_maunaloa_update()` in
+`R/refresh_co2.R`: at least 600 rows, starts in 1958, dates in order, values
+300–600 ppm, doesn't end earlier, no month we already had changed by more than
+1 ppm) and only then replaces `data/rawData/co2_mm_mlo.csv` and rebuilds
+`co2_data.xlsx` — and only when NOAA has new or revised months. The Modern
+playlist, its end date in *About* and the period stats follow automatically;
+re-deploy afterwards.
+
+**Monthly on GitHub:** `.github/workflows/refresh-co2.yml` runs the same script
+on the 9th of every month (or *Actions → refresh-co2 → Run workflow*), runs the
+tests, and opens a pull request `Data: Mauna Loa CO₂ through <month>` if
+something changed. One-time setting: *Settings → Actions → General → Workflow
+permissions → Allow GitHub Actions to create and approve pull requests*.
+
 ## Run the tests
 
 ```r
@@ -52,10 +72,18 @@ events (`period_context.R`: every event inside its period, ordering, window
 lookup), the app settings and URL flags (`settings.R`), the Spotify login
 plumbing (random single-use login states, one token store per visitor when
 deployed, nothing on disk online), the library check (`library_check.R`: row
-issues, faked oEmbed link checks, coverage and gaps), and the About text.
+issues, faked oEmbed link checks, coverage and gaps), the About text, the
+sharing helpers (`share.R`: link-preview tags, preview image size, the
+*Suggest a song* link, wanted tempo ranges and their file), and the Mauna Loa
+refresh (`refresh_co2.R`: reading NOAA's file, the sanity checks, replacing
+the file only on real changes; the download is faked).
 
 The enrichment test with Swedish characters needs a UTF-8 locale (it is on any
 normal Mac/RStudio setup).
+
+**On GitHub:** `.github/workflows/tests.yml` runs the whole suite on every push
+(docs-only pushes skipped) with the packages from `renv.lock` plus `testthat`.
+Results: the badge in the README, or the repo's *Actions* tab.
 
 ## Song library (in-app playback)
 
@@ -95,6 +123,20 @@ See [`LAUNCH.md`](LAUNCH.md).
 `source("data-raw/check_song_library.R")` — row issues, coverage simulation
 with the app's own matcher, BPM gaps, and a READY / NOT YET verdict
 (`R/library_check.R`).
+
+## Link previews & Suggest a song
+
+`R/share.R`. The preview tags sit in the static UI (crawlers don't run
+JavaScript) and need the app's absolute address, which the deploy script passes
+as `BPM_PUBLIC_URL`. The picture is `www/og-image.png` (1200 × 630), drawn by
+`source("data-raw/make_og_image.R")` in the app's fonts if installed. To test,
+send the deployed link to yourself in WhatsApp/Signal/Slack; those apps cache
+previews, so a changed picture can take a while to show.
+
+*Suggest a song* points to `BPM_SUGGEST_URL` (deploy script: `SUGGEST_URL`) or
+else a pre-filled email to `BPM_CONTACT`. The tempos listed with it come from
+`data/wanted_bpm.csv`, which the deploy script recomputes from the library
+check (pool = the default player's) on every deploy; the app only reads it.
 
 ## Regenerate playlist outputs
 

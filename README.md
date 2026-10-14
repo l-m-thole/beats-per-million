@@ -1,5 +1,7 @@
 # 🌍 Beats per Million — Dance While You Can
 
+[![tests](https://github.com/l-m-thole/climate_playlist/actions/workflows/tests.yml/badge.svg)](https://github.com/l-m-thole/climate_playlist/actions/workflows/tests.yml)
+
 **Translating Earth's Climate History into Music**
 
 This project converts atmospheric CO₂ concentrations through geological time into "beats per minute" (BPM) values, creating a unique sonic experience of climate change. Lower CO₂ (ice ages) produces slow, ambient music; higher CO₂ (hothouse conditions) produces fast, energetic music.
@@ -98,6 +100,13 @@ Spotify login (or none), *Connect Spotify* is only shown via the `?testers`
 link, and *About & privacy* is in the footer. Step-by-step setup, the player
 test table and the launch criteria: [`LAUNCH.md`](LAUNCH.md).
 
+**Sharing the link** shows a preview card (title, one line, and
+`www/og-image.png` — the 800,000-year CO₂ curve; tags in `R/share.R`, picture
+from `data-raw/make_og_image.R`). **Suggest a song** in the footer and in
+*About & privacy* opens a pre-filled email to `CONTACT` (or a form, if you set
+`SUGGEST_URL` in the deploy script); *About* also lists the tempos the library
+is short of, which the deploy script works out each time (`data/wanted_bpm.csv`).
+
 **Live:** <https://beatspermillion.shinyapps.io/dance/> (shinyapps.io account
 `beatspermillion`, app `dance`; free plan, 25 active hours a month). The online
 settings are at the top of `deploy/deploy_shinyapps.R` — currently
@@ -134,18 +143,26 @@ climate_playlist/
 │   ├── about.R                # "About & privacy" window
 │   ├── library_check.R        # Is the song library good enough to launch?
 │   ├── enrich_library.R       # Fills blank BPM / Spotify / SoundCloud / YouTube cells
+│   ├── share.R                # Link previews, "Suggest a song", tempos that need songs
+│   ├── refresh_co2.R          # Fetch + check NOAA's newest Mauna Loa file
 │   └── _disable_autoload.R    # Stops runApp() from sourcing everything in R/
-├── www/player.js              # In-app players, progress + auto-advance
+├── www/
+│   ├── player.js              # In-app players, progress + auto-advance
+│   └── og-image.png           # Link-preview picture (data-raw/make_og_image.R)
 ├── deploy/deploy_shinyapps.R  # Puts the app online (shinyapps.io)
+├── .github/workflows/         # tests on every push; monthly Mauna Loa refresh (PR)
 ├── rsconnect/                 # Deployment record (git-ignored)
 ├── data/
 │   ├── co2_data.xlsx          # Processed: 'maunaloa' + 'bereiter2014' sheets
 │   ├── song_library.csv       # Your songs + their real BPM (matched at run time)
 │   ├── song_library_enrich_log.csv  # Review log of the last enrichment run
+│   ├── wanted_bpm.csv         # Tempos that need songs (made on deploy, git-ignored)
 │   ├── backups/               # Library backups made by the enrichment (git-ignored)
 │   └── rawData/               # Raw CO2 files + provenance README
 ├── data-raw/
 │   ├── build_co2_data.R       # Rebuilds co2_data.xlsx from rawData/
+│   ├── update_maunaloa.R      # Fetches NOAA's newest months, then rebuilds
+│   ├── make_og_image.R        # Draws www/og-image.png
 │   ├── enrich_song_library.R  # Run the song-library enrichment
 │   └── check_song_library.R   # Library report: fixes, gaps, READY / NOT YET
 ├── tests/testthat/            # Unit tests
@@ -165,6 +182,10 @@ climate_playlist/
 - **Source:** NOAA Mauna Loa Observatory
 - **URL:** https://gml.noaa.gov/ccgg/trends/
 - **Description:** Direct atmospheric CO₂ measurements (the "Keeling Curve")
+- **Updates:** `source("data-raw/update_maunaloa.R")` fetches NOAA's newest
+  months, checks them and rebuilds `data/co2_data.xlsx`. A GitHub Action does
+  the same on the 9th of every month and opens a pull request when there is
+  something new (`.github/workflows/refresh-co2.yml`).
 
 ### Ice Core Record (0–800,000 years)
 - **Source:** Bereiter et al. (2015)
