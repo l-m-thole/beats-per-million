@@ -72,7 +72,9 @@ player_gate <- function(service) {
           tagList("By playing you agree to the",
                   .ext(YOUTUBE_TERMS_URL, "YouTube Terms of Service", after = "."))
         },
-        actionLink("about_gate", "More in About & privacy", .noWS = "after"), "."))
+        # no .noWS here: newer Shiny's actionLink() sets .noWS itself, a second
+        # one is an error ("matched by multiple actual arguments")
+        actionLink("about_gate", "More in About & privacy")))
 }
 
 #' "Suggest a song": the link, plus the tempos the library is short of
