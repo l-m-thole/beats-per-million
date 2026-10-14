@@ -34,6 +34,26 @@ source("data-raw/build_co2_data.R")
   (see the script header for the NCEI download). Until then the existing sheet
   is preserved and the script warns, so it still runs end to end.
 
+### Newer Mauna Loa months
+
+```r
+source("data-raw/update_maunaloa.R")
+```
+
+Downloads NOAA's `co2_mm_mlo.csv`, checks it (`check_maunaloa_update()` in
+`R/refresh_co2.R`: at least 600 rows, starts in 1958, dates in order, values
+300–600 ppm, doesn't end earlier, no month we already had changed by more than
+1 ppm) and only then replaces `data/rawData/co2_mm_mlo.csv` and rebuilds
+`co2_data.xlsx` — and only when NOAA has new or revised months. The Modern
+playlist, its end date in *About* and the period stats follow automatically;
+re-deploy afterwards.
+
+**Monthly on GitHub:** `.github/workflows/refresh-co2.yml` runs the same script
+on the 9th of every month (or *Actions → refresh-co2 → Run workflow*), runs the
+tests, and opens a pull request `Data: Mauna Loa CO₂ through <month>` if
+something changed. One-time setting: *Settings → Actions → General → Workflow
+permissions → Allow GitHub Actions to create and approve pull requests*.
+
 ## Run the tests
 
 ```r
@@ -52,10 +72,28 @@ events (`period_context.R`: every event inside its period, ordering, window
 lookup), the app settings and URL flags (`settings.R`), the Spotify login
 plumbing (random single-use login states, one token store per visitor when
 deployed, nothing on disk online), the library check (`library_check.R`: row
-issues, faked oEmbed link checks, coverage and gaps), and the About text.
+issues, faked oEmbed link checks, coverage and gaps), the About text, the
+sharing helpers (`share.R`: link-preview tags, preview image size, the
+*Suggest a song* link, wanted tempo ranges and their file), and the Mauna Loa
+refresh (`refresh_co2.R`: reading NOAA's file, the sanity checks, replacing
+the file only on real changes; the download is faked), the *How it works* /
+*About this era* windows and how each era's CO₂ was measured, the album-cover
+cache (`covers.R`, offline with a fake lookup), the playlist helpers (tempo
+*Feel*, which song a point on the curve belongs to, the CSV download), and the
+app's server logic (`test-app_server.R`, via `shiny::testServer()`: a new song
+only starts by itself while music plays, Previous / Next, the playlist table,
+how each song was matched).
 
 The enrichment test with Swedish characters needs a UTF-8 locale (it is on any
 normal Mac/RStudio setup).
+
+**On GitHub:** `.github/workflows/tests.yml` runs the whole suite on every push
+(docs-only pushes skipped). It installs the app's packages from `DESCRIPTION`
+(Imports + Suggests) as ready-made Linux binaries with pak and switches renv
+off (`RENV_CONFIG_AUTOLOADER_ENABLED=false`): `renv::restore()` from the Mac's
+lockfile failed there on the compiled packages. `renv.lock` is still what your
+Mac and shinyapps.io use. Results: the badge in the README, or the repo's
+*Actions* tab.
 
 ## Song library (in-app playback)
 
@@ -71,9 +109,33 @@ exporting the templates.
 
 ## Period texts & key events
 
-Background texts and key events per period live in `R/period_context.R`
-(sourced by `app.R` after `functions.R`). Ages are years BP (before 1950);
-modern events are written as CE years via `.yr()`.
+Background texts, key events and how the CO₂ was measured (`CO2_MEASUREMENT`
+per data source, `CO2_MEASUREMENT_NOTES` per era) live in
+`R/period_context.R` (sourced by `app.R` after `functions.R`). Ages are years
+BP (before 1950); modern events are written as CE years via `.yr()`. The
+windows that show them are built in `R/how_it_works.R`, which also holds the
+app's story and the makers (`APP_STORY`, `APP_MAKERS`).
+
+## Layout & player logic (app.R, www/player.js)
+
+- **Layout:** header, era buttons (`radioButtons` styled as buttons), then a
+  CSS grid: plot and playlist on the left, the Listen card on the right
+  (`position: sticky`). Below 992 px it is one column: plot, Listen, playlist.
+- **Font sizes:** Bootstrap 3 sets the root font to 10 px; `app_css()` resets it
+  to 16 px so the `rem` sizes mean what they say (Bootstrap itself uses px).
+- **Selected song:** `selected_idx()` is the only source of truth. The table has
+  no DT selection: `player.js` sends row clicks as `input$playlist_row_click`
+  (the song number from the first column, so sorting and filtering are safe)
+  and highlights the row the server names (`bpm_select_row`), scrolling only the
+  table. Previous / Next move by the click difference, so quick clicks add up.
+- **Plot:** fixed axes, no mode bar; the selected slice is a shape. Clicking
+  the curve or a cover uses the points' `customdata` (song number). Covers use
+  a hidden second y-axis (`y2`) above the CO₂ axis.
+- **Autoplay:** `listening()` is TRUE only while music plays. `player.js`
+  reports play / pause (`input$player_state`, never for its own end-of-song
+  pause or a player that hasn't started); a newly rendered player gets
+  `data-autoplay` from `listening()`. At the end of a song, *Auto-play the next
+  song* decides whether the playlist continues.
 
 ## Secrets
 
@@ -90,11 +152,33 @@ stages only the runtime files and writes the server's `.Renviron`; it refuses
 to deploy if `renv.lock` is missing an imported package or is out of sync.
 See [`LAUNCH.md`](LAUNCH.md).
 
+## Album covers
+
+`R/covers.R`: `update_cover_cache()` (used by `data-raw/fetch_covers.R` and the
+deploy script) fills `data/song_covers.csv` from Spotify's oEmbed
+`thumbnail_url`; in the app `cover_store()` / `store_cover_urls()` read it and
+look up missing ones once per R process (in parallel), with the YouTube
+thumbnail as fallback.
+
 ## Song-library check
 
 `source("data-raw/check_song_library.R")` — row issues, coverage simulation
 with the app's own matcher, BPM gaps, and a READY / NOT YET verdict
 (`R/library_check.R`).
+
+## Link previews & Suggest a song
+
+`R/share.R`. The preview tags sit in the static UI (crawlers don't run
+JavaScript) and need the app's absolute address, which the deploy script passes
+as `BPM_PUBLIC_URL`. The picture is `www/og-image.png` (1200 × 630), drawn by
+`source("data-raw/make_og_image.R")` in the app's fonts if installed. To test,
+send the deployed link to yourself in WhatsApp/Signal/Slack; those apps cache
+previews, so a changed picture can take a while to show.
+
+*Suggest a song* points to `BPM_SUGGEST_URL` (deploy script: `SUGGEST_URL`) or
+else a pre-filled email to `BPM_CONTACT`. The tempos listed with it come from
+`data/wanted_bpm.csv`, which the deploy script recomputes from the library
+check (pool = the default player's) on every deploy; the app only reads it.
 
 ## Regenerate playlist outputs
 

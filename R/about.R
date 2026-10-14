@@ -27,12 +27,37 @@ modern_data_through <- function(modern) {
   if (is.null(after)) a else tagList(a, after)
 }
 
+#' "Suggest a song": the link, plus the tempos the library is short of
+#'
+#' @param settings app_settings()
+#' @param wanted read_wanted_bpms(): NULL = unknown (tempos not mentioned),
+#'   zero rows = every tempo covered
+#' @return tagList, or NULL when there is nowhere to send a suggestion
+suggest_section <- function(settings, wanted = NULL) {
+  link <- suggest_song_tag(settings, "✉️ Suggest a song")
+  if (is.null(link)) return(NULL)
+  need <- wanted_bpm_labels(wanted)
+  tagList(
+    tags$h4("Suggest a song"),
+    p("Know a song that would fit? Send us the title, the artist and a Spotify or",
+      "YouTube link (and its tempo, if you know it).",
+      if (length(need)) {
+        tagList("Right now we're short of songs at", tags$b(paste(need, collapse = ", "),
+                                                           .noWS = "after"), ".")
+      } else if (!is.null(wanted)) {
+        "Every tempo is covered right now, but more choice always helps."
+      }),
+    p(link)
+  )
+}
+
 #' Contents of the About & privacy window
 #'
 #' @param settings app_settings()
 #' @param co2_data CO2 data list (for the Modern record's end date), optional
+#' @param wanted Tempos that need songs (read_wanted_bpms()), optional
 #' @return tagList
-about_content <- function(settings = app_settings(), co2_data = NULL) {
+about_content <- function(settings = app_settings(), co2_data = NULL, wanted = NULL) {
   through <- modern_data_through(co2_data$modern)
   contact <- trimws(settings$contact %||% "")
   contact_href <- if (grepl("@", contact) && !grepl("^https?://", contact)) {
@@ -42,26 +67,12 @@ about_content <- function(settings = app_settings(), co2_data = NULL) {
   tagList(
     tags$h4("What is this?"),
     p("Beats per Million turns atmospheric CO₂ through Earth's history into tempo:",
-      "the more CO₂, the faster the music. Pick a period, press play and listen to",
+      "the more CO₂, the faster the music. Pick an era, press play and listen to",
       "the climate speed up or slow down – from the end of the dinosaurs to the",
       "Keeling Curve today."),
-
-    tags$h4("How CO₂ becomes tempo"),
-    tags$ul(
-      tags$li("Each period's CO₂ record is cut into song-length windows: 3 minutes of",
-              "music stand for anything from 3 years (Modern) to 750,000 years (Cenozoic)."),
-      tags$li("The mean CO₂ of each window is mapped linearly onto 60–150 BPM.",
-              tags$b("Per period:"), "the period's lowest CO₂ becomes 60 BPM and its highest",
-              "150 BPM, for the most contrast.", tags$b("Global:"), "one scale for all periods,",
-              "so tempos can be compared across eras."),
-      tags$li("Every window then gets a real song from our hand-picked library whose tempo",
-              "is within ±5 BPM where possible (then ±10, then the nearest).",
-              tags$b("Shuffle"), "picks different songs.")
-    ),
-    p(class = "muted", "Caveats: per-period scaling exaggerates small changes (e.g. the nearly",
-      "flat Roman era); the Cenozoic record is averaged in 100,000-year bins, which smooths",
-      "short events such as the PETM; tempos from song databases can be off by half or",
-      "double time."),
+    p("How CO₂ becomes tempo, how the songs are picked and how the CO₂ was measured:",
+      "see", tags$b("How it works", .noWS = "after"), " at the top of the app, and",
+      tags$b("About this era", .noWS = "after"), " on the CO₂ plot."),
 
     tags$h4("Data"),
     tags$ul(
@@ -92,12 +103,14 @@ about_content <- function(settings = app_settings(), co2_data = NULL) {
       "is in beta, an invitation: Spotify only allows a handful of test accounts for",
       "apps like this one."),
 
+    suggest_section(settings, wanted),
+
     tags$h4("Privacy"),
     tags$ul(
       tags$li("The app itself uses no analytics and no tracking cookies, and keeps no",
               "record of who you are."),
-      tags$li("The page loads code and players from Spotify, YouTube (Google) and",
-              "SoundCloud, and fonts from Google Fonts. These services receive your IP",
+      tags$li("The page loads code, players and album covers from Spotify, YouTube (Google)",
+              "and SoundCloud, and fonts from Google Fonts. These services receive your IP",
               "address and may set their own cookies under their own policies:",
               .ext("https://www.spotify.com/legal/privacy-policy/", "Spotify"), "·",
               .ext("https://policies.google.com/privacy", "Google/YouTube"), "·",
@@ -123,10 +136,10 @@ about_content <- function(settings = app_settings(), co2_data = NULL) {
 }
 
 #' Show the About & privacy window
-show_about <- function(settings = app_settings(), co2_data = NULL) {
+show_about <- function(settings = app_settings(), co2_data = NULL, wanted = NULL) {
   showModal(modalDialog(
     title = "About & privacy",
-    about_content(settings, co2_data),
+    about_content(settings, co2_data, wanted),
     size = "l", easyClose = TRUE, footer = modalButton("Close")
   ))
 }

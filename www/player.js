@@ -11,8 +11,16 @@
 //
 // Reports to Shiny:
 //   input$player_progress = {token, frac, pos, dur}  (~2x per second)
+//   input$player_state    = {token, playing, t}      (play / pause, on change)
 //   input$player_ended    = {token, t}                (song finished)
 //   input$sp_device / input$sp_error / input$sp_token_request (SDK plumbing)
+//
+// player_state tells the app whether music is playing: a newly selected song
+// only starts by itself while it is. A pause is reported only after the song
+// really started (a player that is still loading doesn't count), and never
+// for the pause the app makes itself at the end of a song or snippet.
+//
+// At the bottom: small helpers for the playlist table and Previous / Next.
 // =============================================================================
 (function () {
   var SEND_EVERY_MS = 500;   // progress throttle
@@ -21,11 +29,21 @@
   var ytReady = false, ytQueue = [], ytPlayer = null, ytPoll = null;
   var spController = null, scWidget = null;
   var token = null, ended = false, lastSent = 0, spLastPos = 0, scDur = 0;
+  var lastState = null;   // last play/pause reported for this song (null = none yet)
 
   function send(name, value, event) {
     if (window.Shiny && Shiny.setInputValue) {
       Shiny.setInputValue(name, value, event ? { priority: "event" } : undefined);
     }
+  }
+
+  // Play / pause of the current song -> Shiny (only changes; see header)
+  function sendState(myToken, playing) {
+    if (ended || myToken !== token) return;
+    if (playing === lastState) return;
+    if (!playing && lastState !== true) return;
+    lastState = playing;
+    send("player_state", { token: myToken, playing: playing, t: Date.now() }, true);
   }
   // ---- Song length: whole song (default) or short snippets ----------------
   // Set from Shiny ("Song length" / "Snippets start at"), read live, so
@@ -171,6 +189,7 @@
             ((st.paused && st.position === 0) || st.position < sdk.lastPos - 5000)) {
           finish(myToken, limitFor(st.duration));
         }
+        if (sdk.hasPlayed) sendState(myToken, !st.paused);
         sdk.lastPos = st.position;
       });
     }, 500);
@@ -261,6 +280,7 @@
       sdk.playingToken = null;
     }
     token = newToken; ended = false; lastSent = 0; spLastPos = 0; scDur = 0; seeked = false;
+    lastState = null;
     if (!box) return;
     box.setAttribute("data-mounted", "1");
 
@@ -309,10 +329,16 @@
                 maybeSeek(e.target.getDuration() * 1000, e.target.getCurrentTime() * 1000,
                           function (ms) { e.target.seekTo(ms / 1000, true); });
                 startYtPoll(e.target, myToken);
+                sendState(myToken, true);
               } else if (e.data === YT.PlayerState.ENDED) {
                 finish(myToken, limitFor(e.target.getDuration() * 1000));
               } else {
                 clearInterval(ytPoll);
+                // (a pause in the last second or two is the song ending, not you)
+                if (e.data === YT.PlayerState.PAUSED) {
+                  var d = e.target.getDuration(), t = e.target.getCurrentTime();
+                  if (!(d > 0 && t >= d - 1.5)) sendState(myToken, false);
+                }
               }
             },
             onError: function (e) {
@@ -335,6 +361,7 @@
         if (autoplay && myToken === token) w.play();
       });
       w.bind(SC.Widget.Events.PLAY, function () {
+        sendState(myToken, true);
         try { if (spController && myToken === token) spController.pause(); } catch (e) {}
         w.getDuration(function (d) {
           scDur = d;
@@ -343,6 +370,12 @@
       });
       w.bind(SC.Widget.Events.PLAY_PROGRESS, function (e) {
         report(myToken, e.currentPosition, scDur);
+      });
+      w.bind(SC.Widget.Events.PAUSE, function () {
+        // SoundCloud may pause right before FINISH: not a pause by you
+        w.getPosition(function (pos) {
+          if (!(scDur > 0 && pos >= scDur - 1500)) sendState(myToken, false);
+        });
       });
       w.bind(SC.Widget.Events.FINISH, function () { finish(myToken, scDur); });
     }
@@ -392,6 +425,7 @@
             var nearEnd = d.position >= d.duration - 800 ||
                           (d.isPaused && d.position === 0 && spLastPos > d.duration - 2000);
             if (nearEnd) finish(myToken, limitFor(d.duration));
+            else if (started) sendState(myToken, !d.isPaused);
             spLastPos = d.position;
           });
         });
@@ -401,5 +435,68 @@
 
   $(document).on("shiny:value", function (e) {
     if (e.name === "music_panel") setTimeout(mount, 0);
+  });
+
+  // ===========================================================================
+  // Playlist table + Previous / Next
+  // ===========================================================================
+  // The table has no DT selection: rows are matched by their song number
+  // (first column), so sorting and filtering never mix them up.
+
+  var selectedRow = {};   // table id -> selected song number
+
+  function songNumber(tr) {
+    var td = tr && tr.querySelector("td");
+    var n = td ? parseInt(td.textContent, 10) : NaN;
+    return isNaN(n) ? null : n;
+  }
+
+  // Scroll the table's own scroll box (never the page) so the selected row is
+  // visible - only if it isn't already.
+  function scrollToSelected(wrap) {
+    var body = wrap.querySelector(".dataTables_scrollBody");
+    var row = wrap.querySelector(".dataTables_scrollBody tbody tr.selected");
+    if (!body || !row) return;
+    var b = body.getBoundingClientRect(), r = row.getBoundingClientRect();
+    if (r.top >= b.top && r.bottom <= b.bottom) return;
+    body.scrollTop += (r.top - b.top) - (b.height - r.height) / 2;
+  }
+
+  function highlightRow(id, scroll) {
+    var wrap = document.getElementById(id);
+    if (!wrap || !selectedRow[id]) return;
+    var rows = wrap.querySelectorAll(".dataTables_scrollBody tbody tr, table.dataTable > tbody > tr");
+    Array.prototype.forEach.call(rows, function (tr) {
+      tr.classList.toggle("selected", songNumber(tr) === selectedRow[id]);
+    });
+    if (scroll) scrollToSelected(wrap);
+  }
+
+  Shiny.addCustomMessageHandler("bpm_select_row", function (m) {
+    selectedRow[m.id] = m.row;
+    setTimeout(function () { highlightRow(m.id, true); }, 0);
+  });
+
+  // (Re)drawn table - other era, scale, songs, a sort or a filter
+  $(document).on("draw.dt", function (e, settings) {
+    var host = $(settings.nTable).closest(".datatables").attr("id");
+    if (host) setTimeout(function () { highlightRow(host, true); }, 30);
+  });
+
+  // Click a row -> that song (always sent, even for the same row twice)
+  $(document).on("click", "#playlist_table tbody tr", function () {
+    var n = songNumber(this);
+    if (n === null) return;
+    selectedRow.playlist_table = n;
+    highlightRow("playlist_table", false);
+    send("playlist_row_click", { row: n, t: Date.now() }, true);
+  });
+
+  // Grey out Previous at the first song and Next at the last
+  Shiny.addCustomMessageHandler("bpm_nav", function (m) {
+    var prev = document.getElementById("prev_song");
+    var next = document.getElementById("next_song");
+    if (prev) prev.disabled = !m.prev;
+    if (next) next.disabled = !m.next;
   });
 })();

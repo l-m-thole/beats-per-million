@@ -7,6 +7,9 @@
 #
 #   source("data-raw/build_co2_data.R")
 #
+# To fetch NOAA's newest Mauna Loa months first, run
+# data-raw/update_maunaloa.R instead (it calls this script).
+#
 # Sheets produced:
 #   maunaloa      Modern monthly CO2 (NOAA Mauna Loa)
 #   bereiter2014  Ice-core 800 kyr composite (Bereiter et al. 2015; name kept
@@ -28,7 +31,8 @@ root <- if (file.exists("R/config.R")) "." else
   if (file.exists("../R/config.R")) ".." else
     stop("Run this script from the project root (or data-raw/).")
 
-source(file.path(root, "R", "config.R"))     # REFERENCE_YEAR
+source(file.path(root, "R", "config.R"))       # REFERENCE_YEAR
+source(file.path(root, "R", "refresh_co2.R"))  # read_maunaloa_raw()
 
 raw_dir  <- file.path(root, "data", "rawData")
 out_file <- file.path(root, "data", "co2_data.xlsx")
@@ -42,17 +46,11 @@ out_file <- file.path(root, "data", "co2_data.xlsx")
 # -----------------------------------------------------------------------------
 build_maunaloa <- function() {
   message("- Mauna Loa (modern) ...")
-  read_csv(file.path(raw_dir, "co2_mm_mlo.csv"),
-           comment = "#", show_col_types = FALSE) %>%
-    transmute(
-      year,
-      month,
-      decimal_date = `decimal date`,
-      co2 = average,                          # monthly mean, ppm
-      age = REFERENCE_YEAR - `decimal date`
-    ) %>%
+  read_maunaloa_raw(file.path(raw_dir, "co2_mm_mlo.csv")) %>%   # co2 = monthly mean, ppm
+    mutate(age = REFERENCE_YEAR - decimal_date) %>%
     filter(co2 > 0) %>%                        # guard against any -99.99 fills
-    arrange(age)
+    select(year, month, decimal_date, age, co2) %>%
+    arrange(decimal_date)                      # oldest first, as in the committed sheet
 }
 
 # -----------------------------------------------------------------------------

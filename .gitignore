@@ -20,3 +20,6 @@ output/library_check/
 
 # Local previews of the Markdown docs (e.g. LAUNCH.html)
 /*.html
+
+# Generated on every deploy (tempos that need songs, for "Suggest a song")
+data/wanted_bpm.csv

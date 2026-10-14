@@ -30,11 +30,15 @@ with a similar BPM. The app uses one player per song, the first one that works:
 4. **Spotify 30-s clip** (not connected): press ▶ on the first song; after that the clips play one after another.
 
 While a song plays, the ball on the CO₂ curve moves through that song's time
-window. When a song ends, the next one starts (untick *Auto-play next song*
-to stop that). **Play via** lets you choose Spotify, YouTube or SoundCloud; if
-a song has no link for that service, the app uses the best one it has. Under
-the player there is always a Spotify, YouTube and SoundCloud button: *Open* if
-the song has a link, otherwise *Find* (a search on that site).
+window. When a song ends, the next one starts (untick *Auto-play the next song
+when one ends* to stop that). **⏮ Previous / Next ⏭** step through the
+playlist. A newly selected song (Previous / Next, a click in the playlist or on
+the plot, another era) starts by itself only while music is playing — after a
+pause nothing starts on its own. **Play via** lets you choose Spotify, YouTube
+or SoundCloud; if a song has no link for that service, the app uses the best one
+it has. Under the player there is always an *Open in* Spotify, YouTube and
+SoundCloud button: the song itself if it has a link, otherwise a search (🔎) on
+that site.
 
 **Song length** switches between *Whole song* and *30-s snippets* (start at
 the beginning, at 0:30 or in the middle). Snippets auto-advance too, so a whole
@@ -160,8 +164,9 @@ log in. You only need to do that once; the login is remembered.
 
 | What you see | What to do |
 |---|---|
-| Only 30-second previews | Tick *Full songs only* (default). Otherwise that song only has a Spotify link: add a `youtube_url` (re-run the enrichment the next day if the YouTube quota ran out), or connect Spotify (Premium). |
-| Next song does not start | Tick *Auto-play next song*, and press ▶ once on the first song (browsers block sound until you click). |
+| Only 30-second previews | Under *More options*, tick *skip songs that only have a Spotify preview* (default). Otherwise that song only has a Spotify link: add a `youtube_url` (re-run the enrichment the next day if the YouTube quota ran out), or connect Spotify (Premium). |
+| Next song does not start | Tick *Auto-play the next song when one ends*, and press ▶ once on the first song (browsers block sound until you click). |
+| A song started although I had stopped | Shouldn't happen any more (3.5.0): after a pause, only ▶ starts the music. |
 | Pressing play opens Spotify | That song has no 30-s clip; Spotify's widget sends you to Spotify. During auto-play such songs are skipped. |
 | "INVALID_CLIENT: Invalid redirect URI" | In the Spotify dashboard, the Redirect URI must be exactly `http://127.0.0.1:4321/` (locally) and, for the online version, the app's address, `https://beatspermillion.shinyapps.io/dance/`. |
 | No *Connect Spotify* button online | By design: online it only shows with `?testers` at the end of the address. |

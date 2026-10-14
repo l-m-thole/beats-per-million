@@ -1,6 +1,6 @@
 Package: climatePlaylists
 Title: Beats per Million - Dance While You Can
-Version: 3.3.0
+Version: 3.5.0
 Authors@R: c(
     person("Martin", "Wegmann", role = "aut"),
     person("Lena", "Thoele", role = c("aut", "cre"),

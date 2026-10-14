@@ -16,6 +16,10 @@
 #                                 development mode allows max. 5 accounts)
 #                       off     - nobody
 #   BPM_CONTACT         contact shown in About & privacy (email or URL)
+#   BPM_PUBLIC_URL      the app's public address (https://.../), for link
+#                       previews; the deploy script writes it
+#   BPM_SUGGEST_URL     where "Suggest a song" points, e.g. a Google Form;
+#                       empty = a pre-filled email to BPM_CONTACT
 #   BPM_DEPLOYED        force deployed (true) / local (false) mode; normally
 #                       detected automatically
 # =============================================================================
@@ -51,14 +55,17 @@ bpm_is_deployed <- function() {
 #' All app settings as a list (read once at start-up)
 #'
 #' @param deployed Running on a server? (default: detected)
-#' @return list(deployed, default_player, spotify_login, contact)
+#' @return list(deployed, default_player, spotify_login, contact, public_url,
+#'   suggest_url)
 app_settings <- function(deployed = bpm_is_deployed()) {
   list(
     deployed       = deployed,
     default_player = .bpm_choice("BPM_DEFAULT_PLAYER", PLAYER_CHOICES, "spotify"),
     spotify_login  = .bpm_choice("BPM_SPOTIFY_LOGIN", SPOTIFY_LOGIN_MODES,
                                  if (deployed) "testers" else "on"),
-    contact        = trimws(Sys.getenv("BPM_CONTACT"))
+    contact        = trimws(Sys.getenv("BPM_CONTACT")),
+    public_url     = trimws(Sys.getenv("BPM_PUBLIC_URL")),
+    suggest_url    = trimws(Sys.getenv("BPM_SUGGEST_URL"))
   )
 }
 

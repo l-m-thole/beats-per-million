@@ -38,6 +38,8 @@ DATA_SOURCE_CENOZOIC <- "cenozoic"    # Rae et al. 2021 proxy reconstructions
 # Each period has:
 #   id              - Short identifier (used in filenames, code)
 #   name            - Display name
+#   short_name      - Name on the era buttons at the top of the app
+#   span_label      - Second line on the era buttons (how far back it goes)
 #   years_span      - Total years covered
 #   years_per_minute - Compression ratio (how many years = 1 minute of music)
 #   data_source     - Which dataset to use
@@ -56,6 +58,8 @@ TIME_PERIODS <- list(
   modern = list(
     id = "modern",
     name = "Modern Era (1958–Present)",
+    short_name = "Modern Era",
+    span_label = "1958 – today",
     years_span = 67,           # Modern span is derived from the data at run time (see generate_playlist)
     years_per_minute = 1,
     data_source = DATA_SOURCE_MODERN,
@@ -75,6 +79,8 @@ TIME_PERIODS <- list(
   roman = list(
     id = "roman",
     name = "Roman Empire Era (~2,000 years)",
+    short_name = "Roman Empire",
+    span_label = "last 2,000 years",
     years_span = 2000,
     years_per_minute = 20,
     data_source = DATA_SOURCE_ICECORE,
@@ -94,6 +100,8 @@ TIME_PERIODS <- list(
   lgm = list(
     id = "lgm",
     name = "Last Glacial Maximum (~20,000 years)",
+    short_name = "Last Glacial Maximum",
+    span_label = "last 20,000 years",
     years_span = 20000,
     years_per_minute = 100,
     data_source = DATA_SOURCE_ICECORE,
@@ -113,6 +121,8 @@ TIME_PERIODS <- list(
   humans = list(
     id = "humans",
     name = "Early Modern Humans (~250,000 years)",
+    short_name = "Early Modern Humans",
+    span_label = "last 250,000 years",
     years_span = 250000,
     years_per_minute = 1000,
     data_source = DATA_SOURCE_ICECORE,
@@ -132,6 +142,8 @@ TIME_PERIODS <- list(
   icecore = list(
     id = "icecore",
     name = "Full Ice Core Record (~800,000 years)",
+    short_name = "Full Ice Core",
+    span_label = "last 800,000 years",
     years_span = 800000,
     years_per_minute = 3000,
     data_source = DATA_SOURCE_ICECORE,
@@ -151,6 +163,8 @@ TIME_PERIODS <- list(
   cenozoic = list(
     id = "cenozoic",
     name = "Cenozoic Era (~66 million years)",
+    short_name = "Cenozoic",
+    span_label = "last 66 million years",
     years_span = 66000000,
     years_per_minute = 250000,
     data_source = DATA_SOURCE_CENOZOIC,

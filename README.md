@@ -1,8 +1,10 @@
 # 🌍 Beats per Million — Dance While You Can
 
+[![tests](https://github.com/l-m-thole/climate_playlist/actions/workflows/tests.yml/badge.svg)](https://github.com/l-m-thole/climate_playlist/actions/workflows/tests.yml)
+
 **Translating Earth's Climate History into Music**
 
-This project converts atmospheric CO₂ concentrations through geological time into "beats per minute" (BPM) values, creating a unique sonic experience of climate change. Lower CO₂ (ice ages) produces slow, ambient music; higher CO₂ (hothouse conditions) produces fast, energetic music.
+This project converts atmospheric CO₂ concentrations through geological time into "beats per minute" (BPM) values, creating a unique sonic experience of climate change. Lower CO₂ (ice ages) produces slow music; higher CO₂ (hothouse conditions) produces fast, energetic music.
 
 A collaboration between **Martin Wegmann** and **Lena Thöle**.
 
@@ -13,12 +15,21 @@ Spotify plays 30-second previews; pick *Play via YouTube* for whole songs.
 
 ## 🎵 The Concept
 
-| Climate State | CO₂ (ppm) | BPM | Mood |
+| Climate State | CO₂ (ppm) | BPM (global scale) | Feel |
 |---------------|-----------|-----|------|
-| Glacial maximum | ~180 | 60 | Glacial – Ambient / Drone |
-| Pre-industrial | ~280 | 85 | Relaxed – Jazz / Soft Rock |
-| Modern day | ~420 | 115 | Moderate – Pop / Indie |
-| Eocene hothouse | ~1500 | 150 | Intense – Drum & Bass |
+| Glacial maximum | ~180 | 60 | Glacial |
+| Pre-industrial | ~280 | 65 | Glacial |
+| Modern day | ~420 | 72 | Slow |
+| Eocene hothouse | ~1500 | 127 | Upbeat |
+
+With the default **per-era** scale each era's own lowest CO₂ is 60 BPM and its
+highest 150 BPM, so within the Modern Era the tempo climbs from about 60 to
+about 150 BPM.
+
+*Feel* names the tempo band of a slot (Glacial < 70, Slow 70–84, Relaxed 85–99,
+Moderate 100–114, Upbeat 115–129, Energetic 130–144, Intense 145+ BPM). It
+describes the tempo, not the song: the matched song can be any genre. (The
+playlist templates from `run_generator.R` still add genre ideas per band.)
 
 ---
 
@@ -35,17 +46,41 @@ Spotify plays 30-second previews; pick *Play via YouTube* for whole songs.
 
 Song counts are for the current data and change slightly when the data are refreshed.
 
-In the app, each period has:
+In the app, each period (era) has:
 
-- a **short description** plus **"Read more"** background (what the data are, what drove CO₂, and what to listen for);
-- a **key-events timeline** (oldest → youngest, the playback order);
+- an **About this era** window (button on the CO₂ plot): short description,
+  key numbers, **how the CO₂ was measured** for that era, background (what drove
+  CO₂, what to listen for) and a **key-events timeline** (oldest → youngest);
 - **event markers** (▼ and dotted lines) on the CO₂ plot — hover for details;
-- a **"During this song"** box that lists any key event inside the selected song's time window.
+- a **"During this song"** box in the Listen panel that lists any key event
+  inside the selected song's time window.
 
-The texts and events live in `R/period_context.R` (ages in years BP, i.e. before
-1950; modern events are written as CE years and converted). Add or edit events
-there — `tests/testthat/test-period_context.R` checks that every event falls
-inside its period.
+The texts, events and measurement notes live in `R/period_context.R` (ages in
+years BP, i.e. before 1950; modern events are written as CE years and
+converted). Add or edit events there — `tests/testthat/test-period_context.R`
+checks that every event falls inside its period.
+
+### The app at a glance
+
+- **Header:** title, one line on what to do (*Pick an era → press play → dance
+  while you can*), **💡 How it works** (method, how songs are chosen, where the
+  CO₂ numbers come from, how the app came about, who made it) and *About &
+  privacy*.
+- **Era buttons** in a row under the header.
+- **CO₂ through time:** a plain plot (no zoom or toolbar). The selected song's
+  slice is highlighted; click the curve to jump to the song for that time.
+- **Playlist:** one row per song, oldest first — *Song* (title, artist),
+  *Years*, *CO₂*, *BPM* (the slice's tempo), *Song BPM* (the song's own tempo)
+  and *Feel*. Above it: **BPM scale** (per era / global), **🔀 Shuffle songs**
+  and **🖼 Show album covers** (covers above each song's slice on the plot).
+- **Listen** (next to the playlist, stays in view while you scroll; on phones
+  it comes right after the plot): the song, the player, **⏮ Previous / Next ⏭**,
+  the song's years, CO₂ and tempo, *how this song was picked*, and the player
+  options.
+
+The *How it works* texts are in `R/how_it_works.R`; the story and the
+"who made this" lines are plain text at the top of that file (`APP_STORY`,
+`APP_MAKERS`) — edit them freely.
 
 ---
 
@@ -98,6 +133,13 @@ Spotify login (or none), *Connect Spotify* is only shown via the `?testers`
 link, and *About & privacy* is in the footer. Step-by-step setup, the player
 test table and the launch criteria: [`LAUNCH.md`](LAUNCH.md).
 
+**Sharing the link** shows a preview card (title, one line, and
+`www/og-image.png` — the 800,000-year CO₂ curve; tags in `R/share.R`, picture
+from `data-raw/make_og_image.R`). **Suggest a song** in the footer and in
+*About & privacy* opens a pre-filled email to `CONTACT` (or a form, if you set
+`SUGGEST_URL` in the deploy script); *About* also lists the tempos the library
+is short of, which the deploy script works out each time (`data/wanted_bpm.csv`).
+
 **Live:** <https://beatspermillion.shinyapps.io/dance/> (shinyapps.io account
 `beatspermillion`, app `dance`; free plan, 25 active hours a month). The online
 settings are at the top of `deploy/deploy_shinyapps.R` — currently
@@ -132,21 +174,33 @@ climate_playlist/
 │   ├── settings.R             # Local vs deployed, default player, who may log in
 │   ├── spotify.R              # Spotify login (per visitor online), player, Save to Spotify
 │   ├── about.R                # "About & privacy" window
+│   ├── how_it_works.R         # "How it works" + "About this era" windows (edit the story here)
+│   ├── covers.R               # Album covers for the plot (Spotify oEmbed + cache)
 │   ├── library_check.R        # Is the song library good enough to launch?
 │   ├── enrich_library.R       # Fills blank BPM / Spotify / SoundCloud / YouTube cells
+│   ├── share.R                # Link previews, "Suggest a song", tempos that need songs
+│   ├── refresh_co2.R          # Fetch + check NOAA's newest Mauna Loa file
 │   └── _disable_autoload.R    # Stops runApp() from sourcing everything in R/
-├── www/player.js              # In-app players, progress + auto-advance
+├── www/
+│   ├── player.js              # In-app players, progress + auto-advance
+│   └── og-image.png           # Link-preview picture (data-raw/make_og_image.R)
 ├── deploy/deploy_shinyapps.R  # Puts the app online (shinyapps.io)
+├── .github/workflows/         # tests on every push; monthly Mauna Loa refresh (PR)
 ├── rsconnect/                 # Deployment record (git-ignored)
 ├── data/
 │   ├── co2_data.xlsx          # Processed: 'maunaloa' + 'bereiter2014' sheets
 │   ├── song_library.csv       # Your songs + their real BPM (matched at run time)
 │   ├── song_library_enrich_log.csv  # Review log of the last enrichment run
+│   ├── song_covers.csv        # Album-cover addresses (data-raw/fetch_covers.R, also on deploy)
+│   ├── wanted_bpm.csv         # Tempos that need songs (made on deploy, git-ignored)
 │   ├── backups/               # Library backups made by the enrichment (git-ignored)
 │   └── rawData/               # Raw CO2 files + provenance README
 ├── data-raw/
 │   ├── build_co2_data.R       # Rebuilds co2_data.xlsx from rawData/
+│   ├── update_maunaloa.R      # Fetches NOAA's newest months, then rebuilds
+│   ├── make_og_image.R        # Draws www/og-image.png
 │   ├── enrich_song_library.R  # Run the song-library enrichment
+│   ├── fetch_covers.R         # Looks up album covers -> data/song_covers.csv
 │   └── check_song_library.R   # Library report: fixes, gaps, READY / NOT YET
 ├── tests/testthat/            # Unit tests
 ├── output/                    # Generated playlist templates (+ library_check/, git-ignored)
@@ -165,6 +219,10 @@ climate_playlist/
 - **Source:** NOAA Mauna Loa Observatory
 - **URL:** https://gml.noaa.gov/ccgg/trends/
 - **Description:** Direct atmospheric CO₂ measurements (the "Keeling Curve")
+- **Updates:** `source("data-raw/update_maunaloa.R")` fetches NOAA's newest
+  months, checks them and rebuilds `data/co2_data.xlsx`. A GitHub Action does
+  the same on the 9th of every month and opens a pull request when there is
+  something new (`.github/workflows/refresh-co2.yml`).
 
 ### Ice Core Record (0–800,000 years)
 - **Source:** Bereiter et al. (2015)
@@ -189,11 +247,11 @@ bpm = 60 + (90 / (co2_max - co2_min)) × (co2 - co2_min)
 
 The app has two **BPM scaling** modes:
 
-- **Per period (default, max. contrast):** each period is scaled on its own, so
+- **Per era (default, max. contrast):** each period is scaled on its own, so
   the **lowest** CO₂ in that period → 60 BPM and the **highest** → 150 BPM. This
   highlights the variation *within* a period, but also amplifies small wiggles
   (e.g. the nearly flat Roman era).
-- **Global (comparable eras):** all periods share one scale (≈174–1963 ppm), so
+- **Global (compare eras):** all periods share one scale (≈174–1963 ppm), so
   the same CO₂ always gives the same BPM and eras can be compared directly.
 
 ### Time Compression
@@ -223,13 +281,18 @@ Saving from Excel is fine (columns can be reordered, extra columns are ignored).
 
 ### How matching works
 
-- For each slot the app looks for a song within **±5 BPM**, then **±10 BPM**,
-  then takes the **single nearest** song. Only an empty library leaves a slot
-  with search buttons.
+- For each slot the app takes the songs within **±5 BPM** and picks one **at
+  random**; if none is left it tries **±10 BPM**, then takes the **single
+  nearest** song. Only an empty library leaves a slot with search buttons.
 - A song is **never repeated within one period**.
-- **🔀 Shuffle** re-rolls the picks; otherwise the same period always shows the
-  same songs (seeded from the period name).
-- Matching follows the selected **BPM scaling** (per period vs global).
+- **Transparent:** the playlist shows the slot's tempo (*BPM*) next to the
+  song's own (*Song BPM*), and the Listen panel says how the song was found
+  (e.g. *+3 BPM from the target · picked at random from 8 songs within ±5 BPM*;
+  `match_tol` / `n_candidates` from `pick_song_widening()`).
+- **🔀 Shuffle songs** re-rolls the random picks — other songs, same tempos. The
+  order never changes (always oldest → youngest). Without shuffling, the same
+  period always shows the same songs (seeded from the period name).
+- Matching follows the selected **BPM scale** (per era vs global).
 - Only **playable** songs (a BPM plus a Spotify, SoundCloud or YouTube link) are used.
 
 ### Playback
@@ -244,7 +307,14 @@ Saving from Excel is fine (columns can be reordered, extra columns are ignored).
   the app says why, switches that song to the next player, and remembers the
   video in `data/youtube_blocked.csv` so it is skipped from then on.
 - Songs play in full; the ball on the CO₂ curve travels through the song's time
-  window, and with *Auto-play next song* ticked the next slot starts when a song ends.
+  window, and with *Auto-play the next song when one ends* ticked the next slot
+  starts when a song ends.
+- **⏮ Previous / Next ⏭** in the Listen panel step through the playlist.
+- **A new song only starts by itself while music is playing.** Clicking another
+  song, Previous / Next or another era keeps the music going if it was playing;
+  after you pause (or once a song ended with auto-play off), nothing starts on
+  its own. `www/player.js` reports play / pause from every player
+  (`input$player_state`).
 - **Play via Spotify stays on Spotify** (YouTube is only used if you pick it):
   only songs with a Spotify link are matched. Not connected → Spotify's 30-s
   clips, which auto-play one after another once you've pressed ▶ on the first
@@ -267,6 +337,22 @@ Saving from Excel is fine (columns can be reordered, extra columns are ignored).
 
 Setup of keys, the Spotify developer app and sharing with a colleague:
 [`MUSIC_SETUP.md`](MUSIC_SETUP.md).
+
+### Album covers
+
+*🖼 Show album covers* (above the playlist) puts each song's cover above its
+time slice on the CO₂ plot; hover shows the song, click selects it. Covers come
+from Spotify's public oEmbed endpoint (no key) and are cached in
+`data/song_covers.csv`:
+
+```r
+source("data-raw/fetch_covers.R")   # looks up covers for new songs (a second or two)
+```
+
+The deploy script does the same before every deploy, so the online app never
+has to ask Spotify. Songs missing from the file are looked up once when someone
+switches covers on; songs without a Spotify cover show their YouTube thumbnail.
+For long eras (80+ songs) the covers become a thin strip — hover still works.
 
 ### Is the library ready?
 
