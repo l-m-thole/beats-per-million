@@ -152,7 +152,13 @@ app's story and the makers (`APP_STORY`, `APP_MAKERS`).
   (`loadScript()`: Spotify embed API, YouTube IFrame API, SoundCloud widget API)
   and creates the player, starting the song. The Spotify SDK script is fetched
   when the server sends a token (`sp_token`, i.e. after a login). YouTube uses
-  `host: youtube-nocookie.com` and `whenVisible()` before any automatic start.
+  the normal youtube.com player (with `youtube-nocookie.com` YouTube refused
+  22 of 23 songs, error 150) and `whenVisible()` before any automatic start.
+- **YouTube refusals (`input$yt_error`):** the video goes into `bad_yt()` for
+  the session; permanent codes wait in `yt_pending` and are only written to
+  `data/youtube_blocked.csv` once a YouTube song has played in that browser
+  (`input$player_state`). `YT_MAX_FAIL_RUN` (3) refusals in a row stop the
+  playlist. Tests point `BPM_YT_BLOCKED_FILE` to a temporary file.
 
 ## Secrets
 

@@ -311,9 +311,11 @@ Saving from Excel is fine (columns can be reordered, extra columns are ignored).
   Premium). Until then Spotify only allows 30-s previews, and the app shows a
   *Connect Spotify to play the full song* button right at the player.
 - If a YouTube video refuses to play (many label videos block other websites),
-  the app says why, remembers the video in `data/youtube_blocked.csv` so it is
-  left out from then on and — if music was playing — moves on to the next song
-  (never to another service).
+  the app says why, leaves it out for that visitor and — if music was playing —
+  moves on to the next song (never to another service). It is written to
+  `data/youtube_blocked.csv` (left out for good) only once a YouTube song has
+  really played in that browser, and after 3 refusals in a row the playlist
+  stops — so an ad blocker or a YouTube hiccup can't block the whole library.
 - Songs play in full; the ball on the CO₂ curve travels through the song's time
   window, and with *Auto-play the next song when one ends* ticked the next slot
   starts when a song ends.
@@ -349,9 +351,10 @@ or SoundCloud is in the page. Instead of a player, the Listen panel first
 shows **▶ Play via Spotify** (or YouTube / SoundCloud) with two lines on what
 that service then receives (your IP address, its cookies; for YouTube also its
 Terms of Service). Pressing it loads that service's player and starts the
-song; the OK lasts until the page is reloaded. YouTube runs in its
-privacy-enhanced mode (`youtube-nocookie.com`) and only starts a song by
+song; the OK lasts until the page is reloaded. YouTube only starts a song by
 itself while its player is on screen (on phones the page scrolls back to it).
+(Not in YouTube's `youtube-nocookie.com` mode: there YouTube refused 22 of 23
+songs in a test.)
 The Spotify SDK is only loaded after a Spotify login, and album covers only
 when you switch them on. The texts live in `R/about.R` (`player_gate()` and
 *About & privacy*); the loading in `www/player.js`.

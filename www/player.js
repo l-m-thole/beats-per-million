@@ -7,7 +7,9 @@
 //   - Spotify full player (Spotify connected + Premium): the Web Playback SDK
 //     turns this browser tab into a Spotify device - FULL tracks in-app.
 //   - Spotify embed widget - 30-s previews (when not connected).
-//   - YouTube (IFrame API, youtube-nocookie.com) - full tracks, no login.
+//   - YouTube (IFrame API) - full tracks, no login. The normal youtube.com
+//     player: in a test with youtube-nocookie.com YouTube refused 22 of 23
+//     songs (error 150). The ▶ Play gate already asks before anything loads.
 //   - SoundCloud widget    - full tracks, no login.
 //
 // Privacy: the page itself loads NOTHING from Spotify, YouTube or SoundCloud.
@@ -40,7 +42,6 @@
     youtube:      "https://www.youtube.com/iframe_api",
     soundcloud:   "https://w.soundcloud.com/player/api.js"
   };
-  var YT_HOST = "https://www.youtube-nocookie.com";   // YouTube's privacy-enhanced mode
 
   var scripts = {};   // src -> list of callbacks while loading, "done" when loaded
   function loadScript(src, onload) {
@@ -424,7 +425,6 @@
       withYT(function () {
         if (myToken !== token || !document.body.contains(ytEl)) return;
         ytPlayer = new YT.Player(ytEl, {
-          host: YT_HOST,
           videoId: vid, width: "100%", height: "200",
           // origin + widget_referrer: YouTube refuses embeds it can't attribute
           // to a page (error 153 "video player configuration error").

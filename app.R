@@ -765,8 +765,11 @@ WANTED_BPMS <- read_wanted_bpms(here::here("data", "wanted_bpm.csv"))
 COVERS <- cover_store(here::here("data", COVERS_CSV))
 
 # YouTube videos that refused to play in the app (owner blocks embedding,
-# removed, ...). Remembered across sessions so they are skipped next time.
-YT_BLOCKED_FILE <- here::here("data", "youtube_blocked.csv")
+# removed, ...). Remembered across sessions so they are skipped next time -
+# but only once YouTube has played a song in that browser (see the server).
+# BPM_YT_BLOCKED_FILE points the tests to a temporary file.
+YT_BLOCKED_FILE <- Sys.getenv("BPM_YT_BLOCKED_FILE")
+if (!nzchar(YT_BLOCKED_FILE)) YT_BLOCKED_FILE <- here::here("data", "youtube_blocked.csv")
 read_yt_blocked <- function() {
   if (!file.exists(YT_BLOCKED_FILE)) return(character(0))
   x <- tryCatch(utils::read.csv(YT_BLOCKED_FILE, colClasses = "character")$video_id,
@@ -788,6 +791,9 @@ add_yt_blocked <- function(id, code) {
 }
 PLAYER_JS <- .versioned("player.js")
 FONTS_CSS <- .versioned("fonts/fonts.css")
+
+# YouTube refusals in a row after which the playlist stops (see the server)
+YT_MAX_FAIL_RUN <- 3L
 
 # Trimmed text, or NULL when empty/NA
 .txt <- function(x) {
@@ -1187,11 +1193,18 @@ server <- function(input, output, session) {
   })
 
   # YouTube refused to play this video (removed, or embedding disabled by the
-  # uploader). The video is remembered as broken (for good if the problem is
-  # permanent) and left out of playlists from now on. The song is NOT handed
-  # to another service - a playlist never mixes services - so while music is
-  # meant to play, the playlist simply moves on to the next song.
+  # uploader). It is left out for this visitor from now on and, while music
+  # is meant to play, the playlist moves on to the next song. The song is NOT
+  # handed to another service - a playlist never mixes services.
+  #
+  # Refusals only go into data/youtube_blocked.csv (left out for everyone,
+  # for good) once a YouTube song has really played in this browser - when
+  # YouTube refuses everything (an ad blocker, a network, a YouTube change),
+  # nothing is written. And after YT_MAX_FAIL_RUN refusals in a row the
+  # playlist stops instead of skipping through all of it.
   bad_yt <- reactiveVal(read_yt_blocked())
+  yt_pending  <- character(0)   # video id -> error code, waiting for that proof
+  yt_fail_run <- 0L             # YouTube refusals in a row (reset when a song plays)
   observeEvent(input$yt_error, {
     ev <- input$yt_error
     if (!identical(ev$token, player_token())) return()
@@ -1204,16 +1217,28 @@ server <- function(input, output, session) {
       paste("YouTube error", ev$code))
     if (!is.null(ev$id) && nzchar(ev$id) && !(ev$id %in% bad_yt())) {
       bad_yt(union(bad_yt(), ev$id))
-      # permanent problems -> skip this video in future sessions too
-      if (as.character(ev$code) %in% c("2", "100", "101", "150")) add_yt_blocked(ev$id, ev$code)
+      # permanent problems -> left out in future sessions too, once YouTube
+      # has played a song in this browser (input$player_state below)
+      if (as.character(ev$code) %in% c("2", "100", "101", "150")) {
+        yt_pending[ev$id] <<- as.character(ev$code)
+      }
+    }
+    yt_fail_run <<- yt_fail_run + 1L
+    if (yt_fail_run >= YT_MAX_FAIL_RUN) {
+      listening(FALSE)
+      showNotification(
+        paste0("YouTube refused ", yt_fail_run, " songs in a row, so the playlist stops here. ",
+               "That's usually the browser, an ad blocker or the network rather than the ",
+               "videos - try Play via Spotify, or reload the page."),
+        id = "yt_fail_run", type = "warning", duration = 20)
+      return()
     }
     idx <- selected_idx()
     skip <- (isTRUE(ev$autoplay) || isTRUE(listening())) && isTRUE(input$auto_advance) &&
       idx < nrow(current_playlist()$songs)
     showNotification(
       paste0("YouTube can't play this song here: ", why, ". ",
-             if (skip) "Skipping to the next song. " else "Press Next ⏭ for the next song. ",
-             "This video is left out from now on (data/youtube_blocked.csv)."),
+             if (skip) "Skipping to the next song." else "Press Next ⏭ for the next song."),
       type = "warning", duration = 10)
     if (skip) {
       listening(TRUE)
@@ -1318,6 +1343,15 @@ server <- function(input, output, session) {
     ev <- input$player_state
     if (!identical(ev$token, player_token())) return()
     listening(isTRUE(ev$playing))
+    if (isTRUE(ev$playing)) {
+      yt_fail_run <<- 0L
+      # YouTube plays in this browser, so the videos it refused before really
+      # are blocked: leave them out for good (data/youtube_blocked.csv)
+      if (identical(play_service(), "youtube") && length(yt_pending)) {
+        for (id in names(yt_pending)) add_yt_blocked(id, yt_pending[[id]])
+        yt_pending <<- character(0)
+      }
+    }
   })
 
   # Song length for www/player.js (whole song or 30-s snippets); sent on

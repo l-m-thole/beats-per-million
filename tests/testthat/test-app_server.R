@@ -168,3 +168,43 @@ test_that("opening the page loads nothing from other sites", {
   expect_true(env$DEFAULT_PLAYER %in% env$PLAY_VIA_CHOICES)
   expect_true(file.exists(file.path(root, "www", "fonts", "fonts.css")))
 })
+
+test_that("YouTube refusals are only written down once YouTube has played; 3 in a row stop", {
+  skip_if_not_installed("plotly")
+  skip_if_not_installed("DT")
+  root <- app_root()
+  skip_if(is.null(root), "app.R not found")
+  blocked <- withr::local_tempfile(fileext = ".csv")
+  writeLines('"video_id","error_code","date"', blocked)
+  withr::local_envvar(BPM_DEPLOYED = "true", BPM_SPOTIFY_LOGIN = "off",
+                      BPM_YT_BLOCKED_FILE = blocked)
+  app <- suppressMessages(suppressWarnings(shiny::shinyAppDir(root)))
+
+  shiny::testServer(app, {
+    session$setInputs(selected_period = "modern", scaling_mode = "per_period",
+                      play_source = "youtube", auto_advance = TRUE,
+                      play_length = "full", show_covers = FALSE)
+    vid <- function() parse_youtube_id(selected_curated()$youtube_url)
+    refuse <- function() {
+      session$setInputs(yt_error = list(token = player_token(), code = 150,
+                                        id = vid(), autoplay = TRUE))
+    }
+    first <- vid()
+    refuse()                                            # 1st refusal: on to song 2
+    expect_equal(selected_idx(), 2L)
+    expect_equal(nrow(utils::read.csv(blocked)), 0)     # nothing written yet
+
+    # song 2 really plays -> YouTube works in this browser -> write it down
+    session$setInputs(player_state = list(token = player_token(), playing = TRUE, t = 1))
+    expect_equal(utils::read.csv(blocked, colClasses = "character")$video_id, first)
+
+    # three refusals in a row: the playlist stops instead of skipping on
+    refuse()
+    refuse()
+    expect_equal(selected_idx(), 4L)
+    refuse()
+    expect_equal(selected_idx(), 4L)
+    expect_false(listening())
+    expect_equal(nrow(utils::read.csv(blocked)), 1)     # the streak isn't written down
+  })
+})
