@@ -44,6 +44,13 @@ test_that("settings are read from the environment; bad values fall back with a w
     expect_warning(s2 <- app_settings(deployed = FALSE), "not one of")
   })
   expect_equal(s2$default_player, "spotify")
+
+  # "auto" (the old "Best available", which mixed services) is gone
+  withr::with_envvar(c(BPM_DEFAULT_PLAYER = "auto"), {
+    expect_warning(s3 <- app_settings(deployed = TRUE), "not one of")
+  })
+  expect_equal(s3$default_player, "spotify")
+  expect_false("auto" %in% PLAYER_CHOICES)
 })
 
 test_that("who sees Connect Spotify", {
@@ -67,4 +74,5 @@ test_that("URL flags: ?testers, ?player=, ?about", {
   expect_false(none$about)
 
   expect_null(url_flags(list(player = "winamp"))$player)
+  expect_null(url_flags(list(player = "auto"))$player)
 })

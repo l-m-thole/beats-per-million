@@ -55,9 +55,9 @@ test_that("Suggest a song: a form if set, else a pre-filled email, else nothing"
 test_that("the song pool follows the player visitors start with", {
   expect_equal(pool_for_player("spotify"), "spotify")
   expect_equal(pool_for_player("YouTube"), "youtube")
-  expect_equal(pool_for_player("soundcloud"), "youtube")
-  expect_equal(pool_for_player("auto"), "all")
-  expect_equal(pool_for_player(NULL), "all")
+  expect_equal(pool_for_player("soundcloud"), "soundcloud")
+  expect_equal(pool_for_player(NULL), "spotify")       # the default player
+  expect_true(all(c("spotify", "youtube", "soundcloud") %in% names(LIBRARY_POOLS)))
 })
 
 gap_rows <- function(pool, bin, add) tibble::tibble(pool = pool, bin = bin, add_at_least = add)

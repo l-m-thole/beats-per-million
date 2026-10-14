@@ -1,13 +1,21 @@
 // =============================================================================
 // Beats per Million - in-app player bridge
 // -----------------------------------------------------------------------------
-// The server renders ONE player per song, first available of:
-//   1. Spotify full player (Spotify connected + Premium): the Web Playback SDK
-//      turns this browser tab into a Spotify device - FULL tracks in-app.
-//   2. YouTube (IFrame API) - full tracks, no login.
-//   3. SoundCloud widget    - full tracks, no login.
-//   4. Spotify embed widget - 30-s previews; never started programmatically,
-//      so the app never sends you off to Spotify by itself.
+// The server renders ONE player per song, always from the service chosen in
+// "Play via" (a playlist never mixes services - Spotify's and SoundCloud's
+// terms don't allow it):
+//   - Spotify full player (Spotify connected + Premium): the Web Playback SDK
+//     turns this browser tab into a Spotify device - FULL tracks in-app.
+//   - Spotify embed widget - 30-s previews (when not connected).
+//   - YouTube (IFrame API, youtube-nocookie.com) - full tracks, no login.
+//   - SoundCloud widget    - full tracks, no login.
+//
+// Privacy: the page itself loads NOTHING from Spotify, YouTube or SoundCloud.
+// Embedded players sit behind a "▶ Play via ..." gate (rendered by the server,
+// R/about.R player_gate()); pressing it is the visitor's OK for that service
+// (remembered until the page is reloaded), and only then is the service's
+// script fetched and its player created. The Spotify SDK script is fetched
+// only after a Spotify login (when the server hands over a token).
 //
 // Reports to Shiny:
 //   input$player_progress = {token, frac, pos, dur}  (~2x per second)
@@ -24,6 +32,70 @@
 // =============================================================================
 (function () {
   var SEND_EVERY_MS = 500;   // progress throttle
+
+  // ---- Third-party code: fetched only when a player is actually needed -----
+  var SRC = {
+    spotifyEmbed: "https://open.spotify.com/embed/iframe-api/v1",
+    spotifySdk:   "https://sdk.scdn.co/spotify-player.js",
+    youtube:      "https://www.youtube.com/iframe_api",
+    soundcloud:   "https://w.soundcloud.com/player/api.js"
+  };
+  var YT_HOST = "https://www.youtube-nocookie.com";   // YouTube's privacy-enhanced mode
+
+  var scripts = {};   // src -> list of callbacks while loading, "done" when loaded
+  function loadScript(src, onload) {
+    var st = scripts[src];
+    if (st === "done") { if (onload) onload(); return; }
+    if (st) { if (onload) st.push(onload); return; }
+    scripts[src] = onload ? [onload] : [];
+    var s = document.createElement("script");
+    s.src = src;
+    s.async = true;
+    s.onload = function () {
+      var q = scripts[src];
+      scripts[src] = "done";
+      (q || []).forEach(function (f) { try { f(); } catch (e) {} });
+    };
+    s.onerror = function () { scripts[src] = null; };   // allow another try later
+    document.head.appendChild(s);
+  }
+
+  // Services the visitor said OK to (pressed their ▶ Play) - this page only
+  var consent = {};
+
+  // Call cb once more than half of el is on screen: YouTube may only start
+  // playing by itself when its player is visible (on phones the Listen panel
+  // can be scrolled away while a song ends). Scrolls it into view first.
+  function whenVisible(el, cb) {
+    function share() {
+      var r = el.getBoundingClientRect();
+      var vw = window.innerWidth || document.documentElement.clientWidth;
+      var vh = window.innerHeight || document.documentElement.clientHeight;
+      if (!(r.width > 0 && r.height > 0)) return 0;
+      var w = Math.max(0, Math.min(r.right, vw) - Math.max(r.left, 0));
+      var h = Math.max(0, Math.min(r.bottom, vh) - Math.max(r.top, 0));
+      return (w * h) / (r.width * r.height);
+    }
+    if (!el || share() > 0.5) return cb();
+    try { el.scrollIntoView({ behavior: "smooth", block: "center" }); } catch (e) {}
+    if (!("IntersectionObserver" in window)) {
+      var tries = 0;
+      var t = setInterval(function () {
+        if (share() > 0.5 || ++tries > 40) { clearInterval(t); if (share() > 0.5) cb(); }
+      }, 100);
+      return;
+    }
+    var done = false;
+    var io = new IntersectionObserver(function (entries) {
+      if (done) return;
+      if (entries.some(function (en) { return en.intersectionRatio > 0.5; })) {
+        done = true;
+        io.disconnect();
+        cb();
+      }
+    }, { threshold: [0.51, 0.75, 1] });
+    io.observe(el);
+  }
 
   var embedApi = null, embedQueue = [];
   var ytReady = false, ytQueue = [], ytPlayer = null, ytPoll = null;
@@ -195,10 +267,13 @@
     }, 500);
   }
 
+  // A token arrives only once the visitor connected Spotify - only then is
+  // the SDK's code fetched from Spotify (it calls onSpotifyWebPlaybackSDKReady)
   Shiny.addCustomMessageHandler("sp_token", function (m) {
     sdk.accessToken = m.token;
     sdk.expiresAt = Date.now() + (m.expires_in || 3600) * 1000;
     sdk.waiters.splice(0).forEach(function (cb) { cb(sdk.accessToken); });
+    loadScript(SRC.spotifySdk);
     initSdk();
   });
   // If the app is ever shown inside a frame (some hosts and embeds do that),
@@ -229,7 +304,11 @@
     ytReady = true;
     ytQueue.splice(0).forEach(function (fn) { fn(); });
   };
-  function withYT(fn) { if (ytReady) fn(); else ytQueue.push(fn); }
+  function withYT(fn) {
+    if (ytReady) return fn();
+    ytQueue.push(fn);
+    loadScript(SRC.youtube);
+  }
 
   function startYtPoll(p, myToken) {
     clearInterval(ytPoll);
@@ -247,7 +326,11 @@
     embedApi = IFrameAPI;
     embedQueue.splice(0).forEach(function (fn) { fn(embedApi); });
   };
-  function withEmbed(fn) { if (embedApi) fn(embedApi); else embedQueue.push(fn); }
+  function withEmbed(fn) {
+    if (embedApi) return fn(embedApi);
+    embedQueue.push(fn);
+    loadScript(SRC.spotifyEmbed);
+  }
 
   function plainSpotifyEmbed(el, uri) {
     var id = (uri || "").split(":").pop();
@@ -287,9 +370,6 @@
     var myToken = token;
     var autoplay = box.getAttribute("data-autoplay") === "true";
     var sdkEl = document.getElementById("bpm-sdk");
-    var scFrame = document.getElementById("bpm-soundcloud");
-    var spEl = document.getElementById("bpm-spotify");
-    var ytEl = document.getElementById("bpm-youtube");
 
     // ---- Full Spotify player (SDK) ----
     if (sdkEl) {
@@ -307,12 +387,44 @@
       return;   // SDK handles this song; embeds are not rendered in this mode
     }
 
+    // ---- Embedded players: behind the "▶ Play via ..." gate until the OK ----
+    var gate = box.querySelector(".player-gate");
+    var slot = box.querySelector(".player-slot");
+    var service = box.getAttribute("data-service");
+    if (gate && !consent[service]) {
+      var go = gate.querySelector(".gate-play");
+      if (go) go.addEventListener("click", function () {
+        if (myToken !== token) return;
+        consent[service] = true;
+        openGate(gate, slot);
+        mountEmbeds(myToken, true, true);   // pressing Play = play this song now
+      });
+      return;
+    }
+    openGate(gate, slot);
+    mountEmbeds(myToken, autoplay, false);
+  }
+
+  function openGate(gate, slot) {
+    if (gate && gate.parentNode) gate.parentNode.removeChild(gate);
+    if (slot) slot.classList.add("is-on");
+  }
+
+  // Create the embedded player(s) rendered in the Listen panel.
+  // fromGate: started by the visitor's own ▶ Play (so a clip that doesn't
+  // start by itself waits for them instead of being skipped).
+  function mountEmbeds(myToken, autoplay, fromGate) {
+    var scEl = document.getElementById("bpm-soundcloud");
+    var spEl = document.getElementById("bpm-spotify");
+    var ytEl = document.getElementById("bpm-youtube");
+
     // ---- YouTube (full tracks) ----
     if (ytEl) {
       var vid = ytEl.getAttribute("data-id");
       withYT(function () {
         if (myToken !== token || !document.body.contains(ytEl)) return;
         ytPlayer = new YT.Player(ytEl, {
+          host: YT_HOST,
           videoId: vid, width: "100%", height: "200",
           // origin + widget_referrer: YouTube refuses embeds it can't attribute
           // to a page (error 153 "video player configuration error").
@@ -321,7 +433,13 @@
                         widget_referrer: window.location.href },
           events: {
             onReady: function (e) {
-              if (autoplay && myToken === token) e.target.playVideo();
+              if (!autoplay || myToken !== token) return;
+              // YouTube's rules: start by itself only while the player is visible
+              var frame = null;
+              try { frame = e.target.getIframe(); } catch (err) {}
+              whenVisible(frame, function () {
+                if (myToken === token) e.target.playVideo();
+              });
             },
             onStateChange: function (e) {
               if (myToken !== token) return;
@@ -343,9 +461,10 @@
             },
             onError: function (e) {
               if (myToken !== token) return;
-              // Don't skip the song: Shiny marks this video as broken and
-              // re-renders the panel with the next player (Spotify first).
-              send("yt_error", { token: myToken, code: e.data, id: vid }, true);
+              // Shiny marks this video as broken and - if music was meant to
+              // play - moves on to the next song (never to another service).
+              send("yt_error", { token: myToken, code: e.data, id: vid,
+                                 autoplay: !!autoplay }, true);
             }
           }
         });
@@ -353,34 +472,42 @@
     }
 
     // ---- SoundCloud (full tracks) ----
-    if (scFrame && window.SC && SC.Widget) {
-      var w = SC.Widget(scFrame);
-      scWidget = w;
-      w.bind(SC.Widget.Events.READY, function () {
-        w.getDuration(function (d) { scDur = d; });
-        if (autoplay && myToken === token) w.play();
-      });
-      w.bind(SC.Widget.Events.PLAY, function () {
-        sendState(myToken, true);
-        try { if (spController && myToken === token) spController.pause(); } catch (e) {}
-        w.getDuration(function (d) {
-          scDur = d;
-          w.getPosition(function (p) { maybeSeek(d, p, function (ms) { w.seekTo(ms); }); });
+    if (scEl) {
+      var f = document.createElement("iframe");
+      f.src = scEl.getAttribute("data-src");
+      f.width = "100%"; f.height = "166";
+      f.setAttribute("frameborder", "no"); f.setAttribute("scrolling", "no");
+      f.allow = "autoplay";
+      scEl.appendChild(f);
+      loadScript(SRC.soundcloud, function () {
+        if (myToken !== token || !document.body.contains(f) || !(window.SC && SC.Widget)) return;
+        var w = SC.Widget(f);
+        scWidget = w;
+        w.bind(SC.Widget.Events.READY, function () {
+          w.getDuration(function (d) { scDur = d; });
+          if (autoplay && myToken === token) w.play();
         });
-      });
-      w.bind(SC.Widget.Events.PLAY_PROGRESS, function (e) {
-        report(myToken, e.currentPosition, scDur);
-      });
-      w.bind(SC.Widget.Events.PAUSE, function () {
-        // SoundCloud may pause right before FINISH: not a pause by you
-        w.getPosition(function (pos) {
-          if (!(scDur > 0 && pos >= scDur - 1500)) sendState(myToken, false);
+        w.bind(SC.Widget.Events.PLAY, function () {
+          sendState(myToken, true);
+          w.getDuration(function (d) {
+            scDur = d;
+            w.getPosition(function (p) { maybeSeek(d, p, function (ms) { w.seekTo(ms); }); });
+          });
         });
+        w.bind(SC.Widget.Events.PLAY_PROGRESS, function (e) {
+          report(myToken, e.currentPosition, scDur);
+        });
+        w.bind(SC.Widget.Events.PAUSE, function () {
+          // SoundCloud may pause right before FINISH: not a pause by you
+          w.getPosition(function (pos) {
+            if (!(scDur > 0 && pos >= scDur - 1500)) sendState(myToken, false);
+          });
+        });
+        w.bind(SC.Widget.Events.FINISH, function () { finish(myToken, scDur); });
       });
-      w.bind(SC.Widget.Events.FINISH, function () { finish(myToken, scDur); });
     }
 
-    // ---- Spotify embed (fallback; only plays when YOU press play) ----
+    // ---- Spotify embed (30-s clips when not connected) ----
     if (spEl) {
       var euri = spEl.getAttribute("data-uri");
       var fallback = setTimeout(function () {
@@ -394,12 +521,15 @@
           spController = c;
           // Auto-play when the playlist is running (after your first ▶):
           // Spotify's clip plays, then the next song starts by itself. A track
-          // with no playable clip never starts -> skip it after 8 s.
+          // with no playable clip never starts -> skip it after 8 s (but not
+          // the song you just pressed ▶ Play for: some browsers want a second
+          // press inside Spotify's player, so wait for you there).
           var started = false;
           if (autoplay) {
             setTimeout(function () {
               if (myToken !== token) return;
               try { c.play(); } catch (err) {}
+              if (fromGate) return;
               setTimeout(function () {
                 if (!started && myToken === token && !ended) {
                   send("sp_nostart", { token: myToken, t: Date.now() }, true);
@@ -418,10 +548,7 @@
                 maybeSeek(d.duration, d.position, function (ms) { c.seek(ms / 1000); });
               }
             }
-            if (!d.isPaused) {
-              try { if (scWidget) scWidget.pause(); } catch (err) {}
-              report(myToken, d.position, d.duration);
-            }
+            if (!d.isPaused) report(myToken, d.position, d.duration);
             var nearEnd = d.position >= d.duration - 800 ||
                           (d.isPaused && d.position === 0 && spLastPos > d.duration - 2000);
             if (nearEnd) finish(myToken, limitFor(d.duration));

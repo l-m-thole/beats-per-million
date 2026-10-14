@@ -72,9 +72,11 @@ checks that every event falls inside its period.
 - **Playlist:** one row per song, oldest first — *Song* (title, artist),
   *Years*, *CO₂*, *BPM* (the slice's tempo), *Song BPM* (the song's own tempo)
   and *Feel*. Above it: **BPM scale** (per era / global), **🔀 Shuffle songs**
-  and **🖼 Show album covers** (covers above each song's slice on the plot).
+  and, while playing via Spotify, **🖼 Show album covers** (covers above each
+  song's slice on the plot).
 - **Listen** (next to the playlist, stays in view while you scroll; on phones
-  it comes right after the plot): the song, the player, **⏮ Previous / Next ⏭**,
+  it comes right after the plot): the song, the player (behind a **▶ Play via …**
+  button until you press it, see *Privacy* below), **⏮ Previous / Next ⏭**,
   the song's years, CO₂ and tempo, *how this song was picked*, and the player
   options.
 
@@ -173,7 +175,7 @@ climate_playlist/
 │   ├── load_data.R            # Data + song-library loading
 │   ├── settings.R             # Local vs deployed, default player, who may log in
 │   ├── spotify.R              # Spotify login (per visitor online), player, Save to Spotify
-│   ├── about.R                # "About & privacy" window
+│   ├── about.R                # "About & privacy" window + the ▶ Play gate text
 │   ├── how_it_works.R         # "How it works" + "About this era" windows (edit the story here)
 │   ├── covers.R               # Album covers for the plot (Spotify oEmbed + cache)
 │   ├── library_check.R        # Is the song library good enough to launch?
@@ -182,7 +184,8 @@ climate_playlist/
 │   ├── refresh_co2.R          # Fetch + check NOAA's newest Mauna Loa file
 │   └── _disable_autoload.R    # Stops runApp() from sourcing everything in R/
 ├── www/
-│   ├── player.js              # In-app players, progress + auto-advance
+│   ├── player.js              # Play gate, in-app players, progress + auto-advance
+│   ├── fonts/                 # Self-hosted fonts (OFL) - no Google Fonts request
 │   └── og-image.png           # Link-preview picture (data-raw/make_og_image.R)
 ├── deploy/deploy_shinyapps.R  # Puts the app online (shinyapps.io)
 ├── .github/workflows/         # tests on every push; monthly Mauna Loa refresh (PR)
@@ -207,7 +210,8 @@ climate_playlist/
 ├── .Renviron.example          # Template for API keys and app settings (copy to .Renviron)
 ├── LAUNCH.md                  # Going online: setup, player test, launch criteria
 ├── MUSIC_SETUP.md             # Players, keys, song links, troubleshooting
-├── DEVELOPMENT.md             # renv, data rebuild, tests
+├── DEVELOPMENT.md             # renv, data rebuild, tests, platform rules
+├── LICENSE, LICENSE.md        # MIT (code); data, fonts and music have their own terms
 └── README.md
 ```
 
@@ -297,15 +301,19 @@ Saving from Excel is fine (columns can be reordered, extra columns are ignored).
 
 ### Playback
 
-- **Play via Spotify is the default.** Order: Spotify full player (after
-  *Connect Spotify*, needs Premium) → YouTube → SoundCloud → Spotify 30-s
-  preview. **Play via** lets you prefer YouTube or SoundCloud instead.
+- **One service per playlist.** *Play via* picks Spotify (the default),
+  YouTube or SoundCloud, and the playlist only uses songs that service can
+  play — never a mix (Spotify's and SoundCloud's terms don't allow mixing their
+  music with another service's; see DEVELOPMENT.md). Spotify: the full player
+  after *Connect Spotify* (needs Premium), otherwise 30-s clips. YouTube and
+  SoundCloud: whole songs, no login.
 - **Full songs via Spotify need a one-time *Connect Spotify* login** (Spotify
   Premium). Until then Spotify only allows 30-s previews, and the app shows a
   *Connect Spotify to play the full song* button right at the player.
 - If a YouTube video refuses to play (many label videos block other websites),
-  the app says why, switches that song to the next player, and remembers the
-  video in `data/youtube_blocked.csv` so it is skipped from then on.
+  the app says why, remembers the video in `data/youtube_blocked.csv` so it is
+  left out from then on and — if music was playing — moves on to the next song
+  (never to another service).
 - Songs play in full; the ball on the CO₂ curve travels through the song's time
   window, and with *Auto-play the next song when one ends* ticked the next slot
   starts when a song ends.
@@ -315,19 +323,14 @@ Saving from Excel is fine (columns can be reordered, extra columns are ignored).
   after you pause (or once a song ended with auto-play off), nothing starts on
   its own. `www/player.js` reports play / pause from every player
   (`input$player_state`).
-- **Play via Spotify stays on Spotify** (YouTube is only used if you pick it):
-  only songs with a Spotify link are matched. Not connected → Spotify's 30-s
-  clips, which auto-play one after another once you've pressed ▶ on the first
-  (songs without a clip are skipped). Connected → whole songs or snippets.
+- **Play via Spotify** without a login: Spotify's 30-s clips, which auto-play
+  one after another once you've pressed ▶ on the first (songs without a clip
+  are skipped). Connected → whole songs or snippets.
 - **Song length:** *Whole song* (default) or *30-s snippets* — a quick run
   through a period so you really hear the tempo climb. Snippets start at the
   beginning, at 0:30 (skip the intro, default) or in the middle of the song,
   and auto-advance just like whole songs. Works with Spotify (connected),
   YouTube and SoundCloud; you can switch mid-song.
-- **Skip preview-only songs** (on by default) matches only songs that can play to the
-  end: those with a YouTube or SoundCloud link, plus Spotify-only songs once
-  *Connect Spotify* is active. Untick it to also use Spotify-only songs, which
-  play a 30-s preview and don't auto-advance when Spotify isn't connected.
 - **➕ Save to Spotify** saves the current period's songs (oldest → youngest)
   as a private playlist in your Spotify account.
 - **Settings, no code changes:** the player visitors start with
@@ -338,12 +341,28 @@ Saving from Excel is fine (columns can be reordered, extra columns are ignored).
 Setup of keys, the Spotify developer app and sharing with a colleague:
 [`MUSIC_SETUP.md`](MUSIC_SETUP.md).
 
+### Privacy: nothing loads before ▶ Play
+
+Opening the page contacts no one but the app's own server: the fonts are
+served from `www/fonts/` (no Google Fonts), and no code from Spotify, YouTube
+or SoundCloud is in the page. Instead of a player, the Listen panel first
+shows **▶ Play via Spotify** (or YouTube / SoundCloud) with two lines on what
+that service then receives (your IP address, its cookies; for YouTube also its
+Terms of Service). Pressing it loads that service's player and starts the
+song; the OK lasts until the page is reloaded. YouTube runs in its
+privacy-enhanced mode (`youtube-nocookie.com`) and only starts a song by
+itself while its player is on screen (on phones the page scrolls back to it).
+The Spotify SDK is only loaded after a Spotify login, and album covers only
+when you switch them on. The texts live in `R/about.R` (`player_gate()` and
+*About & privacy*); the loading in `www/player.js`.
+
 ### Album covers
 
-*🖼 Show album covers* (above the playlist) puts each song's cover above its
-time slice on the CO₂ plot; hover shows the song, click selects it. Covers come
-from Spotify's public oEmbed endpoint (no key) and are cached in
-`data/song_covers.csv`:
+*🖼 Show album covers* (above the playlist, only while playing via Spotify)
+puts each song's cover above its time slice on the CO₂ plot, with a
+"covers from Spotify" credit under the plot; hover shows the song, click
+selects it. Covers come from Spotify's public oEmbed endpoint (no key) and are
+cached in `data/song_covers.csv`:
 
 ```r
 source("data-raw/fetch_covers.R")   # looks up covers for new songs (a second or two)
@@ -351,7 +370,8 @@ source("data-raw/fetch_covers.R")   # looks up covers for new songs (a second or
 
 The deploy script does the same before every deploy, so the online app never
 has to ask Spotify. Songs missing from the file are looked up once when someone
-switches covers on; songs without a Spotify cover show their YouTube thumbnail.
+switches covers on; songs without a Spotify cover get none (no YouTube
+thumbnails mixed in - Spotify's terms).
 For long eras (80+ songs) the covers become a thin strip — hover still works.
 
 ### Is the library ready?
@@ -366,7 +386,10 @@ and both scaling modes, shows which BPM ranges need more songs, and ends with a
 **READY / NOT YET** verdict. Details go to `output/library_check/`. With
 `CHECK_LINKS <- TRUE` it also tests every link online through the services'
 public oEmbed endpoints (no keys), including whether a link points to the right
-song. Launch criteria: [`LAUNCH.md`](LAUNCH.md#6-get-the-library-ready-ongoing).
+song, and lists YouTube links from channels that don't look official (lyrics,
+promo or fan uploads — swap them for the artist's, VEVO or "Artist - Topic"
+upload; write "label upload" in a song's notes once you've checked a label's
+channel by hand). Launch criteria: [`LAUNCH.md`](LAUNCH.md#6-get-the-library-ready-ongoing).
 
 ### Finding a song's BPM
 
@@ -396,7 +419,10 @@ Rate limit: 3,000 requests per hour.
 
 ## 📄 License
 
-This project is released under the MIT License.
+The code is released under the MIT License — © 2026 Lena Thöle and Martin
+Wegmann, see [`LICENSE.md`](LICENSE.md). The CO₂ data (NOAA; Bereiter et al. 2015
+and Rae et al. 2021 via NOAA's paleo archive, CC0 — please cite them), the fonts
+(SIL Open Font License) and the music the app plays keep their own terms.
 
 ---
 

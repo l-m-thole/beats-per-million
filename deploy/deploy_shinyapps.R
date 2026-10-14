@@ -25,7 +25,8 @@ ACCOUNT   <- "beatspermillion"                    # your shinyapps.io account na
 APP_NAME  <- "dance"               # last part of the URL: https://beatspermillion.shinyapps.io/dance/
 APP_TITLE <- "Beats per Million"
 
-DEFAULT_PLAYER <- "spotify"   # what visitors start with: "spotify" | "youtube" | "auto"
+DEFAULT_PLAYER <- "spotify"   # what visitors start with: "spotify" | "youtube"
+                              # (each playlist plays from that one service only)
 SPOTIFY_LOGIN  <- "off"   # "testers": Connect Spotify only via the ?testers link
                               # "off": no Spotify login online | "on": everyone
 CONTACT        <- "lena.thoele@gmail.com"          # email or URL shown in About & privacy
@@ -132,6 +133,7 @@ APP_FILES <- c(
   "app.R", "DESCRIPTION", "renv.lock",
   list.files("R", pattern = "\\.R$", full.names = TRUE),   # incl. _disable_autoload.R
   "www/player.js", "www/og-image.png",
+  list.files("www/fonts", full.names = TRUE),             # self-hosted fonts + licences
   "data/co2_data.xlsx", "data/rawData/rae2021co2.xlsx",
   "data/song_library.csv", "data/youtube_blocked.csv", "data/wanted_bpm.csv"
 )

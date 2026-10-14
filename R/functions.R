@@ -821,33 +821,34 @@ spotify_songs <- function(library) {
   library[ok, , drop = FALSE]
 }
 
-#' Keep only songs the app can play IN FULL (and auto-advance from)
+#' Keep only the songs one service can play ("Play via")
 #'
-#' YouTube and SoundCloud always play full songs. Spotify only does when the
-#' in-app Spotify player is connected (Premium); otherwise a Spotify-only song
-#' falls back to the 30-s preview widget, which can't auto-advance. Matching
-#' against this subset keeps "play the whole song, then the next" working.
-#' If no song qualifies, the input is returned unchanged (never an empty list).
+#' A playlist only ever plays from ONE service: Spotify's developer terms and
+#' SoundCloud's API terms don't allow mixing their music with another
+#' service's in the same player or playlist. So "Play via YouTube" matches
+#' slots against songs with a YouTube link only, "Play via Spotify" against
+#' songs with a Spotify link only, and so on. A slot no song of that service
+#' fits shows search buttons instead of borrowing another service's song.
 #'
 #' @param library Tibble from playable_songs()
-#' @param spotify_full TRUE when the Spotify full player is ready
+#' @param service "spotify", "youtube" or "soundcloud"
 #' @param bad_youtube YouTube video ids known not to play in the app
-#' @return The full-song subset (same columns), or `library` if that is empty
-full_song_songs <- function(library, spotify_full = FALSE, bad_youtube = character(0)) {
+#' @return The subset that service can play (same columns; may have 0 rows)
+service_songs <- function(library, service = c("spotify", "youtube", "soundcloud"),
+                          bad_youtube = character(0)) {
+  service <- match.arg(service)
   if (is.null(library) || nrow(library) == 0) return(library)
-  has_link <- function(col, parser) {
-    if (!col %in% names(library)) return(rep(FALSE, nrow(library)))
-    !is.na(vapply(library[[col]], parser, character(1), USE.NAMES = FALSE))
-  }
-  yt_ok <- if ("youtube_url" %in% names(library)) {
+  if (service == "spotify") return(spotify_songs(library))
+  col <- if (service == "youtube") "youtube_url" else "soundcloud_url"
+  if (!col %in% names(library)) return(library[0, , drop = FALSE])
+  ok <- if (service == "youtube") {
     ids <- vapply(library$youtube_url, parse_youtube_id, character(1), USE.NAMES = FALSE)
     !is.na(ids) & !(ids %in% bad_youtube)
-  } else rep(FALSE, nrow(library))
-  full <- yt_ok |
-    has_link("soundcloud_url", soundcloud_embed_url) |
-    (isTRUE(spotify_full) & has_link("spotify_uri", parse_spotify_id))
-  if (!any(full)) return(library)
-  library[full, , drop = FALSE]
+  } else {
+    !is.na(vapply(library$soundcloud_url, soundcloud_embed_url, character(1),
+                  USE.NAMES = FALSE))
+  }
+  library[ok, , drop = FALSE]
 }
 
 #' Where the "now playing" ball sits on the CO2 curve

@@ -6,6 +6,8 @@
 # address wherever a privacy-policy link is asked for, e.g. the Spotify
 # dashboard). Keep it in sync with what the app actually does: if you add
 # analytics, a new player, or move to another host, update the privacy part.
+# Also here: the "▶ Play via ..." gate in the Listen panel (player_gate()),
+# which says the same in two lines before any player loads.
 # =============================================================================
 
 #' "November 2024": month of the Modern record's last data point
@@ -25,6 +27,52 @@ modern_data_through <- function(modern) {
   a <- tags$a(href = href, target = "_blank", rel = "noopener", text,
               .noWS = if (!is.null(after)) "after")
   if (is.null(after)) a else tagList(a, after)
+}
+
+# -----------------------------------------------------------------------------
+# Players and privacy
+# -----------------------------------------------------------------------------
+# Who gets what when a visitor presses play. Used by the ▶ Play gate in the
+# Listen panel and by About & privacy, so both always say the same.
+
+YOUTUBE_TERMS_URL <- "https://www.youtube.com/t/terms"
+GOOGLE_PRIVACY_URL <- "https://policies.google.com/privacy"
+
+PLAYER_PRIVACY <- list(
+  spotify    = list(name = "Spotify", who = "Spotify", btn = "btn-spotify",
+                    privacy = "https://www.spotify.com/legal/privacy-policy/"),
+  youtube    = list(name = "YouTube", who = "Google", btn = "btn-youtube",
+                    privacy = GOOGLE_PRIVACY_URL),
+  soundcloud = list(name = "SoundCloud", who = "SoundCloud", btn = "btn-soundcloud",
+                    privacy = "https://soundcloud.com/pages/privacy")
+)
+
+#' The "▶ Play" gate shown in place of a player until the visitor presses it
+#'
+#' The page itself loads nothing from Spotify, YouTube or SoundCloud. Pressing
+#' Play is the visitor's OK to load that service's player, which then gets
+#' their IP address and may set cookies; for YouTube it is also the agreement
+#' to YouTube's Terms of Service that YouTube's developer policies ask for.
+#' www/player.js swaps the gate for the player and remembers the OK per
+#' service until the page is reloaded.
+#'
+#' @param service "spotify", "youtube" or "soundcloud"
+#' @return tag
+player_gate <- function(service) {
+  info <- PLAYER_PRIVACY[[service]]
+  if (is.null(info)) return(NULL)
+  div(class = "player-gate", `data-service` = service,
+      tags$button(type = "button", class = paste("btn gate-play", info$btn),
+                  paste0("▶ Play via ", info$name)),
+      p(class = "gate-note",
+        span(paste0("This loads ", info$name, "'s player: ", info$who,
+                    " then gets your IP address and may set cookies ("), .noWS = "after"),
+        .ext(info$privacy, paste(info$who, "privacy policy"), after = ")."),
+        if (identical(service, "youtube")) {
+          tagList("By playing you agree to the",
+                  .ext(YOUTUBE_TERMS_URL, "YouTube Terms of Service", after = "."))
+        },
+        actionLink("about_gate", "More in About & privacy", .noWS = "after"), "."))
 }
 
 #' "Suggest a song": the link, plus the tempos the library is short of
@@ -95,8 +143,10 @@ about_content <- function(settings = app_settings(), co2_data = NULL, wanted = N
 
     tags$h4("Music"),
     p("Songs are picked by us and played through the official embedded players of",
-      "Spotify, YouTube and SoundCloud. This site doesn't host or change any audio;",
-      "all rights stay with the artists and labels. Song tempos (BPM) partly from",
+      "Spotify, YouTube and SoundCloud – one service per playlist, the one you pick",
+      "under", tags$i("Play via", .noWS = "after"), ". We only link to official uploads",
+      "where we can. This site doesn't host or change any audio; all rights stay with",
+      "the artists and labels. Album covers come from Spotify. Song tempos (BPM) partly from",
       .ext("https://getsongbpm.com", "GetSongBPM", after = ".")),
     p("Without a login, Spotify plays 30-second previews and YouTube plays whole songs.",
       "Whole songs inside the app via Spotify need Spotify Premium and, while the app",
@@ -108,13 +158,21 @@ about_content <- function(settings = app_settings(), co2_data = NULL, wanted = N
     tags$h4("Privacy"),
     tags$ul(
       tags$li("The app itself uses no analytics and no tracking cookies, and keeps no",
-              "record of who you are."),
-      tags$li("The page loads code, players and album covers from Spotify, YouTube (Google)",
-              "and SoundCloud, and fonts from Google Fonts. These services receive your IP",
-              "address and may set their own cookies under their own policies:",
-              .ext("https://www.spotify.com/legal/privacy-policy/", "Spotify"), "·",
-              .ext("https://policies.google.com/privacy", "Google/YouTube"), "·",
-              .ext("https://soundcloud.com/pages/privacy", "SoundCloud", after = ".")),
+              "record of who you are. Its fonts come from this site too."),
+      tags$li("Nothing from Spotify, YouTube (Google) or SoundCloud loads until you press",
+              tags$b("▶ Play", .noWS = "after"), ". Then that service's player loads: the",
+              "service gets your IP address and may set its own cookies under its own",
+              "policy –",
+              .ext(PLAYER_PRIVACY$spotify$privacy, "Spotify"), "·",
+              .ext(GOOGLE_PRIVACY_URL, "Google/YouTube"), "·",
+              .ext(PLAYER_PRIVACY$soundcloud$privacy, "SoundCloud", after = "."),
+              "Album covers (if you switch them on) load from Spotify the same way.",
+              "Your OK lasts until you reload the page. To block these cookies, use your",
+              "browser's settings for third-party cookies."),
+      tags$li("Playing via YouTube uses the YouTube API Services: by playing YouTube videos",
+              "here you agree to the",
+              .ext(YOUTUBE_TERMS_URL, "YouTube Terms of Service", after = ","),
+              "and Google's", .ext(GOOGLE_PRIVACY_URL, "privacy policy"), "applies."),
       tags$li("If you connect Spotify (invited testers), the app receives a temporary",
               "access token from Spotify. It is kept in memory for your browser session only,",
               "never written to disk, and only used to play songs in this tab and, if you",
@@ -123,7 +181,11 @@ about_content <- function(settings = app_settings(), co2_data = NULL, wanted = N
               .ext("https://www.spotify.com/account/apps/", "spotify.com/account/apps", after = ".")),
       tags$li("The site is hosted on shinyapps.io (Posit PBC), which processes technical",
               "data such as IP addresses to deliver the page:",
-              .ext("https://posit.co/about/privacy-policy/", "Posit privacy policy", after = "."))
+              .ext("https://posit.co/about/privacy-policy/", "Posit privacy policy", after = ".")),
+      tags$li("Questions about your data, or want something deleted (e.g. a song suggestion",
+              "you emailed)? Write to us – see below. You can also complain to the Swedish",
+              "Authority for Privacy Protection,",
+              .ext("https://www.imy.se/en/", "IMY", after = "."))
     ),
 
     tags$h4("Who made this"),

@@ -82,7 +82,9 @@ cache (`covers.R`, offline with a fake lookup), the playlist helpers (tempo
 *Feel*, which song a point on the curve belongs to, the CSV download), and the
 app's server logic (`test-app_server.R`, via `shiny::testServer()`: a new song
 only starts by itself while music plays, Previous / Next, the playlist table,
-how each song was matched).
+how each song was matched, one service per playlist, the ▶ Play gate, a failing
+YouTube video moving on instead of switching service, and that the page's
+`<head>` loads nothing from other sites).
 
 The enrichment test with Swedish characters needs a UTF-8 locale (it is on any
 normal Mac/RStudio setup).
@@ -136,6 +138,21 @@ app's story and the makers (`APP_STORY`, `APP_MAKERS`).
   pause or a player that hasn't started); a newly rendered player gets
   `data-autoplay` from `listening()`. At the end of a song, *Auto-play the next
   song* decides whether the playlist continues.
+- **One service per playlist:** `play_service()` (the *Play via* choice) feeds
+  `service_songs()` (`R/functions.R`), so the matcher only sees that service's
+  songs, and the Listen panel only ever builds that service's player. There is
+  no "best available" mix any more. A YouTube video that fails mid-session
+  (`input$yt_error`) is remembered in `bad_yt()` and, while music is meant to
+  play, the playlist moves on to the next song.
+- **▶ Play gate (privacy):** nothing in `<head>` comes from another site (fonts
+  in `www/fonts/fonts.css`). For embedded players the server renders
+  `player_gate(service)` (`R/about.R`) plus the player placeholder in a hidden
+  `.player-slot`. `player.js` keeps the gate until the visitor presses it
+  (`consent[service]`, this page only), then fetches that service's script
+  (`loadScript()`: Spotify embed API, YouTube IFrame API, SoundCloud widget API)
+  and creates the player, starting the song. The Spotify SDK script is fetched
+  when the server sends a token (`sp_token`, i.e. after a login). YouTube uses
+  `host: youtube-nocookie.com` and `whenVisible()` before any automatic start.
 
 ## Secrets
 
@@ -157,14 +174,47 @@ See [`LAUNCH.md`](LAUNCH.md).
 `R/covers.R`: `update_cover_cache()` (used by `data-raw/fetch_covers.R` and the
 deploy script) fills `data/song_covers.csv` from Spotify's oEmbed
 `thumbnail_url`; in the app `cover_store()` / `store_cover_urls()` read it and
-look up missing ones once per R process (in parallel), with the YouTube
-thumbnail as fallback.
+look up missing ones once per R process (in parallel). Covers are Spotify-only
+and only shown while playing via Spotify, credited under the plot
+(`output$covers_credit`).
 
 ## Song-library check
 
 `source("data-raw/check_song_library.R")` — row issues, coverage simulation
-with the app's own matcher, BPM gaps, and a READY / NOT YET verdict
-(`R/library_check.R`).
+with the app's own matcher (one pool per service: `library_pools()` uses
+`service_songs()`), BPM gaps, and a READY / NOT YET verdict
+(`R/library_check.R`). With `CHECK_LINKS <- TRUE` the online link check also
+reports each YouTube link's channel and flags uploads that don't look official
+(`youtube_channel_official()`; "label upload" / "official upload" in a song's
+notes marks one you checked by hand).
+
+## Platform rules & privacy (keep these)
+
+Checked against the platforms' terms on 14 Oct 2026 (Spotify Developer Policy
+and Widget Terms, YouTube API Services Developer Policies and Required Minimum
+Functionality, SoundCloud API Terms). Not legal advice, but breaking these can
+get an embed or API key blocked:
+
+- **Never mix services** in one playlist or player (Spotify Policy III.5 /
+  III.7, Widget Terms; SoundCloud API Terms §10). Links *out* to other services
+  (the "Open in" buttons) are fine.
+- **Spotify covers** only next to Spotify's player, credited to Spotify, with a
+  link back (Spotify Policy II.4); never let visitors download them (no plot
+  download button).
+- **Nothing third-party before ▶ Play** (GDPR / Swedish cookie rules: the site
+  owner shares responsibility for embeds). Keep fonts self-hosted; load new
+  services through `loadScript()` after the gate; update `R/about.R` when a
+  service, host or data use changes.
+- **YouTube:** player at least 200 × 200 px, nothing on top of it, no hidden or
+  audio-only playback, automatic starts only while it's more than half visible;
+  keep the "YouTube API Services" + Terms of Service lines in *About* and the
+  gate.
+- **Official uploads only** for YouTube links (artist, VEVO, "Artist - Topic"
+  or label channels).
+- **Non-commercial:** no ads, sponsors or paid features while the app uses
+  these players.
+- Don't add a video/GIF export that combines the plot with the music (Spotify
+  forbids synchronising recordings with visual media).
 
 ## Link previews & Suggest a song
 

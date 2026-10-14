@@ -21,24 +21,30 @@ renv::restore()
 ## 2. How the app plays songs
 
 Each song in the playlist is matched to a song from `data/song_library.csv`
-with a similar BPM. The app uses one player per song, the first one that works:
+with a similar BPM. **Play via** picks ONE service for the whole playlist, and
+only songs with a link for that service are used (Spotify's and SoundCloud's
+terms don't allow mixing their music with another service's):
 
-1. **Spotify, full songs**: only after you click *Connect Spotify* (needs
-   Spotify Premium).
-2. **YouTube**: full songs, no login needed.
-3. **SoundCloud**: full songs, no login needed.
-4. **Spotify 30-s clip** (not connected): press ▶ on the first song; after that the clips play one after another.
+- **Spotify**: full songs after you click *Connect Spotify* (needs Spotify
+  Premium), otherwise 30-s clips — press ▶ on the first song; after that the
+  clips play one after another.
+- **YouTube**: full songs, no login needed.
+- **SoundCloud**: full songs, no login needed (only offered once the library
+  has SoundCloud links).
+
+Nothing from these services loads before you press **▶ Play via …** in the
+Listen panel (privacy: the page itself contacts no one else). Pressing it
+loads that service's player and starts the song.
 
 While a song plays, the ball on the CO₂ curve moves through that song's time
 window. When a song ends, the next one starts (untick *Auto-play the next song
 when one ends* to stop that). **⏮ Previous / Next ⏭** step through the
 playlist. A newly selected song (Previous / Next, a click in the playlist or on
 the plot, another era) starts by itself only while music is playing — after a
-pause nothing starts on its own. **Play via** lets you choose Spotify, YouTube
-or SoundCloud; if a song has no link for that service, the app uses the best one
-it has. Under the player there is always an *Open in* Spotify, YouTube and
-SoundCloud button: the song itself if it has a link, otherwise a search (🔎) on
-that site.
+pause nothing starts on its own. If a YouTube video won't play here, the app
+leaves it out from then on and moves on to the next song. Under the player
+there is always an *Open in* Spotify, YouTube and SoundCloud button: the song
+itself if it has a link, otherwise a search (🔎) on that site.
 
 **Song length** switches between *Whole song* and *30-s snippets* (start at
 the beginning, at 0:30 or in the middle). Snippets auto-advance too, so a whole
@@ -148,6 +154,17 @@ If a match is wrong, clear that cell in `song_library.csv` (or paste the right
 link) and run the script again. Commit the updated `song_library.csv` when
 you're happy with it.
 
+**YouTube: official uploads only.** Use the artist's own channel, its VEVO
+channel or YouTube's auto-generated "Artist - Topic" upload — not lyrics,
+promo or fan channels (e.g. 7clouds, "… Lyrics" channels). The app embeds what
+the link points to, and embedding uploads the rights holders didn't authorise
+is where its copyright risk sits. In `matched_artist` the log shows the channel
+the enrichment picked. The library check finds the rest:
+`CHECK_LINKS <- TRUE` in `data-raw/check_song_library.R` lists YouTube links
+from channels that don't look official. A label's channel is often fine — once
+you've checked it, write "label upload" in the song's `notes` and the check
+leaves it alone.
+
 ## 5. Run the app
 
 ```r
@@ -164,7 +181,7 @@ log in. You only need to do that once; the login is remembered.
 
 | What you see | What to do |
 |---|---|
-| Only 30-second previews | Under *More options*, tick *skip songs that only have a Spotify preview* (default). Otherwise that song only has a Spotify link: add a `youtube_url` (re-run the enrichment the next day if the YouTube quota ran out), or connect Spotify (Premium). |
+| Only 30-second previews | That's Spotify without a login. Pick *Play via YouTube* for whole songs, or connect Spotify (Premium). To get a song into the YouTube playlists, add its `youtube_url` (re-run the enrichment the next day if the YouTube quota ran out). |
 | Next song does not start | Tick *Auto-play the next song when one ends*, and press ▶ once on the first song (browsers block sound until you click). |
 | A song started although I had stopped | Shouldn't happen any more (3.5.0): after a pause, only ▶ starts the music. |
 | Pressing play opens Spotify | That song has no 30-s clip; Spotify's widget sends you to Spotify. During auto-play such songs are skipped. |
@@ -175,6 +192,6 @@ log in. You only need to do that once; the login is remembered.
 | "YouTube daily quota used up" | Normal; run the script again tomorrow. |
 | "BPM (GetSongBPM) skipped: set GETSONGBPM_KEY" | Add the key to `.Renviron` and restart R. |
 | "GetSongBPM refused the request (HTTP 401/403)" | Key not activated yet (check the email) or suspended — check the backlink is still public. |
-| "YouTube can't play this song here: …" | The app switches to another player and lists the video in `data/youtube_blocked.csv`, so it's skipped next time. Many label videos block other websites; Spotify (connected) is the reliable way to get full songs. To use YouTube for that song anyway, paste a different `youtube_url` (e.g. the artist's "- Topic" upload) and remove its line from `youtube_blocked.csv`. |
+| "YouTube can't play this song here: …" | The app moves on to the next song (never to another service) and lists the video in `data/youtube_blocked.csv`, so it's left out next time. Many label videos block other websites; Spotify (connected) is the reliable way to get full songs. To use YouTube for that song anyway, paste a different official `youtube_url` (e.g. the artist's "- Topic" upload) and remove its line from `youtube_blocked.csv`. |
 | Spotify plays only 30 s | You're not connected: click **Connect Spotify to play the full song** (one-time login, Premium). After login the panel says "✓ Spotify connected". |
 | Keys are `FALSE` in the check above | `.Renviron` must be in the project folder; restart R after editing it. |
