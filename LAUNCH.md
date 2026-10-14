@@ -184,7 +184,7 @@ Status on 7 Oct 2026 (231 songs):
    in the notes).
 4. The platform rules in [`DEVELOPMENT.md`](DEVELOPMENT.md#platform-rules--privacy-keep-these)
    still hold (one service per playlist, nothing third-party before ▶ Play,
-   non-commercial).
+   non-commercial, no video export with the music).
 5. Re-deploy, then share the plain link (keep `?testers` for testers).
 
 ## Good to know

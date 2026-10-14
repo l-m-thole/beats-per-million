@@ -222,6 +222,11 @@ get an embed or API key blocked:
 - Don't add a video/GIF export that combines the plot with the music (Spotify
   forbids synchronising recordings with visual media).
 
+Tripwire: `tests/testthat/test-platform_rules.R` fails when ad, tracking or
+payment code, a recording/animation/image export, the plot's mode bar or a new
+download shows up. If it fails, check the change against these rules before
+touching the test.
+
 ## Link previews & Suggest a song
 
 `R/share.R`. The preview tags sit in the static UI (crawlers don't run

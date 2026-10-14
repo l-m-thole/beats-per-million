@@ -310,7 +310,7 @@ Saving from Excel is fine (columns can be reordered, extra columns are ignored).
 - **Full songs via Spotify need a one-time *Connect Spotify* login** (Spotify
   Premium). Until then Spotify only allows 30-s previews, and the app shows a
   *Connect Spotify to play the full song* button right at the player.
-- If a YouTube video refuses to play (many label videos block other websites),
+- If a YouTube video refuses to play (some label videos block other websites),
   the app says why, leaves it out for that visitor and — if music was playing —
   moves on to the next song (never to another service). It is written to
   `data/youtube_blocked.csv` (left out for good) only once a YouTube song has
