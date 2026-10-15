@@ -89,6 +89,7 @@ test_that("playback, Previous/Next and the playlist table behave", {
     pk <- curated_picks()
     expect_true(all(c("match_tol", "n_candidates") %in% names(pk)))
     expect_true(all(pk$n_candidates >= 1))
+    expect_true(all(pk$match_tol %in% c(MATCH_TOLS, NA)))
   })
 })
 

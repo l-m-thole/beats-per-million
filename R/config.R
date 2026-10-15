@@ -17,6 +17,12 @@
 BPM_MIN <- 60
 BPM_MAX <- 150
 
+# Song matching: the BPM windows (± around a slice's tempo) the matcher tries,
+# in this order. It picks at random among the unused songs in the first window
+# that has any, and takes the closest song when none has. The first window is
+# also the "good match" the library check and the wanted tempos aim for.
+MATCH_TOLS <- c(3, 5, 10)
+
 # Average song length in minutes
 AVG_SONG_LENGTH <- 3
 

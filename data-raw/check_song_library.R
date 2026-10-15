@@ -14,8 +14,9 @@
 #
 # Launch criteria (for the scaling mode visitors start with, per period):
 #   1. no rows with errors
-#   2. every slot gets a song within ±5 BPM (no ±10 / "nearest" fallbacks)
-#   3. at least VARIETY songs within ±5 BPM per slot, so Shuffle has choice
+#   2. every slot gets a song within the matcher's first window, ±3 BPM
+#      (MATCH_TOLS in R/config.R; no ±5 / ±10 / "nearest" fallbacks)
+#   3. at least VARIETY songs within ±3 BPM per slot, so Shuffle has choice
 #   4. (with CHECK_LINKS) every link works and may be embedded
 #
 # With CHECK_LINKS it also lists YouTube links from channels that don't look
@@ -28,7 +29,7 @@ PUBLIC_POOL <- "spotify"  # what public visitors get by default:
                           #   "youtube" = Play via YouTube, whole songs without login
                           #   (a playlist never mixes services: one pool each)
 SHUFFLES    <- 0:2        # Shuffle re-rolls to test (0 = what visitors see first)
-VARIETY     <- 3          # songs within ±5 BPM wanted per slot
+VARIETY     <- 3          # songs within ±3 BPM (the first window) wanted per slot
 OUT_DIR     <- file.path("output", "library_check")
 
 suppressPackageStartupMessages(library(dplyr))
@@ -81,10 +82,12 @@ if (!nrow(issues)) {
 
 rule("MATCHING, per-period scaling (the app default)")
 show <- summ[summ$mode == "per_period" & summ$pool %in% c("spotify", "youtube"),
-             c("pool", "period", "slots", "pct_good", "fallbacks", "thin_choice", "worst_gap")]
+             c("pool", "period", "slots", "pct_good", "fallbacks", "wide", "thin_choice",
+               "worst_gap")]
 print(as.data.frame(show), row.names = FALSE)
-cat("pct_good = slots matched within ±5 BPM; thin_choice = slots with <", VARIETY,
-    "songs within ±5 BPM\n")
+cat(sprintf(paste0("pct_good = slots matched within ±%g BPM; fallbacks = slots that needed a wider\n",
+                   "window; wide = slots beyond ±%g BPM; thin_choice = slots with < %d songs within ±%g BPM\n"),
+            MATCH_TOLS[1], MATCH_TOLS[min(2, length(MATCH_TOLS))], VARIETY, MATCH_TOLS[1]))
 
 rule(paste0("WHERE SONGS ARE MISSING [", PUBLIC_POOL, " pool]"))
 need <- gaps[gaps$pool == PUBLIC_POOL & gaps$add_at_least > 0,

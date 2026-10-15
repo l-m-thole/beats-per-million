@@ -109,6 +109,13 @@ refresh shifted song numbers. `seed_song_library()` writes the file once (header
 + two example rows) and never overwrites it; `run_generator.R` calls it after
 exporting the templates.
 
+**Matching:** `assign_songs_to_playlist()` walks the slots in order;
+`pick_song_widening()` tries the BPM windows in `MATCH_TOLS` (`R/config.R`:
+±3, then ±5, then ±10 BPM), picks at random among the unused songs in the
+first window that has any, else takes the nearest song. Changing `MATCH_TOLS`
+changes which songs every seed gives. The library check and the wanted tempos
+count a match in the first window as good.
+
 ## Period texts & key events
 
 Background texts, key events and how the CO₂ was measured (`CO2_MEASUREMENT`
@@ -189,7 +196,8 @@ and only shown while playing via Spotify, credited under the plot
 `source("data-raw/check_song_library.R")` — row issues, coverage simulation
 with the app's own matcher (one pool per service: `library_pools()` uses
 `service_songs()`), BPM gaps, and a READY / NOT YET verdict
-(`R/library_check.R`). With `CHECK_LINKS <- TRUE` the online link check also
+(`R/library_check.R`; a good match = within the first window of `MATCH_TOLS`,
+±3 BPM). With `CHECK_LINKS <- TRUE` the online link check also
 reports each YouTube link's channel and flags uploads that don't look official
 (`youtube_channel_official()`; "label upload" / "official upload" in a song's
 notes marks one you checked by hand).

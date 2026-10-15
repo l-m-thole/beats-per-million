@@ -60,6 +60,14 @@ years_per_song_table <- function() {
   paste0(f$feel, " (", lab, ")", collapse = ", ")
 }
 
+# "If none is left, it tries ±5, then ±10 BPM, then simply takes the closest song."
+.widening_txt <- function(tols = MATCH_TOLS) {
+  wider <- tols[-1]
+  if (!length(wider)) return("If none is left, it simply takes the closest song.")
+  paste0("If none is left, it tries ", paste0("±", wider, collapse = ", then "),
+         " BPM, then simply takes the closest song.")
+}
+
 .ext_link <- function(href, text) tags$a(href = href, target = "_blank", rel = "noopener", text)
 
 # -----------------------------------------------------------------------------
@@ -123,9 +131,10 @@ how_it_works_content <- function(period_id = NULL, stats = NULL, scaling = "per_
               tags$i("BPM scale"), "in the playlist."),
       tags$li(tags$b("A song for each slice."),
               "From", paste0(n_lib_txt, ","), "each tagged with its real tempo, the app",
-              "takes the songs within ±5 BPM of the slice's tempo and picks one of them",
-              "at random. If none is left, it tries ±10 BPM, then simply takes the",
-              "closest song. A song is never used twice in the same playlist. The table",
+              sprintf("takes the songs within ±%g BPM of the slice's tempo and picks one",
+                      MATCH_TOLS[1]),
+              "of them at random.", .widening_txt(),
+              "A song is never used twice in the same playlist. The table",
               "shows the slice's tempo (", tags$i("BPM", .noWS = "outside"), ") next to the",
               "song's own (", tags$i("Song BPM", .noWS = "outside"), "), and the Listen",
               "panel says how the current song was picked."),

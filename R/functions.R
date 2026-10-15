@@ -601,24 +601,25 @@ pick_song_for_bpm <- function(songs, target_bpm, tol, exclude = character()) {
 
 #' Pick a song for a target BPM, widening the search until something matches
 #'
-#' Tries progressively looser tolerances, then falls back to the single nearest
-#' song, then gives up:
-#'   tol = 5  ->  tol = 10  ->  nearest song by |bpm - target|  ->  NULL
+#' Tries progressively looser tolerances (MATCH_TOLS in config.R), then falls
+#' back to the single nearest song, then gives up:
+#'   tol = 3  ->  tol = 5  ->  tol = 10  ->  nearest song by |bpm - target|  ->  NULL
 #'
 #' Honours `exclude` at every step, so a song already used elsewhere in the
 #' playlist is never picked again. Returns NULL only when the library has no
 #' usable (non-excluded, non-missing-bpm) songs left.
 #'
 #' The result says how the song was found (shown in the app, so the choice is
-#' transparent): `match_tol` = the tolerance that found it (5, 10, ...; NA for
+#' transparent): `match_tol` = the tolerance that found it (3, 5 or 10; NA for
 #' the nearest-song fallback) and `n_candidates` = how many songs qualified at
 #' that step (the pick is a random one of them).
 #'
 #' @inheritParams pick_song_for_bpm
-#' @param tols Ascending BPM tolerances to try before the nearest-song fallback.
+#' @param tols Ascending BPM tolerances to try before the nearest-song fallback
+#'   (default MATCH_TOLS: ±3, then ±5, then ±10).
 #' @return One-row tibble (library columns + match_tol, n_candidates), or NULL.
 pick_song_widening <- function(songs, target_bpm, exclude = character(),
-                               tols = c(5, 10)) {
+                               tols = MATCH_TOLS) {
   if (is.null(songs) || nrow(songs) == 0) return(NULL)
   if (length(target_bpm) == 0 || is.na(target_bpm)) return(NULL)
 
@@ -655,14 +656,16 @@ pick_song_widening <- function(songs, target_bpm, exclude = character(),
 #' @param target_bpm The slot's tempo (from CO2)
 #' @param match_tol Tolerance that found the song (NA = nearest-song fallback)
 #' @param n_candidates How many songs qualified at that step
+#' @param widest The matcher's widest window (named in the nearest-song case)
 #' @return Character string
-match_explanation <- function(song_bpm, target_bpm, match_tol, n_candidates) {
+match_explanation <- function(song_bpm, target_bpm, match_tol, n_candidates,
+                              widest = max(MATCH_TOLS)) {
   off <- if (is.na(song_bpm) || is.na(target_bpm)) NA else round(song_bpm - target_bpm)
   diff_txt <- if (is.na(off)) "" else if (off == 0) "exactly on target" else
     sprintf("%s%d BPM from the target", if (off > 0) "+" else "−", abs(off))
   n <- suppressWarnings(as.integer(n_candidates))
   how <- if (is.na(match_tol)) {
-    "no unused song within ±10 BPM was left, so the closest one was taken"
+    sprintf("no unused song within ±%g BPM was left, so the closest one was taken", widest)
   } else if (is.na(n) || n <= 1) {
     sprintf("the only unused song within ±%g BPM", match_tol)
   } else {
@@ -684,13 +687,13 @@ match_explanation <- function(song_bpm, target_bpm, match_tol, n_candidates) {
 #' @param library Song-library tibble from load_song_library().
 #' @param period Period id (character) - used to seed the RNG.
 #' @param shuffle_counter Integer bumped by the app's Shuffle button (default 0).
-#' @param tols Tolerances handed to pick_song_widening().
+#' @param tols Tolerances handed to pick_song_widening() (default MATCH_TOLS).
 #' @return Tibble with one row per MATCHED slot: song_number plus the library
 #'   columns (song_title, artist, spotify_uri, soundcloud_url, bpm, notes) and
 #'   how the song was found (match_tol, n_candidates - see pick_song_widening).
 #'   Empty (correctly-shaped) tibble when nothing matches.
 assign_songs_to_playlist <- function(playlist_songs, library, period,
-                                     shuffle_counter = 0, tols = c(5, 10)) {
+                                     shuffle_counter = 0, tols = MATCH_TOLS) {
   empty <- tibble::tibble(
     song_number = integer(),   song_title = character(),    artist = character(),
     spotify_uri = character(), soundcloud_url = character(),

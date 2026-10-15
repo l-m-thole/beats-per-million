@@ -285,13 +285,14 @@ Saving from Excel is fine (columns can be reordered, extra columns are ignored).
 
 ### How matching works
 
-- For each slot the app takes the songs within **±5 BPM** and picks one **at
-  random**; if none is left it tries **±10 BPM**, then takes the **single
-  nearest** song. Only an empty library leaves a slot with search buttons.
+- For each slot the app takes the songs within **±3 BPM** and picks one **at
+  random**; if none is left it widens to **±5**, then **±10 BPM**, then takes
+  the **single nearest** song (the windows are `MATCH_TOLS` in `R/config.R`).
+  Only an empty library leaves a slot with search buttons.
 - A song is **never repeated within one period**.
 - **Transparent:** the playlist shows the slot's tempo (*BPM*) next to the
   song's own (*Song BPM*), and the Listen panel says how the song was found
-  (e.g. *+3 BPM from the target · picked at random from 8 songs within ±5 BPM*;
+  (e.g. *+2 BPM from the target · picked at random from 8 songs within ±3 BPM*;
   `match_tol` / `n_candidates` from `pick_song_widening()`).
 - **🔀 Shuffle songs** re-rolls the random picks — other songs, same tempos. The
   order never changes (always oldest → youngest). Without shuffling, the same
