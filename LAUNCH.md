@@ -8,7 +8,7 @@ doing once; after that a re-deploy is one line.
 login off for now (invited testers later) · test Spotify vs YouTube, then pick
 the default player.
 
-## Status (14 Oct 2026)
+## Status (15 Oct 2026)
 
 - [x] Launch prep + Spotify snippets merged into `main` (v3.3.0), pushed
 - [x] `renv.lock` complete (`httr2`, `openssl`)
@@ -25,11 +25,14 @@ the default player.
       of each month → merge it, re-deploy
 - [x] *About & privacy* read through (14 Oct)
 - [x] Platform rules guarded by `tests/testthat/test-platform_rules.R`
+- [ ] Merge `feature/match-3-5-10` (v3.7.0: songs are matched within ±3 BPM
+      first, then ±5 and ±10 — Martin's idea), push, re-deploy
 - [ ] Player test with friends (step 4) — running since 14 Oct → set
       `DEFAULT_PLAYER`
 - [ ] Send the link to yourself in WhatsApp/Signal to see the preview card
-- [ ] Library (step 6): links for 29 rows (mostly one enrichment run), ~2 more
-      songs at 60–69 BPM, swap 3 unofficial + 3 blocked YouTube uploads
+- [ ] Library (step 6): links for 70 rows (mostly one enrichment run), ~5 more
+      songs at 60–69 and 1 at 145–150 BPM, swap 3 unofficial + 3 blocked
+      YouTube uploads
 - [ ] Spotify tester login (optional): `SPOTIFY_LOGIN <- "testers"`, step 2,
       re-deploy
 
@@ -154,7 +157,21 @@ if YouTube becomes the default player, and `CHECK_LINKS <- TRUE` now and then
 to test every link online (no keys needed).
 
 **Launch criteria** (per-period scaling, the app default): no rows with errors ·
-every slot gets a song within ±5 BPM · at least 3 songs within ±5 BPM per slot.
+every slot gets a song within ±3 BPM · at least 3 songs within ±3 BPM per slot.
+±3 BPM is the matcher's first window (`MATCH_TOLS` in `R/config.R`); when it
+has no unused song it widens to ±5, then ±10 BPM.
+
+Status on 15 Oct 2026 (309 songs; matching ±3 → ±5 → ±10):
+
+- **70 songs have no link yet** (incl. the 41 new rows at the end of the file)
+  → run `data-raw/enrich_song_library.R` again.
+- **Spotify pool:** 377 of 385 slots get a song within ±3 BPM; 8 need a wider
+  window (3 of them beyond ±5). Add about **1 song at 60–64, 4 at 65–69 and
+  1 at 145–150 BPM**.
+- **YouTube pool:** 367 of 385 within ±3; 18 need a wider window (14 beyond
+  ±5). Add about **4 songs at 60–64, 5 at 65–69 and 2 at 145–150 BPM** with a
+  YouTube link.
+- **15 songs are outside 60–150 BPM** (13 on 14 Oct) — see below.
 
 Status on 14 Oct 2026 (268 songs; link check run the same day):
 

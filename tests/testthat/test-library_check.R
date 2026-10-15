@@ -141,7 +141,8 @@ test_that("coverage uses the app's matcher and reports gaps", {
   cov <- library_coverage(pls, pools, shuffles = 0:1)
 
   good <- cov[cov$pool == "good", ]
-  expect_true(all(good$status == "within 5"))
+  expect_true(all(good$status == "within 3"))
+  expect_true(all(good$good_match))
   expect_true(all(good$choice >= 3))
 
   # one song: the first slot takes it as its "nearest" match, the rest get none
@@ -165,6 +166,38 @@ test_that("coverage uses the app's matcher and reports gaps", {
   expect_length(v_thin$lines, 3)
 })
 
+test_that("match_status names the narrowest window that holds the gap", {
+  expect_equal(match_status(c(0, 3, 3.5, 5, 7, 10, 12, NA)),
+               c("within 3", "within 3", "within 5", "within 5", "within 10", "within 10",
+                 "nearest", "none"))
+  expect_equal(match_status(c(4, 6), tols = c(5, 10)), c("within 5", "within 10"))
+})
+
+test_that("a pool that only reaches ±5 BPM counts as falling back from ±3", {
+  slots <- tibble::tibble(song_number = 1:4, bpm = c(60, 62, 100, 150))
+  pls <- list(per_period = list(test = list(songs = slots)))
+  lib <- tibble::tibble(song_title = paste("S", 1:4), artist = "A", spotify_uri = SP,
+                        soundcloud_url = NA_character_, youtube_url = NA_character_,
+                        bpm = c(56, 66, 96, 146), notes = NA_character_)   # all 4 BPM off
+  pools <- list(spotify = lib)
+  cov <- library_coverage(pls, pools, shuffles = 0:1)
+  expect_equal(cov$status, rep("within 5", 4))
+  expect_false(any(cov$good_match))
+  expect_equal(cov$worst_gap, rep(4, 4))
+
+  s <- coverage_summary(cov)
+  expect_equal(c(s$good_matches, s$fallbacks, s$wide, s$pct_good), c(0, 4, 0, 0))
+
+  v <- library_verdict(tibble::tibble(line = integer(), severity = character()), cov,
+                       pool = "spotify")
+  expect_false(v$ready)
+  expect_match(v$lines[2], "4 of 4 slots fall back to ±5 BPM or wider", fixed = TRUE)
+  expect_match(v$lines[3], "within ±3 BPM", fixed = TRUE)
+
+  g <- library_gaps(cov, pools)
+  expect_equal(g$fallbacks[g$bin == "60-64"], 2L)       # both slow slots need songs
+})
+
 test_that("identical pools are simulated once but reported for both names", {
   slots <- tibble::tibble(song_number = 1:2, bpm = c(90, 110))
   pls <- list(per_period = list(test = list(songs = slots)))
@@ -174,4 +207,13 @@ test_that("identical pools are simulated once but reported for both names", {
   cov <- library_coverage(pls, list(spotify = lib, all = lib), shuffles = 0)
   expect_setequal(unique(cov$pool), c("spotify", "all"))
   expect_equal(cov$status[cov$pool == "spotify"], cov$status[cov$pool == "all"])
+
+  # several shuffles + a different pool in between: the copy still comes from the
+  # right pool (the shuffle loop used to overwrite the pool index)
+  other <- lib
+  other$bpm <- c(60, 150)
+  cov <- library_coverage(pls, list(spotify = lib, youtube = other, all = lib), shuffles = 0:2)
+  expect_equal(nrow(cov), 6)
+  expect_equal(cov$status[cov$pool == "all"], cov$status[cov$pool == "spotify"])
+  expect_equal(cov$worst_gap[cov$pool == "all"], c(0, 0))
 })

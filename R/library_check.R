@@ -356,6 +356,19 @@ library_pools <- function(lib, blocked_youtube = character(0)) {
   )
 }
 
+#' How close a match is, in the matcher's own terms
+#'
+#' @param gap |song BPM - target BPM| (NA = no song)
+#' @param tols The matcher's tolerances
+#' @return "within 3" / "within 5" / "within 10" (the narrowest window that
+#'   holds the gap), "nearest" (outside every window) or "none"
+match_status <- function(gap, tols = MATCH_TOLS) {
+  out <- rep("nearest", length(gap))
+  for (t in sort(tols, decreasing = TRUE)) out[!is.na(gap) & gap <= t] <- paste("within", t)
+  out[is.na(gap)] <- "none"
+  out
+}
+
 #' Simulate the app's song matching for every slot
 #'
 #' For every scaling mode x period x pool, runs the app's own
@@ -366,12 +379,13 @@ library_pools <- function(lib, blocked_youtube = character(0)) {
 #'   global = generate_all_playlists(..., co2_scale = ...)) - like ALL_PLAYLISTS
 #' @param pools Named list of library subsets (library_pools())
 #' @param shuffles Shuffle-button values to test (0 = what visitors see first)
-#' @param tols The matcher's tolerances (first = "good match")
+#' @param tols The matcher's tolerances (first = "good match"; default MATCH_TOLS)
 #' @return Tibble, one row per mode x period x pool x slot: target_bpm,
 #'   choice (pool songs within tols[1] BPM), worst_gap / mean_gap over the
 #'   shuffles, good_share (share of shuffles within tols[1]), status of the
-#'   worst shuffle ("within 5", "within 10", "nearest", "none").
-library_coverage <- function(playlists, pools, shuffles = 0:2, tols = c(5, 10)) {
+#'   worst shuffle (match_status(): "within 3", "within 5", "within 10",
+#'   "nearest", "none") and good_match (worst shuffle within tols[1]).
+library_coverage <- function(playlists, pools, shuffles = 0:2, tols = MATCH_TOLS) {
   res <- list()
   # identical pools (e.g. every playable song has a Spotify link) are simulated once
   same_as <- vapply(seq_along(pools), function(k) {
@@ -397,13 +411,13 @@ library_coverage <- function(playlists, pools, shuffles = 0:2, tols = c(5, 10)) 
         lib_bpm <- if (n_lib) lib$bpm[!is.na(lib$bpm)] else numeric(0)
         choice <- vapply(slots$bpm, function(t) sum(abs(lib_bpm - t) <= tols[1]), integer(1))
         gaps <- matrix(NA_real_, nrow(slots), length(shuffles))
-        for (k in seq_along(shuffles)) {
+        for (s in seq_along(shuffles)) {      # not `k`: that's the pool index
           picks <- if (n_lib) assign_songs_to_playlist(slots, lib, period = period,
-                                                       shuffle_counter = shuffles[k],
+                                                       shuffle_counter = shuffles[s],
                                                        tols = tols) else NULL
           if (!is.null(picks) && nrow(picks)) {
             idx <- match(picks$song_number, slots$song_number)
-            gaps[idx, k] <- abs(picks$bpm - slots$bpm[idx])
+            gaps[idx, s] <- abs(picks$bpm - slots$bpm[idx])
           }
         }
         worst <- apply(gaps, 1, function(g) if (all(is.na(g))) NA_real_ else max(g, na.rm = TRUE))
@@ -415,11 +429,8 @@ library_coverage <- function(playlists, pools, shuffles = 0:2, tols = c(5, 10)) 
           worst_gap = worst,
           mean_gap = rowMeans(gaps, na.rm = TRUE),
           good_share = rowMeans(!is.na(gaps) & gaps <= tols[1]),
-          status = dplyr::case_when(
-            is.na(worst)       ~ "none",
-            worst <= tols[1]   ~ paste("within", tols[1]),
-            worst <= tols[2]   ~ paste("within", tols[2]),
-            TRUE               ~ "nearest")
+          status = match_status(worst, tols),
+          good_match = !is.na(worst) & worst <= tols[1]
         )
         res[[length(res) + 1]] <- one
         done[[k]] <- one
@@ -436,14 +447,21 @@ library_coverage <- function(playlists, pools, shuffles = 0:2, tols = c(5, 10)) 
 #'
 #' @param cov Output of library_coverage()
 #' @param variety Songs within the first tolerance wanted per slot
-coverage_summary <- function(cov, variety = 3) {
+#' @param tols The matcher's tolerances (as used for cov)
+#' @return Tibble per pool x mode x period: slots, good_matches (within the
+#'   first window), fallbacks (needed a wider one), wide (needed more than the
+#'   second window: ±10 or the nearest song), unmatched, thin_choice,
+#'   worst_gap, pct_good
+coverage_summary <- function(cov, variety = 3, tols = MATCH_TOLS) {
   if (!nrow(cov)) return(tibble::tibble())
+  second <- tols[min(2, length(tols))]
   cov |>
     dplyr::group_by(pool, mode, period) |>
     dplyr::summarise(
       slots        = dplyr::n(),
-      good_matches = sum(status == "within 5"),
-      fallbacks    = sum(status != "within 5"),
+      good_matches = sum(good_match),
+      fallbacks    = sum(!good_match),
+      wide         = sum(is.na(worst_gap) | worst_gap > second),
       unmatched    = sum(status == "none"),
       thin_choice  = sum(choice < variety),
       worst_gap    = suppressWarnings(max(worst_gap, na.rm = TRUE)),
@@ -465,10 +483,11 @@ coverage_summary <- function(cov, variety = 3) {
 #'   global scale every ice-core era sits at ~60-66 BPM, which no library can
 #'   fill without repeats (see the README).
 #' @param step Bin width in BPM
-#' @param variety Songs within ±5 BPM wanted per slot
+#' @param variety Songs within the first window (±3 BPM) wanted per slot
 #' @return Tibble per pool x bin: songs (in the pool, inside the bin),
 #'   busiest (most slots in one playlist), fallbacks (most slots in one playlist
-#'   without a ±5 match), min_choice, add_at_least (rough number of songs to
+#'   without a match in the first window, ±3), min_choice, add_at_least (rough
+#'   number of songs to
 #'   add inside the bin), worst_in (which playlist is short)
 library_gaps <- function(cov, pools, modes = "per_period", step = 5, variety = 3,
                          bpm_range = c(BPM_MIN, BPM_MAX)) {
@@ -485,7 +504,7 @@ library_gaps <- function(cov, pools, modes = "per_period", step = 5, variety = 3
   per_pl <- cov |>
     dplyr::group_by(pool, bin_lo, mode, period) |>
     dplyr::summarise(slots = dplyr::n(),
-                     fallbacks = sum(status != "within 5"),
+                     fallbacks = sum(!good_match),
                      min_choice = min(choice), .groups = "drop")
 
   worst <- per_pl |>
@@ -530,33 +549,36 @@ library_gaps <- function(cov, pools, modes = "per_period", step = 5, variety = 3
 #' @param pool The pool public visitors will use ("spotify" or "youtube")
 #' @param modes Scaling modes that count (default: per_period, the app default)
 #' @param links Optional output of check_song_links()
-#' @param variety Songs within ±5 BPM wanted per slot
+#' @param variety Songs within the first window (±3 BPM) wanted per slot
+#' @param tols The matcher's tolerances (as used for cov)
 #' @return list(ready = logical, lines = character)
 library_verdict <- function(issues, cov, pool = "spotify", modes = "per_period",
-                            links = NULL, variety = 3) {
+                            links = NULL, variety = 3, tols = MATCH_TOLS) {
   tick <- function(ok, yes, no) paste(if (ok) "✓" else "✗", if (ok) yes else no)
   c_pool <- cov[cov$pool == pool & cov$mode %in% modes, , drop = FALSE]
   n_err  <- length(unique(issues$line[issues$severity == "error"]))
-  n_fb   <- sum(c_pool$status != "within 5")
+  n_fb   <- sum(!c_pool$good_match)
   n_thin <- sum(c_pool$choice < variety)
   worst  <- if (n_fb) {
-    tab <- sort(table(paste0(c_pool$period, " (", c_pool$mode, ")")[c_pool$status != "within 5"]),
+    tab <- sort(table(paste0(c_pool$period, " (", c_pool$mode, ")")[!c_pool$good_match]),
                 decreasing = TRUE)
     paste0(" - most in ", names(tab)[1], ": ", tab[[1]])
   } else ""
 
   scope <- sprintf("[%s pool, %s scaling]", pool, paste(gsub("_", "-", modes), collapse = " + "))
+  wider <- if (length(tols) > 1) sprintf("±%g BPM or wider", tols[2]) else "the nearest song"
   lines <- c(
     tick(n_err == 0, "No rows with errors.",
          sprintf("%d row(s) with errors (see issues.csv).", n_err)),
     tick(n_fb == 0,
-         sprintf("Every slot gets a song within ±5 BPM %s.", scope),
-         sprintf("%d of %d slots fall back to ±10 BPM or the nearest song %s%s.",
-                 n_fb, nrow(c_pool), scope, worst)),
+         sprintf("Every slot gets a song within ±%g BPM %s.", tols[1], scope),
+         sprintf("%d of %d slots fall back to %s %s%s.",
+                 n_fb, nrow(c_pool), wider, scope, worst)),
     tick(n_thin == 0,
-         sprintf("At least %d songs to choose from for every slot (Shuffle has variety).", variety),
-         sprintf("%d slots have fewer than %d songs within ±5 BPM (Shuffle repeats).",
-                 n_thin, variety))
+         sprintf("At least %d songs within ±%g BPM for every slot (Shuffle has variety).",
+                 variety, tols[1]),
+         sprintf("%d slots have fewer than %d songs within ±%g BPM (Shuffle repeats).",
+                 n_thin, variety, tols[1]))
   )
   ok <- c(n_err == 0, n_fb == 0, n_thin == 0)
   if (!is.null(links) && nrow(links)) {

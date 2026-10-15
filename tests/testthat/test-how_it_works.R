@@ -7,8 +7,9 @@ test_that("How it works explains the method, matching, shuffle, feel and the mak
   html <- as.character(how_it_works_content("modern", stats, scaling = "per_period",
                                             global_range = c(174, 1963), n_library = 220))
   html <- gsub("\\s+", " ", html)                     # text as the browser shows it
-  expect_match(html, "±5 BPM", fixed = TRUE)
-  expect_match(html, "±10 BPM", fixed = TRUE)
+  expect_match(html, "the songs within ±3 BPM of the slice", fixed = TRUE)
+  expect_match(html, "If none is left, it tries ±5, then ±10 BPM, then simply takes the closest song.",
+               fixed = TRUE)
   expect_match(html, "Shuffle songs", fixed = TRUE)
   expect_match(html, "oldest slice to the youngest", fixed = TRUE)
   expect_match(html, "Glacial (under 70 BPM)", fixed = TRUE)
