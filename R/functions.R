@@ -185,7 +185,7 @@ format_age_range <- function(start_age, end_age) {
 #'   hover = plotly hover format for the x value)
 #'
 axis_for_period <- function(period) {
-  if (period$data_source == DATA_SOURCE_MODERN) {
+  if (is_calendar_source(period$data_source)) {
     list(
       scale    = function(age) REFERENCE_YEAR - age,   # negative ages -> CE years
       title    = "Year (CE)",
@@ -263,14 +263,18 @@ generate_playlist <- function(period_config, co2_data, co2_scale = NULL) {
   
   data <- co2_data[[source_name]]
   
-  # Handle modern data differently (negative ages = years after 1950)
-  is_modern <- (source_name == "modern")
+  # Calendar-year eras (Modern, Industrial) are handled differently: ages go
+  # negative after 1950, the span comes from the data, songs are labelled in CE
+  is_modern <- is_calendar_source(source_name)
   
   if (is_modern) {
-    # Modern: use all data, ages are negative (e.g., -8 to -75)
-    # No filtering needed - use full dataset
+    # Calendar eras: keep the configured years (Modern: all of them; Industrial:
+    # 1850 on). Most negative age = most recent year, sorted first.
+    min_age <- period_config$filter_min_age %||% -Inf
+    max_age <- period_config$filter_max_age %||% Inf
     data <- data %>%
-      dplyr::arrange(age)  # Most negative age = most recent year, sorted first
+      dplyr::filter(age >= min_age, age <= max_age) %>%
+      dplyr::arrange(age)
   } else {
     # Ice core / Cenozoic: apply BOTH configured age bounds so the data used for
     # BPM scaling matches the data used for the song windows. Without the lower
@@ -307,7 +311,7 @@ generate_playlist <- function(period_config, co2_data, co2_scale = NULL) {
     scale_max <- co2_scale[2]
   }
   
-  # Calculate playlist metrics. The Modern span is derived from the actual
+  # Calculate playlist metrics. The calendar-era span is derived from the actual
   # record range (so it never drifts as new months are added); geological
   # periods use their configured span.
   years_span <- if (is_modern) {
@@ -344,12 +348,16 @@ generate_playlist <- function(period_config, co2_data, co2_scale = NULL) {
   }
   
   # Calculate average CO2 for each song
+  oldest_edge <- max(songs$end_age)
   songs <- songs %>%
     dplyr::rowwise() %>%
     dplyr::mutate(
       # Find data points in this time window
+      # (the oldest window also keeps a point sitting exactly on its old edge,
+      # e.g. 1850 in the Industrial era)
       points_in_window = list(
-        data %>% dplyr::filter(age >= start_age & age < end_age)
+        data %>% dplyr::filter(age >= start_age &
+                                 (age < end_age | (end_age == oldest_edge & age <= end_age)))
       ),
       # Calculate mean CO2 (interpolate if no points in window)
       avg_co2 = if (nrow(points_in_window) > 0) {

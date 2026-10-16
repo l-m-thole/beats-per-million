@@ -22,6 +22,14 @@ modern_data_through <- function(modern) {
   paste(month.name[m], floor(y))
 }
 
+#' "2025": last year of the Industrial era's record ('cmip7' sheet)
+industrial_data_through <- function(cmip7) {
+  if (is.null(cmip7) || !"year" %in% names(cmip7) || !nrow(cmip7)) return(NULL)
+  y <- suppressWarnings(max(cmip7$year, na.rm = TRUE))
+  if (!is.finite(y)) return(NULL)
+  as.character(y)
+}
+
 # External link; `after` (e.g. ".") is glued to it without a space
 .ext <- function(href, text, after = NULL) {
   a <- tags$a(href = href, target = "_blank", rel = "noopener", text,
@@ -131,6 +139,13 @@ about_content <- function(settings = app_settings(), co2_data = NULL, wanted = N
               "(Xin Lan, NOAA/GML,", .ext("https://gml.noaa.gov/ccgg/trends/",
                                            "gml.noaa.gov/ccgg/trends", after = ");"),
               "data from 1958 to 1974 by C. D. Keeling, Scripps Institution of Oceanography."),
+      tags$li(tags$b(paste0("Industrial (1850–", industrial_data_through(co2_data$cmip7) %||% "today", "):")),
+              "yearly global-mean CO₂ from the CMIP7 historical greenhouse-gas forcing",
+              "(CR-CMIP-1-0-0; Nicholls, Z. et al. (2026) Historical greenhouse gas concentrations",
+              "for climate modelling (CMIP7).", tags$i("Geoscientific Model Development"), "19, 3725;",
+              .ext("https://doi.org/10.5281/zenodo.14892947", "doi:10.5281/zenodo.14892947", after = ")."),
+              "Years after the CMIP7 record ends: Mauna Loa yearly means (NOAA, as above),",
+              "lowered by their average difference to the global mean over the last ten shared years."),
       tags$li(tags$b("Ice cores (0–800,000 years):"),
               "Bereiter, B. et al. (2015) Revision of the EPICA Dome C CO₂ record from 800 to",
               "600 kyr before present.", tags$i("Geophysical Research Letters"), "42, 542–549.",

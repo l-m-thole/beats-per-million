@@ -209,3 +209,27 @@ test_that("YouTube refusals are only written down once YouTube has played; 3 in 
     expect_equal(nrow(utils::read.csv(blocked)), 1)     # the streak isn't written down
   })
 })
+
+test_that("the Industrial era renders: plot, era info, Listen panel, table", {
+  skip_if_not_installed("plotly")
+  skip_if_not_installed("DT")
+  root <- app_root()
+  skip_if(is.null(root), "app.R not found")
+  skip_if_not("cmip7" %in% readxl::excel_sheets(file.path(root, "data", "co2_data.xlsx")))
+  withr::local_envvar(BPM_DEPLOYED = "true", BPM_SPOTIFY_LOGIN = "off")
+  app <- suppressMessages(suppressWarnings(shiny::shinyAppDir(root)))
+
+  shiny::testServer(app, {
+    session$setInputs(selected_period = "industrial", scaling_mode = "per_period",
+                      play_source = "spotify", auto_advance = TRUE,
+                      play_length = "full", show_covers = FALSE)
+    expect_equal(current_period()$id, "industrial")
+    expect_equal(current_playlist()$songs$display_start[1], "1850 CE")
+    expect_match(paste(as.character(output$era_meta), collapse = ""), "1850")
+    expect_match(output$timeline_plot, "Year \\(CE\\)")
+    expect_match(paste(as.character(output$song_facts), collapse = ""), "1850 CE")
+    expect_false(is.null(output$playlist_table))
+    session$setInputs(scaling_mode = "global")
+    expect_equal(current_playlist()$stats$period_id, "industrial")
+  })
+})

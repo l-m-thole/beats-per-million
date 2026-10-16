@@ -1,6 +1,6 @@
 Package: climatePlaylists
 Title: Beats per Million - Dance While You Can
-Version: 3.7.0
+Version: 3.8.0
 Authors@R: c(
     person("Martin", "Wegmann", role = "aut"),
     person("Lena", "Thoele", role = c("aut", "cre"),
@@ -8,7 +8,7 @@ Authors@R: c(
 Description: Converts atmospheric CO2 concentrations through geological time into
     beats-per-minute values to sonify climate change, with an interactive Shiny
     app and a playlist-template generator. Data span modern Mauna Loa
-    measurements, the 800 kyr Antarctic ice-core composite, and Cenozoic marine
+    measurements, the CMIP7 historical CO2 record (1850 on), the 800 kyr Antarctic ice-core composite, and Cenozoic marine
     proxies.
 URL: https://beatspermillion.shinyapps.io/dance/,
     https://github.com/l-m-thole/climate_playlist

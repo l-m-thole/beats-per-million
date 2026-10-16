@@ -21,7 +21,7 @@ library(dplyr)
 #' Load all CO2 datasets
 #' 
 #' @param data_dir Path to the data directory
-#' @return Named list with 'modern', 'icecore', and 'cenozoic' dataframes
+#' @return Named list with 'modern', 'cmip7', 'icecore', and 'cenozoic' dataframes
 #' 
 load_co2_data <- function(data_dir = "data") {
   
@@ -52,6 +52,24 @@ load_co2_data <- function(data_dir = "data") {
     warning("Modern data file not found: ", modern_file)
   }
   
+  # -------------------------------------------------------------------------
+  # Load Industrial era (CMIP7 + Mauna Loa) data - 'cmip7' sheet, built by
+  # data-raw/build_co2_data.R. Ages as in Modern (negative = after 1950).
+  # -------------------------------------------------------------------------
+  if (file.exists(modern_file) && "cmip7" %in% readxl::excel_sheets(modern_file)) {
+    cmip7 <- read_excel(modern_file, sheet = "cmip7") %>%
+      select(year, age, co2, source) %>%
+      mutate(year_ce = year) %>%
+      arrange(age)
+
+    co2_data$cmip7 <- cmip7
+    cat("  ✓ Industrial (CMIP7 + Mauna Loa):", nrow(cmip7), "records,",
+        min(cmip7$year), "–", max(cmip7$year), "CE\n")
+  } else {
+    warning("No 'cmip7' sheet in ", modern_file,
+            " - run data-raw/build_co2_data.R (Industrial era disabled).")
+  }
+
   # -------------------------------------------------------------------------
   # Load Ice Core (Bereiter et al. 2015) data
   # -------------------------------------------------------------------------

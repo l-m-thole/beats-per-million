@@ -45,7 +45,9 @@ Downloads NOAA's `co2_mm_mlo.csv`, checks it (`check_maunaloa_update()` in
 300–600 ppm, doesn't end earlier, no month we already had changed by more than
 1 ppm) and only then replaces `data/rawData/co2_mm_mlo.csv` and rebuilds
 `co2_data.xlsx` — and only when NOAA has new or revised months. The Modern
-playlist, its end date in *About* and the period stats follow automatically;
+playlist, the Industrial era's years after 2022 (its `cmip7` sheet = CMIP7 to
+2022 + offset-matched Mauna Loa yearly means, complete years only), their end
+dates in *About* and the period stats follow automatically;
 re-deploy afterwards.
 
 **Monthly on GitHub:** `.github/workflows/refresh-co2.yml` runs the same script

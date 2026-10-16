@@ -12,6 +12,10 @@
 #
 # Sheets produced:
 #   maunaloa      Modern monthly CO2 (NOAA Mauna Loa)
+#   cmip7         Industrial era: CMIP7 annual global-mean CO2 from 1850, plus
+#                 Mauna Loa annual means after the CMIP7 file ends (shifted to
+#                 match CMIP7 over the shared years) - so the monthly Mauna Loa
+#                 refresh keeps this era current too
 #   bereiter2014  Ice-core 800 kyr composite (Bereiter et al. 2015; name kept
 #                 for backwards compatibility with load_data.R)
 #
@@ -32,7 +36,7 @@ root <- if (file.exists("R/config.R")) "." else
     stop("Run this script from the project root (or data-raw/).")
 
 source(file.path(root, "R", "config.R"))       # REFERENCE_YEAR
-source(file.path(root, "R", "refresh_co2.R"))  # read_maunaloa_raw()
+source(file.path(root, "R", "refresh_co2.R"))  # read_maunaloa_raw(), CMIP7 splice
 
 raw_dir  <- file.path(root, "data", "rawData")
 out_file <- file.path(root, "data", "co2_data.xlsx")
@@ -51,6 +55,28 @@ build_maunaloa <- function() {
     filter(co2 > 0) %>%                        # guard against any -99.99 fills
     select(year, month, decimal_date, age, co2) %>%
     arrange(decimal_date)                      # oldest first, as in the committed sheet
+}
+
+# -----------------------------------------------------------------------------
+# 1b) INDUSTRIAL - CMIP7 historical CO2 concentrations (global annual mean)
+#    Source:  data/rawData/co2_1750-2022.csv (from Martin, Oct 2026): the CMIP7
+#             greenhouse-gas concentration forcing, CR-CMIP-1-0-0
+#             (Climate Resource; https://doi.org/10.5281/zenodo.14892947)
+#    Cite:    Nicholls, Z. et al. (2026) Historical greenhouse gas concentrations
+#             for climate modelling (CMIP7). Geosci. Model Dev. 19, 3725.
+#    After the last CMIP7 year: Mauna Loa annual means minus the mean
+#    Mauna Loa - CMIP7 difference of the last CMIP7_OVERLAP_YEARS shared years.
+# -----------------------------------------------------------------------------
+build_cmip7 <- function() {
+  message("- CMIP7 + Mauna Loa (industrial) ...")
+  sp <- splice_cmip7_maunaloa(
+    read_cmip7_raw(file.path(raw_dir, "co2_1750-2022.csv")),
+    read_maunaloa_raw(file.path(raw_dir, "co2_mm_mlo.csv"))
+  )
+  message(sprintf("    %d-%d; CMIP7 to %d, then Mauna Loa minus %.2f ppm (offset over %d-%d)",
+                  min(sp$data$year), sp$last_year, sp$last_cmip, sp$offset,
+                  sp$overlap[1], sp$overlap[2]))
+  sp$data
 }
 
 # -----------------------------------------------------------------------------
@@ -100,6 +126,7 @@ build_bereiter <- function() {
 message("Building ", out_file, " ...")
 sheets <- list(
   maunaloa     = build_maunaloa(),
+  cmip7        = build_cmip7(),
   bereiter2014 = build_bereiter()
 )
 

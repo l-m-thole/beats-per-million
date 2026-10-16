@@ -152,6 +152,9 @@ how_it_works_content <- function(period_id = NULL, stats = NULL, scaling = "per_
     tags$ul(
       tags$li(tags$b("Modern Era:"), "measured directly in the air at Mauna Loa, Hawaii,",
               "since 1958 (monthly values, NOAA)."),
+      tags$li(tags$b("Industrial Era:"), "the global-mean CO₂ history the CMIP7 climate",
+              "models are run with – Antarctic ice and firn air before ~1958, direct",
+              "measurements after – with Mauna Loa for the latest years (yearly values)."),
       tags$li(tags$b("Roman Empire to Full Ice Core:"), "air bubbles trapped in Antarctic",
               "ice cores – each sample holds a few decades to a few centuries of air",
               "(Bereiter et al. 2015)."),

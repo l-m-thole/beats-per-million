@@ -38,6 +38,7 @@ playlist templates from `run_generator.R` still add genre ideas per band.)
 | Period | Time Span | Songs | Data Source | Key events in the app (a selection) |
 |--------|-----------|-------|-------------|------------------------|
 | **Modern Era** | 1958–Present | ~23 | Mauna Loa Observatory | Keeling starts measuring, IPCC, Kyoto, 400 ppm crossed, Paris Agreement |
+| **Industrial Era** | 1850–Present | ~24 | CMIP7 historical CO₂ (+ Mauna Loa after 2022) | Industrial Revolution, Arrhenius 1896, Great Acceleration, Keeling, Paris Agreement |
 | **Roman Empire** | ~2,000 years | ~34 | Antarctic ice cores | Roman Climate Optimum, 536 CE eruptions, Medieval warmth, Little Ice Age, Industrial Revolution |
 | **Last Glacial Maximum** | ~20,000 years | ~67 | Antarctic ice cores | LGM, Bølling–Allerød, Younger Dryas, start of the Holocene, Sweden ice-free, 8.2 kyr event |
 | **Early Humans** | ~250,000 years | ~84 | Antarctic ice cores | Eemian interglacial, Toba eruption, Out of Africa, humans in Europe |
@@ -228,6 +229,18 @@ climate_playlist/
   the same on the 9th of every month and opens a pull request when there is
   something new (`.github/workflows/refresh-co2.yml`).
 
+### Industrial Era (1850–Present)
+- **Source:** CMIP7 historical greenhouse-gas concentrations, CR-CMIP-1-0-0
+  (Climate Resource), annual global-mean CO₂ 1750–2022 —
+  `data/rawData/co2_1750-2022.csv` (from Martin). The era starts in 1850, where
+  CMIP historical model runs start.
+- **URL:** https://doi.org/10.5281/zenodo.14892947
+- **Citation:** Nicholls, Z., et al. (2026). Historical greenhouse gas concentrations for climate modelling (CMIP7). *Geoscientific Model Development*, 19, 3725.
+- **After 2022:** Mauna Loa annual means (complete years only), lowered by the
+  mean Mauna Loa − CMIP7 difference of the last 10 shared years (~1.1 ppm), so
+  the curve has no step (`splice_cmip7_maunaloa()` in `R/refresh_co2.R`). The
+  monthly Mauna Loa refresh keeps this era current too.
+
 ### Ice Core Record (0–800,000 years)
 - **Source:** Bereiter et al. (2015)
 - **URL:** https://www.ncei.noaa.gov/access/paleo-search/
@@ -265,6 +278,7 @@ Each playlist compresses geological time into listenable duration:
 | Period | Compression | 1 song ≈ |
 |--------|-------------|----------|
 | Modern | 1:1 | 3 years |
+| Industrial | 2.5:1 | 7.5 years |
 | Roman | 20:1 | 60 years |
 | LGM | 100:1 | 300 years |
 | Humans | 1000:1 | 3,000 years |

@@ -34,8 +34,21 @@ REFERENCE_YEAR <- 1950
 # -----------------------------------------------------------------------------
 
 DATA_SOURCE_MODERN   <- "modern"      # Mauna Loa direct measurements
+DATA_SOURCE_CMIP7    <- "cmip7"       # CMIP7 historical CO2 (1750-2022) + Mauna Loa after
 DATA_SOURCE_ICECORE  <- "icecore"     # Bereiter et al. 2015 ice core composite
 DATA_SOURCE_CENOZOIC <- "cenozoic"    # Rae et al. 2021 proxy reconstructions
+
+# Data sources on a calendar-year axis: ages are years before 1950 and go
+# negative after 1950; the span comes from the data, songs are labelled in CE.
+CALENDAR_SOURCES <- c(DATA_SOURCE_MODERN, DATA_SOURCE_CMIP7)
+
+#' Is this data source shown in calendar years (CE)?
+is_calendar_source <- function(source) isTRUE(source %in% CALENDAR_SOURCES)
+
+# CMIP7 era: first year, and the Mauna Loa years used to line the two records up
+# (Mauna Loa reads ~1 ppm above the global mean; see splice_cmip7_maunaloa()).
+CMIP7_START_YEAR <- 1850
+CMIP7_OVERLAP_YEARS <- 10
 
 # -----------------------------------------------------------------------------
 # TIME PERIOD CONFIGURATIONS
@@ -79,6 +92,27 @@ TIME_PERIODS <- list(
     color = "#3b82f6"
   ),
   
+  # -------------------------------------------------------------------------
+  # INDUSTRIAL ERA - the CMIP7 historical period (1850-today)
+  # -------------------------------------------------------------------------
+  industrial = list(
+    id = "industrial",
+    name = "Industrial Era (1850–Present)",
+    short_name = "Industrial Era",
+    span_label = "1850 – today",
+    years_span = 175,          # derived from the data at run time, like Modern
+    years_per_minute = 2.5,
+    data_source = DATA_SOURCE_CMIP7,
+    filter_min_age = -Inf,
+    filter_max_age = REFERENCE_YEAR - CMIP7_START_YEAR,   # years from 1850 on
+    description = paste(
+      "The CO₂ history the CMIP7 climate models are driven with: global-mean",
+      "CO₂ from ~285 ppm in 1850 to over 420 ppm today, with Mauna Loa",
+      "measurements for the latest years."
+    ),
+    color = "#f97316"
+  ),
+
   # -------------------------------------------------------------------------
   # ROMAN ERA - Historical period from ice cores
   # -------------------------------------------------------------------------

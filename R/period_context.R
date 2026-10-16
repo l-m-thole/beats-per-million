@@ -59,6 +59,37 @@ PERIOD_CONTEXT <- list(
   ),
 
   # ---------------------------------------------------------------------------
+  industrial = list(
+    context = c(
+      "Climate models need to know how much CO₂ was in the air in every year to re-run the past. For the newest generation of models (CMIP7) this history was compiled from Antarctic ice and firn air, which hold the air of the 1800s and early 1900s, and from direct air measurements at stations around the globe since the late 1950s. Model runs of the historical climate start in 1850 - so does this playlist.",
+      "For a century CO₂ creeps up: from ~285 ppm in 1850 to ~310 ppm in 1950, as coal, land clearing and later oil add carbon faster than oceans and forests can take it up. After World War II the 'Great Acceleration' begins - cars, plastics, fertiliser, air travel - and CO₂ climbs faster with every decade, to more than 420 ppm today. More than half of all the fossil CO₂ humans have ever emitted was released after 1990.",
+      "Listen for: a long, slow first half (with per-era scaling the 1800s sit at the slowest tempos), then the beat picks up after 1950 and gets faster song by song. The Modern Era playlist zooms into the last 70 years of this one."
+    ),
+    key_events = .ev(
+      c(.yr(1850), "1850", "Industrial Revolution spreads",
+        "Coal-powered industry and railways spread from Britain across Europe and North America; CO₂ ~285 ppm."),
+      c(.yr(1896), "1896", "Arrhenius' calculation",
+        "Svante Arrhenius (Stockholm) calculates that doubling CO₂ would warm the Earth by several degrees."),
+      c(.yr(1914), "1914-1918", "First World War",
+        "A brief dip in emissions, invisible in the CO₂ curve."),
+      c(.yr(1930), "1930s", "Great Depression",
+        "Emissions fall for a few years; CO₂ keeps rising, only more slowly."),
+      c(.yr(1950), "~1950", "Great Acceleration",
+        "After the Second World War, energy use, population and emissions take off together."),
+      c(.yr(1958), "1958", "Keeling starts measuring",
+        "Direct CO₂ measurements at Mauna Loa begin: ~315 ppm. The Modern Era playlist starts here."),
+      c(.yr(1988), "1988", "IPCC founded",
+        "The Intergovernmental Panel on Climate Change is set up to assess climate science."),
+      c(.yr(1997), "1997", "Kyoto Protocol",
+        "First treaty with binding emission cuts for industrialised countries."),
+      c(.yr(2015), "2015", "Paris Agreement",
+        "Nearly every country agrees to keep warming well below 2 °C, aiming for 1.5 °C."),
+      c(.yr(2024), "2024", "Record rise, 1.5 °C year",
+        "Largest yearly CO₂ jump on record, and the first calendar year more than 1.5 °C warmer than pre-industrial.")
+    )
+  ),
+
+  # ---------------------------------------------------------------------------
   roman = list(
     context = c(
       "Air bubbles trapped in Antarctic ice preserve samples of the atmosphere from the last two thousand years - from the height of the Roman Empire through the Middle Ages to the start of industrialisation.",
@@ -217,6 +248,19 @@ CO2_MEASUREMENT <- list(
     resolution = "monthly values",
     source = "NOAA Global Monitoring Laboratory (data before 1974: C. D. Keeling, Scripps Institution of Oceanography)",
     url = "https://gml.noaa.gov/ccgg/trends/"
+  ),
+
+  cmip7 = list(
+    title  = "The CO₂ history climate models use",
+    method = "CMIP7 historical CO₂: ice cores and firn air, then direct air measurements",
+    how = c(
+      "Before the late 1950s there were no reliable direct measurements, so the 1800s and early 1900s come from air trapped in Antarctic ice and in firn – the packed old snow above the ice – mostly from Law Dome, where so much snow falls that the record resolves single decades.",
+      "From the late 1950s on, the record uses direct air measurements from monitoring stations all over the world (such as NOAA's network), combined into one global-mean value per year and smoothly joined to the ice-core part. This is the CO₂ the CMIP7 climate models – the next generation behind the IPCC reports – are run with.",
+      "The record ends in 2022. For the years after, the app uses yearly means from Mauna Loa, lowered by ~1 ppm: Mauna Loa reads slightly above the global mean (most CO₂ is emitted in the north), so the app subtracts the average difference of the last ten years both records share."
+    ),
+    resolution = "yearly global means",
+    source = "CMIP7 greenhouse-gas concentration forcing CR-CMIP-1-0-0 (Climate Resource; Nicholls et al. 2026); after 2022 NOAA Mauna Loa",
+    url = "https://doi.org/10.5281/zenodo.14892947"
   ),
 
   icecore = list(

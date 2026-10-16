@@ -6,6 +6,9 @@
 #   check_maunaloa_update()  is a new file sane, and what does it add?
 #   download_maunaloa()      fetch -> check -> replace data/rawData/co2_mm_mlo.csv,
 #                            but only when the numbers changed
+#   read_cmip7_raw()         CMIP7 annual global-mean CO2 (data/rawData/co2_1750-2022.csv)
+#   splice_cmip7_maunaloa()  CMIP7 to 2022 + Mauna Loa after (offset-matched)
+#                            -> the Industrial era's 'cmip7' sheet
 #
 # Used by data-raw/update_maunaloa.R, which the monthly GitHub Action
 # (.github/workflows/refresh-co2.yml) runs too. The app itself never downloads.
@@ -124,4 +127,77 @@ download_maunaloa <- function(dest, url = MAUNALOA_URL, fetch = .fetch_to_file) 
     if (!file.copy(tmp, dest, overwrite = TRUE)) stop("Could not write ", dest, call. = FALSE)
   }
   invisible(chk)
+}
+
+# =============================================================================
+# CMIP7 HISTORICAL CO2 + MAUNA LOA  ->  the Industrial era
+# =============================================================================
+
+#' Read the CMIP7 annual global-mean CO2 file
+#'
+#' @param path data/rawData/co2_1750-2022.csv (columns year, co2_ppm)
+#' @return tibble: year (integer), co2 (ppm)
+read_cmip7_raw <- function(path) {
+  raw  <- readr::read_csv(path, show_col_types = FALSE,
+                          col_types = readr::cols(.default = readr::col_double()))
+  miss <- setdiff(c("year", "co2_ppm"), names(raw))
+  if (length(miss)) {
+    stop(basename(path), " is missing column(s) ", paste(miss, collapse = ", "),
+         call. = FALSE)
+  }
+  out <- tibble::tibble(year = as.integer(raw$year), co2 = raw$co2_ppm)
+  out <- out[!is.na(out$year) & !is.na(out$co2), ]
+  out[order(out$year), ]
+}
+
+#' Extend the CMIP7 record with Mauna Loa
+#'
+#' CMIP7 gives annual global means up to 2022. Later years are Mauna Loa annual
+#' means (the running year only once it is complete - a part year would carry
+#' the seasonal cycle),
+#' shifted down by Mauna Loa's mean offset over the last `overlap_years` years
+#' both records share (Mauna Loa reads ~1 ppm above the global mean), so the
+#' curve has no step where the two records meet.
+#'
+#' @param cmip read_cmip7_raw()
+#' @param mlo read_maunaloa_raw() (monthly)
+#' @param start_year First year to keep
+#' @param overlap_years Shared years used for the offset
+#' @return list(data = tibble(year, decimal_date, age, co2, source), offset,
+#'   overlap = c(first, last) year used, last_cmip, last_year)
+splice_cmip7_maunaloa <- function(cmip, mlo, start_year = CMIP7_START_YEAR,
+                                  overlap_years = CMIP7_OVERLAP_YEARS) {
+  mlo <- mlo[!is.na(mlo$co2) & mlo$co2 > 0, ]                  # skip -99.99 fills
+  n_month <- tapply(mlo$co2, mlo$year, length)
+  ann <- tapply(mlo$co2, mlo$year, mean)
+  yrs <- as.integer(names(n_month))
+  # the running year counts only once all 12 months are in (a part year would
+  # carry the seasonal cycle); a missing month inside the record is no reason
+  # to drop the year
+  full <- yrs[yrs < max(yrs) | n_month[as.character(yrs)] == 12]
+  mlo_ann <- tibble::tibble(year = full, co2 = unname(ann[as.character(full)]))
+
+  shared <- intersect(cmip$year, mlo_ann$year)
+  if (!length(shared)) stop("CMIP7 and Mauna Loa share no complete year.", call. = FALSE)
+  shared <- utils::tail(sort(shared), overlap_years)
+  offset <- mean(mlo_ann$co2[match(shared, mlo_ann$year)] -
+                   cmip$co2[match(shared, cmip$year)])
+
+  last_cmip <- max(cmip$year)
+  after <- mlo_ann[mlo_ann$year > last_cmip, ]
+  data <- rbind(
+    data.frame(year = cmip$year, co2 = cmip$co2, source = "CMIP7"),
+    data.frame(year = after$year, co2 = after$co2 - offset,
+               source = rep("Mauna Loa (adjusted)", nrow(after)))
+  )
+  data <- data[data$year >= start_year, ]
+  # Each annual mean sits at the start of its year (age = 1950 - year), so the
+  # era runs 1850 -> last year exactly and song edges read as whole years
+  # (half a year off the mid-year centre - invisible at 7 years per song).
+  data$decimal_date <- as.numeric(data$year)
+  data$age <- REFERENCE_YEAR - data$decimal_date
+  data <- tibble::as_tibble(data[order(data$year), c("year", "decimal_date", "age", "co2", "source")])
+
+  list(data = data, offset = offset, overlap = range(shared),
+       last_cmip = last_cmip, last_year = max(data$year))
 }
