@@ -315,7 +315,7 @@ generate_playlist <- function(period_config, co2_data, co2_scale = NULL) {
   # record range (so it never drifts as new months are added); geological
   # periods use their configured span.
   years_span <- if (is_modern) {
-    round(max(data$age) - min(data$age))
+    max(data$age) - min(data$age)
   } else {
     period_config$years_span
   }
@@ -389,8 +389,8 @@ generate_playlist <- function(period_config, co2_data, co2_scale = NULL) {
   if (is_modern) {
     songs <- songs %>%
       dplyr::mutate(
-        display_start = paste0(round(REFERENCE_YEAR - end_age), " CE"),   # older year
-        display_end = paste0(round(REFERENCE_YEAR - start_age), " CE"),   # younger year
+        display_start = paste0(floor(REFERENCE_YEAR - end_age), " CE"),   # older year
+        display_end = paste0(floor(REFERENCE_YEAR - start_age), " CE"),   # younger year
         age_range = paste(display_start, "→", display_end)
       )
   } else {
@@ -412,7 +412,7 @@ generate_playlist <- function(period_config, co2_data, co2_scale = NULL) {
   stats <- list(
     period_id = period_config$id,
     period_name = period_config$name,
-    years_span = years_span,
+    years_span = round(years_span),
     years_per_minute = years_per_minute,
     playlist_minutes = round(playlist_minutes, 1),
     num_songs = num_songs,

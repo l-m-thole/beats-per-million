@@ -235,7 +235,7 @@ climate_playlist/
   `data/rawData/co2_1750-2022.csv` (from Martin). The era starts in 1850, where
   CMIP historical model runs start.
 - **URL:** https://doi.org/10.5281/zenodo.14892947
-- **Citation:** Nicholls, Z., et al. (2026). Historical greenhouse gas concentrations for climate modelling (CMIP7). *Geoscientific Model Development*, 19, 3725.
+- **Citation:** Nicholls, Z., Meinshausen, M., Pflüger, M. & Lewis, J. (2025). *CMIP GHG Forcing* (v1.0.0). Zenodo. https://doi.org/10.5281/zenodo.14892947
 - **After 2022:** Mauna Loa annual means (complete years only), lowered by the
   mean Mauna Loa − CMIP7 difference of the last 10 shared years (~1.1 ppm), so
   the curve has no step (`splice_cmip7_maunaloa()` in `R/refresh_co2.R`). The

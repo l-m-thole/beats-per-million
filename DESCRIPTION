@@ -6,7 +6,7 @@ Authors@R: c(
 	   comment = c(ORCID = "0000-0002-5294-2978")),
     person("Lena", "Thoele", role = c("aut", "cre"),
 	   comment = c(ORCID = "0000-0002-5405-3613"),
-           email = "lena.thole@nrm.se"))
+           email = "lena.thoele@gmail.com"))
 Description: Converts atmospheric CO2 concentrations through geological time into
     beats-per-minute values to sonify climate change, with an interactive Shiny
     app and a playlist-template generator. Data span modern Mauna Loa

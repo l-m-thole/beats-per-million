@@ -72,6 +72,12 @@ player_gate <- function(service) {
   div(class = "player-gate", `data-service` = service,
       tags$button(type = "button", class = paste("btn gate-play", info$btn),
                   paste0("▶ Play via ", info$name)),
+      if (identical(service, "spotify")) {
+        p(class = "gate-note",
+          "Whole songs need a Spotify login in this browser (at",
+          .ext("https://open.spotify.com", "open.spotify.com", after = ");"),
+          "without it, Spotify plays 30-second previews.")
+      },
       p(class = "gate-note",
         span(paste0("This loads ", info$name, "'s player: ", info$who,
                     " then gets your IP address and may set cookies ("), .noWS = "after"),
@@ -141,8 +147,7 @@ about_content <- function(settings = app_settings(), co2_data = NULL, wanted = N
               "data from 1958 to 1974 by C. D. Keeling, Scripps Institution of Oceanography."),
       tags$li(tags$b(paste0("Industrial (1850–", industrial_data_through(co2_data$cmip7) %||% "today", "):")),
               "yearly global-mean CO₂ from the CMIP7 historical greenhouse-gas forcing",
-              "(CR-CMIP-1-0-0; Nicholls, Z. et al. (2026) Historical greenhouse gas concentrations",
-              "for climate modelling (CMIP7).", tags$i("Geoscientific Model Development"), "19, 3725;",
+              "(CR-CMIP-1-0-0, Climate Resource; Nicholls, Z. et al. (2025) CMIP GHG Forcing v1.0.0, Zenodo;",
               .ext("https://doi.org/10.5281/zenodo.14892947", "doi:10.5281/zenodo.14892947", after = ")."),
               "Years after the CMIP7 record ends: Mauna Loa yearly means (NOAA, as above),",
               "lowered by their average difference to the global mean over the last ten shared years."),
@@ -160,15 +165,18 @@ about_content <- function(settings = app_settings(), co2_data = NULL, wanted = N
 
     tags$h4("Music"),
     p("Songs are picked by us and played through the official embedded players of",
-      "Spotify, YouTube and SoundCloud – one service per playlist, the one you pick",
+      if (isTRUE(SHOW_SOUNDCLOUD)) "Spotify, YouTube and SoundCloud – one service per playlist, the one you pick"
+      else "Spotify and YouTube – one service per playlist, the one you pick",
       "under", tags$i("Play via", .noWS = "after"), ". We only link to official uploads",
       "where we can. This site doesn't host or change any audio; all rights stay with",
       "the artists and labels. Album covers come from Spotify. Song tempos (BPM) partly from",
       .ext("https://getsongbpm.com", "GetSongBPM", after = ".")),
-    p("Without a login, Spotify plays 30-second previews and YouTube plays whole songs.",
-      "Whole songs inside the app via Spotify need Spotify Premium and, while the app",
-      "is in beta, an invitation: Spotify only allows a handful of test accounts for",
-      "apps like this one."),
+    p("Spotify can play whole songs if you're logged in to Spotify in this browser (at",
+      .ext("https://open.spotify.com", "open.spotify.com", after = ");"),
+      "otherwise it plays 30-second previews. YouTube plays whole songs without a login.",
+      "Connecting your Spotify account to the app itself needs Spotify Premium and, while",
+      "the app is in beta, an invitation: Spotify only allows a handful of test accounts",
+      "for apps like this one."),
 
     suggest_section(settings, wanted),
 
@@ -176,13 +184,15 @@ about_content <- function(settings = app_settings(), co2_data = NULL, wanted = N
     tags$ul(
       tags$li("The app itself uses no analytics and no tracking cookies, and keeps no",
               "record of who you are. Its fonts come from this site too."),
-      tags$li("Nothing from Spotify, YouTube (Google) or SoundCloud loads until you press",
+      tags$li(if (isTRUE(SHOW_SOUNDCLOUD)) "Nothing from Spotify, YouTube (Google) or SoundCloud loads until you press"
+              else "Nothing from Spotify or YouTube (Google) loads until you press",
               tags$b("▶ Play", .noWS = "after"), ". Then that service's player loads: the",
               "service gets your IP address and may set its own cookies under its own",
               "policy –",
               .ext(PLAYER_PRIVACY$spotify$privacy, "Spotify"), "·",
-              .ext(GOOGLE_PRIVACY_URL, "Google/YouTube"), "·",
-              .ext(PLAYER_PRIVACY$soundcloud$privacy, "SoundCloud", after = "."),
+              if (isTRUE(SHOW_SOUNDCLOUD)) tagList(.ext(GOOGLE_PRIVACY_URL, "Google/YouTube"), "·",
+                .ext(PLAYER_PRIVACY$soundcloud$privacy, "SoundCloud", after = "."))
+              else .ext(GOOGLE_PRIVACY_URL, "Google/YouTube", after = "."),
               "Album covers (if you switch them on) load from Spotify the same way.",
               "Your OK lasts until you reload the page. To block these cookies, use your",
               "browser's settings for third-party cookies."),

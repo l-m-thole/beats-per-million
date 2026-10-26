@@ -18,7 +18,7 @@
 APP_STORY <- c(
   "Beats per Million started as a small R script called Climate Playlists. It cut CO₂ records into song-length slices, turned each slice's CO₂ into a target tempo and wrote out playlist templates, which we then filled with songs by hand.",
   "Then it grew into this app. Songs placed by hand into fixed slots kept breaking whenever new data shifted the slices, so we built a song library instead: songs we like, each tagged with its real tempo (looked up on tunebat, songbpm and GetSongBPM) and matched to the slices automatically.",
-  "Next came players inside the app (Spotify, YouTube, SoundCloud), a ball that rides along the CO₂ curve while you listen, the background and key events of each era, and a monthly update of the Mauna Loa data.",
+  "Next came players inside the app (Spotify and YouTube), a ball that rides along the CO₂ curve while you listen, the background and key events of each era, and a monthly update of the Mauna Loa data.",
   "The idea behind it: CO₂ numbers are easy to scroll past. Hearing the tempo creep up over millions of years – and then race in the last few decades – is harder to ignore."
 )
 
@@ -26,7 +26,8 @@ APP_STORY <- c(
 APP_MAKERS <- c(
   "Beats per Million is a collaboration between Martin Wegmann and Lena Thöle.",
   "Lena is the data steward at the Swedish Museum of Natural History, working on more open scientific data output. Her background is in paleoclimate research – she used to reconstruct past environments in the Southern Ocean and is still today in love with climate sciences.",
-  "Martin's background is in climate sciences as well - that's how the two know each other. These days he is a systems engineer at ETH Zurich, trying to build up a digital data store for climate and atmospheric research data."
+  "Martin's background is in climate sciences as well - that's how the two know each other. These days he is a systems engineer at ETH Zurich, trying to build up a digital data store for climate and atmospheric research data.",
+  "Beats per Million is a personal project, not made for or on behalf of our employers."
 )
 
 # ---- EDIT ME: ORCID iDs -------------------------------------------------------

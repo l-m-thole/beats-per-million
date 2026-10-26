@@ -746,7 +746,8 @@ SONG_LIBRARY <- playable_songs(SONG_LIBRARY)
 # with another service's (see service_songs() in R/functions.R).
 SERVICE_LABELS   <- c(spotify = "Spotify", youtube = "YouTube", soundcloud = "SoundCloud")
 PLAY_VIA_CHOICES <- stats::setNames(names(SERVICE_LABELS), SERVICE_LABELS)
-if (!any(!is.na(SONG_LIBRARY$soundcloud_url) & nzchar(trimws(SONG_LIBRARY$soundcloud_url)))) {
+if (!isTRUE(SHOW_SOUNDCLOUD) ||
+    !any(!is.na(SONG_LIBRARY$soundcloud_url) & nzchar(trimws(SONG_LIBRARY$soundcloud_url)))) {
   PLAY_VIA_CHOICES <- PLAY_VIA_CHOICES[PLAY_VIA_CHOICES != "soundcloud"]
 }
 DEFAULT_PLAYER <- if (SETTINGS$default_player %in% PLAY_VIA_CHOICES) {
@@ -955,6 +956,8 @@ ui <- fluidPage(
   div(class = "footer",
       p("Data sources: ",
         tags$a(href = "https://gml.noaa.gov/ccgg/trends/", target = "_blank", "NOAA Mauna Loa"),
+        " • ",
+        tags$a(href = "https://doi.org/10.5281/zenodo.14892947", target = "_blank", "CMIP7 (Nicholls et al. 2025)"),
         " • ",
         tags$a(href = "https://www.ncei.noaa.gov/access/paleo-search/", target = "_blank", "Bereiter et al. 2015"),
         " • ",
@@ -1827,8 +1830,8 @@ server <- function(input, output, session) {
           paste0("Playing via ", label[[use]],
                  if (use == "spotify") {
                    if (isTRUE(login_ok())) " — 30-s clips; click Connect Spotify for whole songs."
-                   else if (!is.na(yt_id) && !(yt_id %in% bad_yt())) " — 30-s clips; Play via YouTube for whole songs."
-                   else " — 30-s clips."
+                   else if (!is.na(yt_id) && !(yt_id %in% bad_yt())) " — 30-s previews unless you're logged in to Spotify in this browser; Play via YouTube for whole songs."
+                   else " — 30-s previews unless you're logged in to Spotify in this browser."
                  } else "")
         })
 
@@ -1845,6 +1848,7 @@ server <- function(input, output, session) {
                target = "_blank", class = "btn btn-youtube",
                title = if (!is.na(yt_open)) "Open this song on YouTube" else "Search YouTube for this song",
                if (!is.na(yt_open)) "YouTube" else "🔎 YouTube"),
+        if (isTRUE(SHOW_SOUNDCLOUD))
         tags$a(href = if (!is.na(sc_open)) sc_open else paste0("https://soundcloud.com/search?q=", q_song),
                target = "_blank", class = "btn btn-soundcloud",
                title = if (!is.na(sc_open)) "Open this song in SoundCloud" else "Search SoundCloud for this song",
@@ -1897,6 +1901,7 @@ server <- function(input, output, session) {
                    class = "btn btn-spotify", "🎵 Spotify"),
             tags$a(href = youtube_search, target = "_blank",
                    class = "btn btn-youtube", "▶ YouTube"),
+            if (isTRUE(SHOW_SOUNDCLOUD))
             tags$a(href = soundcloud_search, target = "_blank",
                    class = "btn btn-soundcloud", "☁️ SoundCloud")
         )

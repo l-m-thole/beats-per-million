@@ -10,6 +10,7 @@ test_that("About text renders with citations, backlink and privacy notes", {
   expect_match(html, "https://getsongbpm.com", fixed = TRUE)
   expect_match(html, "Privacy", fixed = TRUE)
   expect_match(html, "mailto:me@example.org", fixed = TRUE)
+  expect_match(html, "logged in to Spotify in this browser", fixed = TRUE)   # whole songs need a login
   expect_no_match(as.character(about_content(list(contact = ""))), "mailto:")
 })
 
@@ -17,7 +18,8 @@ test_that("Privacy: players only after Play, YouTube's required lines, rights", 
   skip_if_not_installed("shiny")
   library(shiny)
   html <- as.character(about_content(list(contact = "me@example.org")))
-  expect_match(html, "Nothing from Spotify, YouTube (Google) or SoundCloud loads until", fixed = TRUE)
+  expect_match(html, if (isTRUE(SHOW_SOUNDCLOUD)) "Nothing from Spotify, YouTube (Google) or SoundCloud loads until"
+                     else "Nothing from Spotify or YouTube (Google) loads until", fixed = TRUE)
   expect_match(html, "YouTube API Services", fixed = TRUE)          # YouTube policy III.A.2
   expect_match(html, YOUTUBE_TERMS_URL, fixed = TRUE)              # III.A.1
   expect_match(html, GOOGLE_PRIVACY_URL, fixed = TRUE)
@@ -41,6 +43,8 @@ test_that("the Play gate says who gets what before any player loads", {
   expect_match(sp, "▶ Play via Spotify", fixed = TRUE)
   expect_match(sp, "spotify.com/legal/privacy-policy", fixed = TRUE)
   expect_no_match(sp, "youtube", fixed = TRUE)
+  expect_match(sp, "Whole songs need a Spotify login in this browser", fixed = TRUE)
+  expect_no_match(yt, "Spotify login", fixed = TRUE)
 
   expect_null(player_gate("winamp"))
 })
@@ -71,4 +75,15 @@ test_that("Modern data end date comes from the last data point", {
   modern <- tibble::tibble(year = c(1958, 2024), age = c(-8.2, -74.875), co2 = c(316, 424))
   expect_equal(modern_data_through(modern), "November 2024")
   expect_null(modern_data_through(NULL))
+})
+
+test_that("SHOW_SOUNDCLOUD hides SoundCloud in About & privacy", {
+  skip_if_not_installed("shiny")
+  library(shiny)
+  old <- SHOW_SOUNDCLOUD
+  on.exit(assign("SHOW_SOUNDCLOUD", old, envir = globalenv()))
+  assign("SHOW_SOUNDCLOUD", FALSE, envir = globalenv())
+  expect_false(grepl("SoundCloud", as.character(about_content(list(contact = "me@example.org")))))
+  assign("SHOW_SOUNDCLOUD", TRUE, envir = globalenv())
+  expect_match(as.character(about_content(list(contact = "me@example.org"))), "SoundCloud", fixed = TRUE)
 })

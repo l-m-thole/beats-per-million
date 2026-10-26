@@ -23,6 +23,11 @@ BPM_MAX <- 150
 # also the "good match" the library check and the wanted tempos aim for.
 MATCH_TOLS <- c(3, 5, 10)
 
+# SoundCloud is built in but hidden for now: no SoundCloud button, no
+# "Play via SoundCloud" and no SoundCloud lines in About & privacy.
+# Set to TRUE to bring it back (Play via also needs SoundCloud links).
+SHOW_SOUNDCLOUD <- FALSE
+
 # Average song length in minutes
 AVG_SONG_LENGTH <- 3
 

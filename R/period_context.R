@@ -259,7 +259,7 @@ CO2_MEASUREMENT <- list(
       "The record ends in 2022. For the years after, the app uses yearly means from Mauna Loa, lowered by ~1 ppm: Mauna Loa reads slightly above the global mean (most CO₂ is emitted in the north), so the app subtracts the average difference of the last ten years both records share."
     ),
     resolution = "yearly global means",
-    source = "CMIP7 greenhouse-gas concentration forcing CR-CMIP-1-0-0 (Climate Resource; Nicholls et al. 2026); after 2022 NOAA Mauna Loa",
+    source = "CMIP7 greenhouse-gas concentration forcing CR-CMIP-1-0-0 (Climate Resource; Nicholls et al. 2025); after 2022 NOAA Mauna Loa",
     url = "https://doi.org/10.5281/zenodo.14892947"
   ),
 

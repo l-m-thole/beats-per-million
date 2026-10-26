@@ -19,7 +19,7 @@ playlists. `co2_data.xlsx` therefore holds three sheets: `maunaloa`, `cmip7` and
 ## Sources
 
 - **Mauna Loa CO2** — NOAA Global Monitoring Laboratory. https://gml.noaa.gov/ccgg/trends/data.html
-- **CMIP7 CO2 (CR-CMIP-1-0-0)** — Nicholls, Z. et al. (2026) Historical greenhouse gas concentrations for climate modelling (CMIP7). *Geoscientific Model Development*, 19, 3725. data: https://doi.org/10.5281/zenodo.14892947
+- **CMIP7 CO2 (CR-CMIP-1-0-0)** — Nicholls, Z., Meinshausen, M., Pflüger, M. & Lewis, J. (2025) *CMIP GHG Forcing* (v1.0.0). Zenodo. https://doi.org/10.5281/zenodo.14892947
 - **Rae et al. (2021)** — Atmospheric CO2 over the Past 66 Million Years from Marine Archives. *Annual Review of Earth and Planetary Sciences*, 49, 609–641. https://doi.org/10.1146/annurev-earth-082420-063026
 - **Bereiter et al. (2015)** — Revision of the EPICA Dome C CO2 record from 800 to 600 kyr before present. *Geophysical Research Letters*, 42(2), 542–549. https://www.ncei.noaa.gov/access/paleo-search/
 - **Eggleston et al. (2016)** — Evolution of the stable carbon isotope composition of atmospheric CO2 over the last glacial cycle. *Paleoceanography*. https://doi.org/10.1002/2015PA002874 · data: https://doi.org/10.1594/PANGAEA.859181

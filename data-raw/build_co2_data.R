@@ -62,8 +62,8 @@ build_maunaloa <- function() {
 #    Source:  data/rawData/co2_1750-2022.csv (from Martin, Oct 2026): the CMIP7
 #             greenhouse-gas concentration forcing, CR-CMIP-1-0-0
 #             (Climate Resource; https://doi.org/10.5281/zenodo.14892947)
-#    Cite:    Nicholls, Z. et al. (2026) Historical greenhouse gas concentrations
-#             for climate modelling (CMIP7). Geosci. Model Dev. 19, 3725.
+#    Cite:    Nicholls, Z., Meinshausen, M., Pflüger, M. & Lewis, J. (2025)
+#             CMIP GHG Forcing (v1.0.0). Zenodo. doi:10.5281/zenodo.14892947
 #    After the last CMIP7 year: Mauna Loa annual means minus the mean
 #    Mauna Loa - CMIP7 difference of the last CMIP7_OVERLAP_YEARS shared years.
 # -----------------------------------------------------------------------------
