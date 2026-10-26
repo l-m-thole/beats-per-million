@@ -25,10 +25,16 @@ APP_STORY <- c(
 # ---- EDIT ME: who made this ---------------------------------------------------
 APP_MAKERS <- c(
   "Beats per Million is a collaboration between Martin Wegmann and Lena Thöle.",
-  "Lena is a data steward at the Swedish Museum of Natural History, with a background in paleoclimate research – she used to reconstruct past sea-surface temperatures in the Southern Ocean and is still in love with climate sciences today.",
-  "Martin's background is in climate sciences as well - that's how the two know each other. These days he is the new Data Operator at ETH Zurich."
+  "Lena is the data steward at the Swedish Museum of Natural History, working on more open scientific data output. Her background is in paleoclimate research – she used to reconstruct past environments in the Southern Ocean and is still today in love with climate sciences.",
+  "Martin's background is in climate sciences as well - that's how the two know each other. These days he is a systems engineer at ETH Zurich, trying to build up a digital data store for climate and atmospheric research data."
 )
 
+# ---- EDIT ME: ORCID iDs -------------------------------------------------------
+APP_ORCIDS <- c(
+  "Lena Thöle"     = "0000-0002-5405-3613",
+  "Martin Wegmann" = "0000-0002-5294-2978"
+  )
+  
 # -----------------------------------------------------------------------------
 # HELPERS
 # -----------------------------------------------------------------------------
@@ -171,7 +177,12 @@ how_it_works_content <- function(period_id = NULL, stats = NULL, scaling = "per_
     lapply(APP_STORY, p),
 
     tags$h4("Who made this"),
-    lapply(APP_MAKERS, p)
+    lapply(APP_MAKERS, p),
+    lapply(names(APP_ORCIDS), function(nm) {
+      url <- paste0("https://orcid.org/", APP_ORCIDS[[nm]])
+      p(class = "muted", paste0(nm, ":"),
+        tags$a(href = url, target = "_blank", rel = "noopener", url))
+    })
   )
 }
 
