@@ -328,8 +328,11 @@ test_that("Show album covers sits on the CO2 plot, right of About this era, Spot
   expect_equal(lengths(regmatches(body, gregexpr('id="show_covers"', body, fixed = TRUE))), 1)
   expect_gt(pos('class="playlist-filters"'), pos('id="show_covers"'))   # no longer above the playlist
 
-  # only next to Spotify's player (covers come from Spotify)
-  panel <- regmatches(body, regexpr('<div data-display-if="[^"]*"[^>]*>\\s*<div class="cover-toggle"', body))
+  # only next to Spotify's player (covers come from Spotify). Read from the tag
+  # tree, not the HTML: attribute order and escaping differ between
+  # Shiny / htmltools versions.
+  panel <- htmltools::tagQuery(env$ui)$find(".cover-toggle")$parent()$selectedTags()
   expect_length(panel, 1)
-  expect_match(panel, "input.play_source == &#39;spotify&#39;", fixed = TRUE)
+  expect_identical(htmltools::tagGetAttribute(panel[[1]], "data-display-if"),
+                   "input.play_source == 'spotify'")
 })
