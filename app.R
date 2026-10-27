@@ -246,6 +246,40 @@ body {
 .card-head-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; }
 .card-head-actions .shiny-html-output { display: inline-block; }
 
+/* "Show album covers" on the CO2 plot: a checkbox that looks like the
+   button next to it (About this era); highlighted while covers are on */
+.cover-toggle .shiny-input-container { width: auto; margin: 0; }
+.cover-toggle .checkbox { margin: 0; }
+.cover-toggle .checkbox label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 0;
+  padding: 0.45rem 1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.06);
+  color: #f5f5f7;
+  font-size: 0.9rem;
+  line-height: 1.42857;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.cover-toggle .checkbox label:hover { background: rgba(255,255,255,0.12); }
+.cover-toggle .checkbox input[type=checkbox] {
+  position: static;
+  margin: 0;
+  accent-color: #667eea;
+}
+.cover-toggle .checkbox label:has(input:checked) {
+  border-color: rgba(102, 126, 234, 0.7);
+  background: rgba(102, 126, 234, 0.18);
+}
+.cover-toggle .checkbox label:has(input:focus-visible) {
+  outline: 2px solid #a5b4fc;
+  outline-offset: 2px;
+}
+
 /* Era facts under the plot title */
 .era-meta {
   display: flex;
@@ -713,6 +747,9 @@ table.dataTable tbody tr:hover {
   }
   .era-picker input + span { min-width: 9.5rem; }
   .card { padding: 1rem; }
+  /* About this era + Show album covers side by side on most phones */
+  .plot-card .card-head-actions .btn-ghost { padding: 0.4rem 0.7rem !important; font-size: 0.85rem !important; }
+  .cover-toggle .checkbox label { padding: 0.4rem 0.7rem; font-size: 0.85rem; gap: 0.3rem; }
 }
 '
 }
@@ -882,7 +919,14 @@ ui <- fluidPage(
                   div(h3(class = "card-title", "CO₂ through time"),
                       uiOutput("era_meta")),
                   div(class = "card-head-actions",
-                      actionButton("era_info", "📖 About this era", class = "btn-ghost btn-accent"))
+                      actionButton("era_info", "📖 About this era", class = "btn-ghost btn-accent"),
+                      # Covers come from Spotify, so only next to Spotify's player
+                      # (Spotify's terms; see R/covers.R)
+                      conditionalPanel(
+                        "input.play_source == 'spotify'",
+                        div(class = "cover-toggle",
+                            title = "Shows each song's album cover above its slice. Loads the covers from Spotify.",
+                            checkboxInput("show_covers", "🖼 Show album covers", value = FALSE))))
               ),
               plotlyOutput("timeline_plot", height = "300px"),
               uiOutput("covers_credit")
@@ -958,15 +1002,7 @@ ui <- fluidPage(
                   div(class = "filter-block",
                       span(class = "filter-label", "Songs"),
                       actionButton("shuffle", "🔀 Shuffle songs", class = "btn-ghost",
-                                   title = "Swap in other songs with the same tempos. The order (oldest → youngest) stays the same.")),
-                  # Covers come from Spotify, so only next to Spotify's player
-                  # (Spotify's terms; see R/covers.R)
-                  conditionalPanel(
-                    "input.play_source == 'spotify'",
-                    div(class = "filter-block",
-                        title = "Loads the album covers from Spotify",
-                        span(class = "filter-label", "On the CO₂ plot"),
-                        checkboxInput("show_covers", "🖼 Show album covers", value = FALSE)))
+                                   title = "Swap in other songs with the same tempos. The order (oldest → youngest) stays the same."))
               ),
               p(class = "playlist-hint",
                 "Each row is a song and a slice of time, oldest first: the slice's CO₂ sets",

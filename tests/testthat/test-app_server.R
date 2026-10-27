@@ -309,3 +309,27 @@ test_that("the Playlist length switch sits in the playlist card, Standard first"
   expect_identical(env$get_playlist("standard", "per_period", "roman"),
                    env$ALL_PLAYLISTS$per_period$roman)
 })
+
+test_that("Show album covers sits on the CO2 plot, right of About this era, Spotify only", {
+  skip_if_not_installed("plotly")
+  skip_if_not_installed("DT")
+  root <- app_root()
+  skip_if(is.null(root), "app.R not found")
+  withr::local_envvar(BPM_DEPLOYED = "true", BPM_SPOTIFY_LOGIN = "off")
+  env <- new.env()
+  withr::with_dir(root, suppressMessages(suppressWarnings(
+    sys.source(file.path(root, "app.R"), envir = env))))
+  body <- paste(as.character(htmltools::renderTags(env$ui)$html), collapse = "\n")
+
+  # in the plot card's header: About this era first (left), then the covers switch
+  pos <- function(pattern) regexpr(pattern, body, fixed = TRUE)
+  expect_lt(pos('id="era_info"'), pos('id="show_covers"'))
+  expect_lt(pos('id="show_covers"'), pos('id="timeline_plot"'))
+  expect_equal(lengths(regmatches(body, gregexpr('id="show_covers"', body, fixed = TRUE))), 1)
+  expect_gt(pos('class="playlist-filters"'), pos('id="show_covers"'))   # no longer above the playlist
+
+  # only next to Spotify's player (covers come from Spotify)
+  panel <- regmatches(body, regexpr('<div data-display-if="[^"]*"[^>]*>\\s*<div class="cover-toggle"', body))
+  expect_length(panel, 1)
+  expect_match(panel, "input.play_source == &#39;spotify&#39;", fixed = TRUE)
+})

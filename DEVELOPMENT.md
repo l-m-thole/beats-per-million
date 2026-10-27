@@ -211,7 +211,10 @@ deploy script) fills `data/song_covers.csv` from Spotify's oEmbed
 `thumbnail_url`; in the app `cover_store()` / `store_cover_urls()` read it and
 look up missing ones once per R process (in parallel). Covers are Spotify-only
 and only shown while playing via Spotify, credited under the plot
-(`output$covers_credit`).
+(`output$covers_credit`). The switch (`input$show_covers`) sits in the plot
+card's header right of *About this era*, inside a `conditionalPanel()` on
+`input.play_source == 'spotify'`, styled like the button next to it
+(`.cover-toggle` in `app_css()`).
 
 ## Song-library check
 

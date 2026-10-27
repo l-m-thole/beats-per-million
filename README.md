@@ -72,11 +72,12 @@ checks that every event falls inside its period.
 - **Era buttons** in a row under the header.
 - **CO₂ through time:** a plain plot (no zoom or toolbar). The selected song's
   slice is highlighted; click the curve to jump to the song for that time.
+  Top right: **📖 About this era** and, while playing via Spotify,
+  **🖼 Show album covers** (covers above each song's slice).
 - **Playlist:** one row per song, oldest first — *Song* (title, artist),
   *Years*, *CO₂*, *BPM* (the slice's tempo), *Song BPM* (the song's own tempo)
   and *Feel*. Above it: **BPM scale** (per era / global), **Playlist length**
-  (*Standard* / *Long*, 2× songs), **🔀 Shuffle songs** and, while playing via
-  Spotify, **🖼 Show album covers** (covers above each song's slice on the plot).
+  (*Standard* / *Long*, 2× songs) and **🔀 Shuffle songs**.
 - **Listen** (next to the playlist, stays in view while you scroll; on phones
   it comes right after the plot): the song, the player (behind a **▶ Play via …**
   button until you press it, see *Privacy* below), **⏮ Previous / Next ⏭**,
@@ -397,7 +398,8 @@ when you switch them on. The texts live in `R/about.R` (`player_gate()` and
 
 ### Album covers
 
-*🖼 Show album covers* (above the playlist, only while playing via Spotify)
+*🖼 Show album covers* (on the CO₂ plot, right of *About this era*; only while
+playing via Spotify)
 puts each song's cover above its time slice on the CO₂ plot, with a
 "covers from Spotify" credit under the plot; hover shows the song, click
 selects it. Covers come from Spotify's public oEmbed endpoint (no key) and are
