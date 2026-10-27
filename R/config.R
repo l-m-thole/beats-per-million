@@ -31,6 +31,12 @@ SHOW_SOUNDCLOUD <- FALSE
 # Average song length in minutes
 AVG_SONG_LENGTH <- 3
 
+# Playlist lengths visitors can choose ("Playlist length" in the app):
+# how many songs each of an era's standard time slices becomes. "long" cuts
+# every slice in two - twice the songs, each for half as many years, so the
+# slices of both lengths line up (long songs 2k-1 and 2k = standard song k).
+PLAYLIST_LENGTHS <- c(standard = 1, long = 2)
+
 # Reference year for age calculations (standard paleoclimate convention)
 REFERENCE_YEAR <- 1950
 

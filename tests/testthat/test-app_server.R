@@ -233,3 +233,79 @@ test_that("the Industrial era renders: plot, era info, Listen panel, table", {
     expect_equal(current_playlist()$stats$period_id, "industrial")
   })
 })
+
+test_that("Playlist length: Long doubles the songs and keeps your place in time", {
+  skip_if_not_installed("plotly")
+  skip_if_not_installed("DT")
+  root <- app_root()
+  skip_if(is.null(root), "app.R not found")
+  withr::local_envvar(BPM_DEPLOYED = "true", BPM_SPOTIFY_LOGIN = "off")
+  app <- suppressMessages(suppressWarnings(shiny::shinyAppDir(root)))
+
+  shiny::testServer(app, {
+    session$setInputs(selected_period = "modern", scaling_mode = "per_period",
+                      play_source = "spotify", auto_advance = TRUE,
+                      play_length = "full", show_covers = FALSE)
+    n_std <- nrow(current_playlist()$songs)
+    expect_equal(playlist_length(), "standard")          # no input yet: Standard
+
+    session$setInputs(playlist_row_click = list(row = 5, t = 1))
+    expect_equal(selected_idx(), 5L)
+    session$setInputs(playlist_length = "long")
+    expect_equal(nrow(current_playlist()$songs), 2 * n_std)
+    expect_equal(current_playlist()$stats$length_factor, 2)
+    expect_equal(selected_idx(), 9L)                     # standard 5 = long 9 + 10
+    expect_match(player_token(), "|long|", fixed = TRUE)
+    expect_match(paste(as.character(output$era_meta), collapse = ""), as.character(2 * n_std))
+    expect_equal(output$song_position, paste(9, "/", 2 * n_std))
+
+    session$setInputs(playlist_row_click = list(row = 10, t = 2))
+    session$setInputs(playlist_length = "standard")
+    expect_equal(selected_idx(), 5L)                     # long 10 = standard 5
+    expect_equal(nrow(current_playlist()$songs), n_std)
+
+    session$setInputs(playlist_length = "long", scaling_mode = "global")
+    expect_equal(current_playlist()$stats$length_factor, 2)
+
+    # every slot of the long playlist gets a song, never one twice
+    pk <- curated_picks()
+    expect_equal(anyDuplicated(pk$song_title), 0)
+    expect_lte(nrow(pk), 2 * n_std)
+    expect_true(all(pk$trend %in% c("faster", "slower", NA)))
+
+    # another era starts at its first song, still long
+    session$setInputs(selected_period = "roman", scaling_mode = "per_period")
+    expect_equal(selected_idx(), 1L)
+    roman <- TIME_PERIODS$roman
+    expect_equal(current_playlist()$stats$num_songs,
+                 2 * ceiling(roman$years_span / roman$years_per_minute / AVG_SONG_LENGTH))
+  })
+})
+
+test_that("the Playlist length switch sits in the playlist card, Standard first", {
+  skip_if_not_installed("plotly")
+  skip_if_not_installed("DT")
+  root <- app_root()
+  skip_if(is.null(root), "app.R not found")
+  withr::local_envvar(BPM_DEPLOYED = "true", BPM_SPOTIFY_LOGIN = "off")
+  env <- new.env()
+  withr::with_dir(root, suppressMessages(suppressWarnings(
+    sys.source(file.path(root, "app.R"), envir = env))))
+  body <- paste(as.character(htmltools::renderTags(env$ui)$html), collapse = "\n")
+  expect_match(body, 'id="playlist_length"', fixed = TRUE)
+  expect_match(body, 'value="standard" checked', fixed = TRUE)
+  expect_match(body, 'value="long"', fixed = TRUE)
+  expect_match(body, "Long (2× songs)", fixed = TRUE)
+  # next to the BPM scale, in the playlist filters
+  expect_lt(regexpr('id="scaling_mode"', body), regexpr('id="playlist_length"', body))
+  expect_lt(regexpr('id="playlist_length"', body), regexpr('id="shuffle"', body))
+
+  # long playlists are made on first use, once per era and scale, then reused
+  expect_false(exists("global|modern", envir = env$LONG_PLAYLISTS, inherits = FALSE))
+  a <- env$get_playlist("long", "global", "modern")
+  expect_true(exists("global|modern", envir = env$LONG_PLAYLISTS, inherits = FALSE))
+  expect_identical(env$get_playlist("long", "global", "modern"), a)
+  expect_equal(nrow(a$songs), 2 * nrow(env$get_playlist("standard", "global", "modern")$songs))
+  expect_identical(env$get_playlist("standard", "per_period", "roman"),
+                   env$ALL_PLAYLISTS$per_period$roman)
+})

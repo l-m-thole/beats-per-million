@@ -249,9 +249,17 @@ hex_to_rgba <- function(hex, alpha = 1) {
 #' @param co2_data List containing dataframes with 'age' and 'co2' columns
 #' @param co2_scale Optional c(min, max) CO2 range for global BPM scaling;
 #'   NULL (default) scales to this period's own range.
+#' @param length_factor Songs per standard time slice (PLAYLIST_LENGTHS):
+#'   1 = standard, 2 = long (every slice cut in two). Must be a whole number,
+#'   so the slices of every length line up with the standard ones.
 #' @return List with 'songs' dataframe and 'stats' list
 #' 
-generate_playlist <- function(period_config, co2_data, co2_scale = NULL) {
+generate_playlist <- function(period_config, co2_data, co2_scale = NULL,
+                              length_factor = 1) {
+  if (length(length_factor) != 1 || is.na(length_factor) || length_factor < 1 ||
+      length_factor != round(length_factor)) {
+    stop("length_factor must be a whole number >= 1 (see PLAYLIST_LENGTHS).")
+  }
   
   # Get the appropriate data source
   source_name <- period_config$data_source
@@ -319,9 +327,12 @@ generate_playlist <- function(period_config, co2_data, co2_scale = NULL) {
   } else {
     period_config$years_span
   }
-  years_per_minute <- period_config$years_per_minute
+  # A long playlist cuts each standard slice into `length_factor` equal parts:
+  # same span, more songs, so the music runs longer at the same tempos.
+  years_per_minute <- period_config$years_per_minute / length_factor
   playlist_minutes <- years_span / years_per_minute
-  num_songs <- ceiling(playlist_minutes / AVG_SONG_LENGTH)
+  num_songs <- ceiling(years_span / period_config$years_per_minute / AVG_SONG_LENGTH) *
+    length_factor
   years_per_song <- years_span / num_songs
   
   # Generate song time windows
@@ -416,6 +427,7 @@ generate_playlist <- function(period_config, co2_data, co2_scale = NULL) {
     years_per_minute = years_per_minute,
     playlist_minutes = round(playlist_minutes, 1),
     num_songs = num_songs,
+    length_factor = length_factor,
     years_per_song = round(years_per_song, 0),
     co2_min = round(period_co2_min, 0),
     co2_max = round(period_co2_max, 0),
@@ -447,9 +459,12 @@ global_co2_range <- function(co2_data) {
 #' @param co2_data List containing all CO2 datasets
 #' @param period_ids Character vector of period IDs to generate (default: all)
 #' @param co2_scale Optional c(min, max) for global BPM scaling; NULL = per-period
+#' @param length_factor Songs per standard slice (1 = standard, 2 = long);
+#'   see generate_playlist()
 #' @return Named list of playlist results
 #' 
-generate_all_playlists <- function(co2_data, period_ids = NULL, co2_scale = NULL) {
+generate_all_playlists <- function(co2_data, period_ids = NULL, co2_scale = NULL,
+                                   length_factor = 1) {
   
   if (is.null(period_ids)) {
     period_ids <- names(TIME_PERIODS)
@@ -460,7 +475,8 @@ generate_all_playlists <- function(co2_data, period_ids = NULL, co2_scale = NULL
   for (id in period_ids) {
     period <- get_period(id)
     cat("  Generating:", period$name, "...\n")
-    playlists[[id]] <- generate_playlist(period, co2_data, co2_scale = co2_scale)
+    playlists[[id]] <- generate_playlist(period, co2_data, co2_scale = co2_scale,
+                                         length_factor = length_factor)
   }
   
   return(playlists)
@@ -523,6 +539,17 @@ playlist_export <- function(playlist, picks = NULL) {
                                       NA_character_, trimws(soundcloud_url))
     )
   dplyr::left_join(out, songs, by = "song_number")
+}
+
+#' File name for the CSV download
+#'
+#' @param period Period id
+#' @param length Playlist length ("standard" or "long"; long adds "_long")
+#' @param date Date in the name
+#' @return e.g. "playlist_modern_2026-10-27.csv", "playlist_modern_long_2026-10-27.csv"
+playlist_csv_name <- function(period, length = "standard", date = Sys.Date()) {
+  paste0("playlist_", period, if (identical(length, "long")) "_long" else "",
+         "_", format(as.Date(date)), ".csv")
 }
 
 # -----------------------------------------------------------------------------
@@ -617,28 +644,53 @@ pick_song_for_bpm <- function(songs, target_bpm, tol, exclude = character()) {
 #' playlist is never picked again. Returns NULL only when the library has no
 #' usable (non-excluded, non-missing-bpm) songs left.
 #'
+#' Following the curve: with `direction` (+1 = the slot's tempo rises from the
+#' slot before, -1 = it falls) and `after_bpm` (the song before's own tempo),
+#' the window that has songs is narrowed to the ones that step the same way -
+#' faster than the song before when CO2 rises, slower when it falls - if any
+#' are there. Otherwise the whole window counts (the beat may then step back).
+#' The window itself never widens for this, so match quality stays the same.
+#'
 #' The result says how the song was found (shown in the app, so the choice is
 #' transparent): `match_tol` = the tolerance that found it (3, 5 or 10; NA for
-#' the nearest-song fallback) and `n_candidates` = how many songs qualified at
-#' that step (the pick is a random one of them).
+#' the nearest-song fallback), `n_candidates` = how many songs qualified at
+#' that step (the pick is a random one of them) and `trend` = "faster" /
+#' "slower" when the choice was narrowed to songs that follow the curve (NA
+#' otherwise).
 #'
 #' @inheritParams pick_song_for_bpm
 #' @param tols Ascending BPM tolerances to try before the nearest-song fallback
 #'   (default MATCH_TOLS: ±3, then ±5, then ±10).
-#' @return One-row tibble (library columns + match_tol, n_candidates), or NULL.
+#' @param after_bpm Tempo of the song before (NA = no song before)
+#' @param direction +1 / -1 / 0: which way the slot's tempo moves from the slot
+#'   before (0 = no preference)
+#' @return One-row tibble (library columns + match_tol, n_candidates, trend),
+#'   or NULL.
 pick_song_widening <- function(songs, target_bpm, exclude = character(),
-                               tols = MATCH_TOLS) {
+                               tols = MATCH_TOLS, after_bpm = NA_real_,
+                               direction = 0) {
   if (is.null(songs) || nrow(songs) == 0) return(NULL)
   if (length(target_bpm) == 0 || is.na(target_bpm)) return(NULL)
+  steer <- length(direction) == 1 && !is.na(direction) && direction != 0 &&
+    length(after_bpm) == 1 && !is.na(after_bpm)
 
   # Same filters and the same single slice_sample() draw as pick_song_for_bpm,
-  # so the songs picked for a given seed are unchanged.
+  # so without a direction the songs picked for a given seed are unchanged.
   for (tol in tols) {
     cand <- .bpm_candidates(songs, target_bpm, tol, exclude)
     if (!is.null(cand) && nrow(cand) > 0) {
+      trend <- NA_character_
+      if (steer) {
+        along <- cand[sign(cand$bpm - after_bpm) == sign(direction), , drop = FALSE]
+        if (nrow(along) > 0) {
+          cand  <- along
+          trend <- if (direction > 0) "faster" else "slower"
+        }
+      }
       hit <- dplyr::slice_sample(cand, n = 1)
       hit$match_tol    <- tol
       hit$n_candidates <- nrow(cand)
+      hit$trend        <- trend
       return(hit)
     }
   }
@@ -655,6 +707,7 @@ pick_song_widening <- function(songs, target_bpm, exclude = character(),
   hit <- dplyr::slice_sample(cand, n = 1)
   hit$match_tol    <- NA_real_
   hit$n_candidates <- nrow(cand)
+  hit$trend        <- NA_character_
   hit
 }
 
@@ -665,19 +718,24 @@ pick_song_widening <- function(songs, target_bpm, exclude = character(),
 #' @param match_tol Tolerance that found the song (NA = nearest-song fallback)
 #' @param n_candidates How many songs qualified at that step
 #' @param widest The matcher's widest window (named in the nearest-song case)
+#' @param trend "faster" / "slower" when only songs following the curve were
+#'   drawn from (pick_song_widening()); NA otherwise
 #' @return Character string
 match_explanation <- function(song_bpm, target_bpm, match_tol, n_candidates,
-                              widest = max(MATCH_TOLS)) {
+                              widest = max(MATCH_TOLS), trend = NA_character_) {
   off <- if (is.na(song_bpm) || is.na(target_bpm)) NA else round(song_bpm - target_bpm)
   diff_txt <- if (is.na(off)) "" else if (off == 0) "exactly on target" else
     sprintf("%s%d BPM from the target", if (off > 0) "+" else "−", abs(off))
   n <- suppressWarnings(as.integer(n_candidates))
+  trend <- if (length(trend) == 1 && !is.na(trend) && trend %in% c("faster", "slower")) trend else NA
   how <- if (is.na(match_tol)) {
     sprintf("no unused song within ±%g BPM was left, so the closest one was taken", widest)
   } else if (is.na(n) || n <= 1) {
-    sprintf("the only unused song within ±%g BPM", match_tol)
+    paste0(sprintf("the only unused song within ±%g BPM", match_tol),
+           if (!is.na(trend)) sprintf(" that is %s than the song before", trend) else "")
   } else {
-    sprintf("picked at random from %d songs within ±%g BPM", n, match_tol)
+    paste0(sprintf("picked at random from %d songs within ±%g BPM", n, match_tol),
+           if (!is.na(trend)) sprintf(" that are %s than the song before", trend) else "")
   }
   paste0(if (nzchar(diff_txt)) paste0(diff_txt, " · ") else "", how)
 }
@@ -690,23 +748,31 @@ match_explanation <- function(song_bpm, target_bpm, match_tol, n_candidates,
 #' reproducible by seeding the RNG from the period name plus `shuffle_counter`,
 #' so the same period always yields the same assignment until the user shuffles.
 #'
+#' With `follow_curve` (default) each pick prefers songs that step the same way
+#' as the slot tempos: when the tempo rises from one slot to the next, a song
+#' faster than the one before; when it falls, a slower one (see
+#' pick_song_widening()). Without it, two good matches next to each other can
+#' still step against the curve (e.g. 66 -> 65 BPM while CO2 rises).
+#'
 #' @param playlist_songs Playlist tibble from generate_playlist()$songs
 #'   (needs `song_number`, `bpm`).
 #' @param library Song-library tibble from load_song_library().
 #' @param period Period id (character) - used to seed the RNG.
 #' @param shuffle_counter Integer bumped by the app's Shuffle button (default 0).
 #' @param tols Tolerances handed to pick_song_widening() (default MATCH_TOLS).
+#' @param follow_curve Prefer songs that move with the slot tempos (default TRUE).
 #' @return Tibble with one row per MATCHED slot: song_number plus the library
 #'   columns (song_title, artist, spotify_uri, soundcloud_url, bpm, notes) and
-#'   how the song was found (match_tol, n_candidates - see pick_song_widening).
-#'   Empty (correctly-shaped) tibble when nothing matches.
+#'   how the song was found (match_tol, n_candidates, trend - see
+#'   pick_song_widening). Empty (correctly-shaped) tibble when nothing matches.
 assign_songs_to_playlist <- function(playlist_songs, library, period,
-                                     shuffle_counter = 0, tols = MATCH_TOLS) {
+                                     shuffle_counter = 0, tols = MATCH_TOLS,
+                                     follow_curve = TRUE) {
   empty <- tibble::tibble(
     song_number = integer(),   song_title = character(),    artist = character(),
     spotify_uri = character(), soundcloud_url = character(),
     youtube_url = character(), bpm = double(), notes = character(),
-    match_tol = double(), n_candidates = integer()
+    match_tol = double(), n_candidates = integer(), trend = character()
   )
   if (is.null(playlist_songs) || nrow(playlist_songs) == 0) return(empty)
   if (is.null(library) || nrow(library) == 0) return(empty)
@@ -715,11 +781,17 @@ assign_songs_to_playlist <- function(playlist_songs, library, period,
 
   used  <- character(0)
   picks <- vector("list", nrow(playlist_songs))
+  prev_bpm <- NA_real_     # the song before's own tempo (NA: no song before)
 
   for (i in seq_len(nrow(playlist_songs))) {
+    direction <- if (isTRUE(follow_curve) && i > 1) {
+      sign(playlist_songs$bpm[i] - playlist_songs$bpm[i - 1])
+    } else 0
     pick <- pick_song_widening(library, playlist_songs$bpm[i],
-                               exclude = used, tols = tols)
-    if (is.null(pick)) next
+                               exclude = used, tols = tols,
+                               after_bpm = prev_bpm, direction = direction)
+    if (is.null(pick)) { prev_bpm <- NA_real_; next }
+    prev_bpm <- pick$bpm[1]
 
     title <- pick$song_title[1]
     if (!is.na(title) && nzchar(trimws(title))) used <- c(used, title)
@@ -734,7 +806,8 @@ assign_songs_to_playlist <- function(playlist_songs, library, period,
       bpm            = pick$bpm[1],
       notes          = pick$notes[1],
       match_tol      = as.double(pick$match_tol[1]),
-      n_candidates   = as.integer(pick$n_candidates[1])
+      n_candidates   = as.integer(pick$n_candidates[1]),
+      trend          = as.character(pick$trend[1])
     )
   }
 

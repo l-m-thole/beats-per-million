@@ -40,10 +40,22 @@ APP_ORCIDS <- c(
 # HELPERS
 # -----------------------------------------------------------------------------
 
-# "3 years", "60 years", "9,000 years", "750,000 years"
+# "3 years", "60 years", "9,000 years", "750,000 years"; below 10 with one
+# decimal where it matters ("1.5 years", "7.5 years")
 .years_txt <- function(x) {
-  paste(format(round(x), big.mark = ",", scientific = FALSE, trim = TRUE),
-        if (round(x) == 1) "year" else "years")
+  x <- if (x < 10) round(x, 1) else round(x)
+  paste(format(x, big.mark = ",", scientific = FALSE, trim = TRUE),
+        if (x == 1) "year" else "years")
+}
+
+#' Years of CO2 record one song stands for, at the playlist's length
+#'
+#' @param per Period config (TIME_PERIODS)
+#' @param stats The playlist's stats (generate_playlist()$stats), optional:
+#'   a long playlist (length_factor 2) halves the standard years per song
+#' @return Number of years
+years_per_song_of <- function(per, stats = NULL) {
+  per$years_per_minute * AVG_SONG_LENGTH / (stats$length_factor %||% 1)
 }
 
 #' Years of CO2 record per song, for every era (used in "How it works")
@@ -103,8 +115,10 @@ how_it_works_content <- function(period_id = NULL, stats = NULL, scaling = "per_
     per <- TIME_PERIODS[[period_id]]
     div(class = "info-box",
         tags$b(paste0("In the era you have open (", per$short_name %||% per$name, "):")),
-        sprintf(" %d songs, each standing for about %s of CO₂ record. ",
-                as.integer(stats$num_songs), .years_txt(per$years_per_minute * AVG_SONG_LENGTH)),
+        sprintf(" %d songs%s, each standing for about %s of CO₂ record. ",
+                as.integer(stats$num_songs),
+                if ((stats$length_factor %||% 1) > 1) " (long playlist)" else "",
+                .years_txt(years_per_song_of(per, stats))),
         sprintf("%s ppm becomes %d BPM and %s ppm becomes %d BPM",
                 format(stats$scale_min, big.mark = ","), BPM_MIN,
                 format(stats$scale_max, big.mark = ","), BPM_MAX),
@@ -127,7 +141,9 @@ how_it_works_content <- function(period_id = NULL, stats = NULL, scaling = "per_
               "Each era's CO₂ record is cut into equal slices, one per song. A song",
               "stands for about", AVG_SONG_LENGTH, "minutes of music, so a slice covers",
               .years_txt(first$years_per_song), "in the", first$name, "and",
-              .years_txt(last$years_per_song), "in the", paste0(last$name, ".")),
+              .years_txt(last$years_per_song), "in the", paste0(last$name, "."),
+              tags$i("Playlist length: Long"), "cuts every slice in two: twice the songs,",
+              "each for half as many years – more detail, and a longer listen."),
       tags$li(tags$b("CO₂ becomes tempo."),
               "The average CO₂ of each slice is turned into beats per minute along a",
               sprintf("straight line from %d to %d BPM.", BPM_MIN, BPM_MAX),
@@ -140,7 +156,9 @@ how_it_works_content <- function(period_id = NULL, stats = NULL, scaling = "per_
               "From", paste0(n_lib_txt, ","), "each tagged with its real tempo, the app",
               sprintf("takes the songs within ±%g BPM of the slice's tempo and picks one",
                       MATCH_TOLS[1]),
-              "of them at random.", .widening_txt(),
+              "of them at random – preferring songs that move with the curve: when CO₂",
+              "rises from one slice to the next, one faster than the song before; when it",
+              "falls, a slower one.", .widening_txt(),
               "A song is never used twice in the same playlist. The table",
               "shows the slice's tempo (", tags$i("BPM", .noWS = "outside"), ") next to the",
               "song's own (", tags$i("Song BPM", .noWS = "outside"), "), and the Listen",
@@ -235,7 +253,7 @@ era_info_content <- function(period_id, stats = NULL) {
              format(stats$years_span, big.mark = ",", scientific = FALSE)), "years"),
         span(class = "stat-chip", tags$b(class = "purple", stats$num_songs), "songs"),
         span(class = "stat-chip", "1 song ≈",
-             tags$b(.years_txt(per$years_per_minute * AVG_SONG_LENGTH))),
+             tags$b(.years_txt(years_per_song_of(per, stats)))),
         span(class = "stat-chip", "CO₂", tags$b(class = "cold", stats$co2_min), "–",
              tags$b(class = "warm", stats$co2_max), "ppm"))
   }

@@ -46,6 +46,8 @@ playlist templates from `run_generator.R` still add genre ideas per band.)
 | **Cenozoic Era** | ~66 million years | ~88 | Marine proxy records | K–Pg impact, PETM, Eocene hothouse, Antarctic ice sheet, Pliocene (CO₂ ≈ today) |
 
 Song counts are for the current data and change slightly when the data are refreshed.
+With **Playlist length: Long** every era has twice as many songs (Modern ~46 …
+Full Ice Core ~178), each standing for half as many years.
 
 In the app, each period (era) has:
 
@@ -72,9 +74,9 @@ checks that every event falls inside its period.
   slice is highlighted; click the curve to jump to the song for that time.
 - **Playlist:** one row per song, oldest first — *Song* (title, artist),
   *Years*, *CO₂*, *BPM* (the slice's tempo), *Song BPM* (the song's own tempo)
-  and *Feel*. Above it: **BPM scale** (per era / global), **🔀 Shuffle songs**
-  and, while playing via Spotify, **🖼 Show album covers** (covers above each
-  song's slice on the plot).
+  and *Feel*. Above it: **BPM scale** (per era / global), **Playlist length**
+  (*Standard* / *Long*, 2× songs), **🔀 Shuffle songs** and, while playing via
+  Spotify, **🖼 Show album covers** (covers above each song's slice on the plot).
 - **Listen** (next to the playlist, stays in view while you scroll; on phones
   it comes right after the plot): the song, the player (behind a **▶ Play via …**
   button until you press it, see *Privacy* below), **⏮ Previous / Next ⏭**,
@@ -285,6 +287,15 @@ Each playlist compresses geological time into listenable duration:
 | Ice Core | 3000:1 | 9,000 years |
 | Cenozoic | 250,000:1 | 750,000 years |
 
+**Playlist length: Long** cuts every slice in two (`PLAYLIST_LENGTHS` in
+`R/config.R`, `generate_playlist(length_factor = 2)`): twice the songs, each
+for half as many years (Modern 1.5 years … Cenozoic 375,000 years), so you hear
+more detail and the playlist plays twice as long. The slices line up — long
+songs 2k−1 and 2k are standard song k — so switching keeps your place in time.
+The BPM scale is the same, so the tempo climbs at half the speed per minute;
+with *30-s snippets* the climb is smooth and quick. Standard playlists are made
+at startup, long ones the first time someone picks them (then cached).
+
 ---
 
 ## 🎧 Using the Song Library
@@ -303,11 +314,21 @@ Saving from Excel is fine (columns can be reordered, extra columns are ignored).
   random**; if none is left it widens to **±5**, then **±10 BPM**, then takes
   the **single nearest** song (the windows are `MATCH_TOLS` in `R/config.R`).
   Only an empty library leaves a slot with search buttons.
-- A song is **never repeated within one period**.
+- **Follows the curve:** when the tempo rises from one slot to the next, the
+  pick is narrowed to songs **faster than the song before** (slower when it
+  falls), as long as the window has one — so two good matches never step
+  against the curve without need (e.g. 66 → 65 BPM while CO₂ rises). The window
+  never widens for this. In the first Modern playlist (Spotify) the step-backs
+  went from 4 to 0 (Long: 10 to 1); over all eras from ~11 % to ~1 % of the
+  song changes (Long: ~13 % to ~3 %).
+- A song is **never repeated within one period** — Long playlists included.
+  Early Humans and Cenozoic need more songs before every Long slot matches
+  within ±3 BPM (see *Is the library ready?*).
 - **Transparent:** the playlist shows the slot's tempo (*BPM*) next to the
   song's own (*Song BPM*), and the Listen panel says how the song was found
-  (e.g. *+2 BPM from the target · picked at random from 8 songs within ±3 BPM*;
-  `match_tol` / `n_candidates` from `pick_song_widening()`).
+  (e.g. *+2 BPM from the target · picked at random from 8 songs within ±3 BPM
+  that are faster than the song before*; `match_tol` / `n_candidates` / `trend`
+  from `pick_song_widening()`).
 - **🔀 Shuffle songs** re-rolls the random picks — other songs, same tempos. The
   order never changes (always oldest → youngest). Without shuffling, the same
   period always shows the same songs (seeded from the period name).
@@ -408,6 +429,9 @@ song, and lists YouTube links from channels that don't look official (lyrics,
 promo or fan uploads — swap them for the artist's, VEVO or "Artist - Topic"
 upload; write "label upload" in a song's notes once you've checked a label's
 channel by hand). Launch criteria: [`LAUNCH.md`](LAUNCH.md#6-get-the-library-ready-ongoing).
+It also simulates the **Long** playlists (per-era scale, `PUBLIC_POOL`) and
+lists the BPM ranges they still need songs in — for information, not a launch
+criterion (`coverage_long.csv`, `gaps_long.csv`).
 
 ### Finding a song's BPM
 

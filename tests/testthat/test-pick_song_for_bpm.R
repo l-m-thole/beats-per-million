@@ -243,3 +243,90 @@ test_that("a song within ±3 BPM is always preferred, for every shuffle", {
     expect_equal(out$match_tol, c(3, 3, 3))
   }
 })
+
+# ---- following the curve (faster than the song before while CO2 rises) -------
+
+test_that("with a direction, the window is narrowed to songs that step the same way", {
+  lib <- tibble::tibble(song_title = c("lo", "mid", "hi"), artist = "x",
+                        spotify_uri = "", soundcloud_url = "",
+                        bpm = c(98, 100, 102), notes = "")
+  for (s in 1:20) {
+    set.seed(s)
+    up <- pick_song_widening(lib, target_bpm = 100, after_bpm = 99, direction = 1)
+    expect_true(up$song_title %in% c("mid", "hi"))      # faster than 99 only
+    expect_equal(up$trend, "faster")
+    expect_equal(up$n_candidates, 2)
+    expect_equal(up$match_tol, 3)
+    set.seed(s)
+    down <- pick_song_widening(lib, target_bpm = 100, after_bpm = 99, direction = -1)
+    expect_equal(down$song_title, "lo")
+    expect_equal(down$trend, "slower")
+  }
+})
+
+test_that("no song steps the right way: the whole window counts, it never widens", {
+  lib <- tibble::tibble(song_title = c("in", "out"), artist = "x",
+                        spotify_uri = "", soundcloud_url = "",
+                        bpm = c(99, 104.5), notes = "")
+  set.seed(1)
+  # rising, the song before was 101: nothing within ±3 is faster ("out" is
+  # faster but only within ±5) -> stays in ±3 and takes the slower song
+  w <- pick_song_widening(lib, target_bpm = 100, after_bpm = 101, direction = 1)
+  expect_equal(w$song_title, "in")
+  expect_equal(w$match_tol, 3)
+  expect_true(is.na(w$trend))
+})
+
+test_that("without a direction (or a song before) the pick is unchanged", {
+  lib <- make_lib()
+  for (s in 1:10) {
+    set.seed(s); a <- pick_song_widening(lib, target_bpm = 100)
+    set.seed(s); b <- pick_song_widening(lib, target_bpm = 100, after_bpm = 99, direction = 0)
+    set.seed(s); d <- pick_song_widening(lib, target_bpm = 100, after_bpm = NA, direction = 1)
+    expect_identical(a, b)
+    expect_identical(a, d)
+    expect_true(is.na(a$trend))
+  }
+})
+
+test_that("a playlist follows the curve: no avoidable step back", {
+  # two songs per BPM, so every window has songs on both sides
+  lib <- tibble::tibble(song_title = paste("S", 1:182), artist = "x",
+                        spotify_uri = "", soundcloud_url = "",
+                        bpm = rep(60:150, each = 2), notes = "")
+  slots <- tibble::tibble(song_number = 1:46,
+                          bpm = round(63 + 82 * (seq(0, 1, length.out = 46))^1.6))
+  backs <- function(follow) {
+    sum(vapply(0:4, function(sh) {
+      out <- assign_songs_to_playlist(slots, lib, "modern", sh, follow_curve = follow)
+      d_t <- diff(slots$bpm); d_s <- diff(out$bpm)
+      sum(d_t > 0 & d_s < 0)
+    }, numeric(1)))
+  }
+  expect_equal(backs(TRUE), 0)
+  expect_gt(backs(FALSE), 0)                 # the old rule does step back here
+  out <- assign_songs_to_playlist(slots, lib, "modern")
+  expect_true(all(abs(out$bpm - slots$bpm) <= MATCH_TOLS[1]))   # still good matches
+  expect_equal(anyDuplicated(out$song_title), 0)
+  expect_true(all(out$trend[-1] %in% c("faster", NA)))
+  expect_true(is.na(out$trend[1]))           # the first song has no song before
+})
+
+test_that("follow_curve = FALSE gives the old picks; picks carry the trend column", {
+  lib   <- make_lib()
+  songs <- tibble::tibble(song_number = 1:3, bpm = c(60, 100, 140))
+  old <- assign_songs_to_playlist(songs, lib, "roman", follow_curve = FALSE)
+  expect_true(all(is.na(old$trend)))
+  expect_true("trend" %in% names(assign_songs_to_playlist(songs, lib[0, ], "roman")))
+  expect_identical(formals(assign_songs_to_playlist)$follow_curve, TRUE)
+})
+
+test_that("match_explanation says when the pick followed the curve", {
+  expect_equal(match_explanation(66, 64, 3, 4, trend = "faster"),
+               "+2 BPM from the target · picked at random from 4 songs within ±3 BPM that are faster than the song before")
+  expect_equal(match_explanation(62, 63, 3, 1, trend = "slower"),
+               "−1 BPM from the target · the only unused song within ±3 BPM that is slower than the song before")
+  expect_equal(match_explanation(66, 64, 3, 4, trend = NA),
+               match_explanation(66, 64, 3, 4))
+  expect_no_match(match_explanation(80, 66, NA, 1, trend = "faster"), "song before", fixed = TRUE)
+})

@@ -118,6 +118,26 @@ first window that has any, else takes the nearest song. Changing `MATCH_TOLS`
 changes which songs every seed gives. The library check and the wanted tempos
 count a match in the first window as good.
 
+**Following the curve** (`follow_curve = TRUE`, the default): for each slot
+after the first, `assign_songs_to_playlist()` passes the direction of the slot
+tempos (`sign(bpm[i] - bpm[i-1])`) and the song before's own BPM to
+`pick_song_widening(after_bpm =, direction =)`. In the first window that has
+songs, the draw is narrowed to the ones that step the same way (faster while the
+tempo rises, slower while it falls) when there are any; otherwise the whole
+window counts. It never widens a window, so match quality is unchanged; picks
+carry `trend` ("faster"/"slower"/NA) for the Listen panel's explanation.
+Without a direction the draw is exactly the old one, but with it most seeds now
+give other songs than before v4.1.0.
+
+**Playlist length:** `PLAYLIST_LENGTHS` (`R/config.R`: standard = 1, long = 2)
+is the number of songs per standard slice; `generate_playlist(length_factor =)`
+cuts each slice into that many equal parts (`num_songs` = standard count ×
+factor, so the slices line up). `app.R` keeps `ALL_PLAYLISTS` (standard, made
+at startup) unchanged and builds long playlists on first use in
+`get_playlist()` (cached in `LONG_PLAYLISTS` per scale and era). Switching
+length maps the selected song to the same moment (`floor((k - 1) × new / old) + 1`),
+and `player_token()` includes the length. Songs never repeat in Long either.
+
 ## Period texts & key events
 
 Background texts, key events and how the CO₂ was measured (`CO2_MEASUREMENT`
@@ -199,7 +219,9 @@ and only shown while playing via Spotify, credited under the plot
 with the app's own matcher (one pool per service: `library_pools()` uses
 `service_songs()`), BPM gaps, and a READY / NOT YET verdict
 (`R/library_check.R`; a good match = within the first window of `MATCH_TOLS`,
-±3 BPM). With `CHECK_LINKS <- TRUE` the online link check also
+±3 BPM). The verdict and the wanted tempos use the standard playlists; the Long
+playlists (per-era, `PUBLIC_POOL`) get their own coverage table and gaps, as
+information only. With `CHECK_LINKS <- TRUE` the online link check also
 reports each YouTube link's channel and flags uploads that don't look official
 (`youtube_channel_official()`; "label upload" / "official upload" in a song's
 notes marks one you checked by hand).

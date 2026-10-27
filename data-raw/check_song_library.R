@@ -10,6 +10,9 @@
 #   coverage.csv  every playlist slot: target BPM, how close the match is,
 #                 how many songs it can choose from
 #   gaps.csv      BPM ranges that need more songs (per player pool)
+#   coverage_long.csv, gaps_long.csv
+#                 the same for the Long playlists (Playlist length: Long,
+#                 per-era scaling, PUBLIC_POOL) - shown, not a launch criterion
 #   links.csv     online link check (only with CHECK_LINKS = TRUE)
 #
 # Launch criteria (for the scaling mode visitors start with, per period):
@@ -52,10 +55,17 @@ pools   <- pools[vapply(pools, NROW, integer(1)) > 0 | names(pools) == PUBLIC_PO
 
 # ---- checks -----------------------------------------------------------------
 issues <- check_song_library(lib_raw, blocked_youtube = blocked)
-message("Simulating the song matching (", length(SHUFFLES), " shuffle(s), all periods, both scalings)...")
+message("Simulating the song matching (", length(SHUFFLES),
+        " shuffle(s), all periods, both scalings, plus the Long playlists)...")
 cov  <- library_coverage(playlists, pools, shuffles = SHUFFLES)
 summ <- coverage_summary(cov, variety = VARIETY)
 gaps <- library_gaps(cov, pools, modes = "per_period", variety = VARIETY)
+# Long playlists (every slice cut in two), per-era scale, the public pool only
+invisible(utils::capture.output(long_playlists <- list(
+  long = generate_all_playlists(co2, length_factor = PLAYLIST_LENGTHS[["long"]]))))
+cov_long  <- library_coverage(long_playlists, pools[PUBLIC_POOL], shuffles = SHUFFLES)
+summ_long <- coverage_summary(cov_long, variety = VARIETY)
+gaps_long <- library_gaps(cov_long, pools[PUBLIC_POOL], modes = "long", variety = VARIETY)
 links <- if (isTRUE(CHECK_LINKS)) check_song_links(lib_raw, progress = TRUE) else NULL
 
 # ---- report -----------------------------------------------------------------
@@ -101,6 +111,18 @@ cat(sprintf("%d of %d slots fall back. On the global scale the ice-core eras sit
             sum(glob$fallbacks), sum(glob$slots)))
 cat("so their playlists would need ~90 different very slow songs; drift to faster songs is expected.\n")
 
+rule(paste0("LONG playlists, per-era scaling [", PUBLIC_POOL, " pool] (not a launch criterion)"))
+print(as.data.frame(summ_long[, c("period", "slots", "pct_good", "fallbacks", "wide", "worst_gap")]),
+      row.names = FALSE)
+need_long <- gaps_long[gaps_long$add_at_least > 0,
+                       c("bin", "songs", "busiest", "fallbacks", "add_at_least", "worst_in")]
+if (nrow(need_long)) {
+  cat("\nSongs to add so the Long playlists match within ±", MATCH_TOLS[1], " BPM too:\n", sep = "")
+  print(as.data.frame(need_long), row.names = FALSE)
+} else {
+  cat("Every Long slot gets a song within ±", MATCH_TOLS[1], " BPM.\n", sep = "")
+}
+
 if (!is.null(links)) {
   rule("LINKS (online)")
   bad <- links[links$ok %in% FALSE | links$title_match %in% FALSE, ]
@@ -132,9 +154,12 @@ dir.create(OUT_DIR, recursive = TRUE, showWarnings = FALSE)
 readr::write_csv(issues, file.path(OUT_DIR, "issues.csv"), na = "")
 readr::write_csv(cov,    file.path(OUT_DIR, "coverage.csv"), na = "")
 readr::write_csv(gaps,   file.path(OUT_DIR, "gaps.csv"), na = "")
+readr::write_csv(cov_long,  file.path(OUT_DIR, "coverage_long.csv"), na = "")
+readr::write_csv(gaps_long, file.path(OUT_DIR, "gaps_long.csv"), na = "")
 if (!is.null(links)) readr::write_csv(links, file.path(OUT_DIR, "links.csv"), na = "")
 message("Details written to ", OUT_DIR, "/")
 
 library_check <- list(issues = issues, coverage = cov, summary = summ, gaps = gaps,
-                      links = links, verdict = v)
+                      coverage_long = cov_long, summary_long = summ_long,
+                      gaps_long = gaps_long, links = links, verdict = v)
 invisible(library_check)

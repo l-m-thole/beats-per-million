@@ -730,6 +730,25 @@ ALL_PLAYLISTS <- list(
   global     = generate_all_playlists(CO2_DATA, co2_scale = GLOBAL_RANGE)
 )
 
+# Long playlists ("Playlist length: Long", every slice cut in two) are made the
+# first time someone picks them for an era and scale, then kept for every
+# visitor of this R process - so startup stays as fast as before.
+LONG_PLAYLISTS <- new.env(parent = emptyenv())
+
+#' The playlist for a length ("standard"/"long"), scaling mode and era
+get_playlist <- function(length = "standard", mode = "per_period", period = "modern") {
+  if (!identical(length, "long")) return(ALL_PLAYLISTS[[mode]][[period]])
+  key <- paste(mode, period, sep = "|")
+  if (is.null(LONG_PLAYLISTS[[key]])) {
+    LONG_PLAYLISTS[[key]] <- generate_playlist(
+      get_period(period), CO2_DATA,
+      co2_scale = if (identical(mode, "global")) GLOBAL_RANGE else NULL,
+      length_factor = PLAYLIST_LENGTHS[["long"]]
+    )
+  }
+  LONG_PLAYLISTS[[key]]
+}
+
 # Hand-curated song library (a flat list of songs tagged with their real BPM).
 # Matched to playlist slots by tempo at run time. Empty tibble if
 # data/song_library.csv hasn't been seeded yet.
@@ -929,6 +948,13 @@ ui <- fluidPage(
                                    choices = c("Per era (max. contrast)" = "per_period",
                                                "Global (compare eras)"   = "global"),
                                    selected = "per_period", inline = TRUE)),
+                  # Long = every slice of time cut in two (PLAYLIST_LENGTHS)
+                  div(class = "seg",
+                      title = "Long cuts every slice of time in two: twice the songs, each standing for half as many years.",
+                      radioButtons("playlist_length", "Playlist length",
+                                   choices = c("Standard"        = "standard",
+                                               "Long (2× songs)" = "long"),
+                                   selected = "standard", inline = TRUE)),
                   div(class = "filter-block",
                       span(class = "filter-label", "Songs"),
                       actionButton("shuffle", "🔀 Shuffle songs", class = "btn-ghost",
@@ -982,9 +1008,15 @@ ui <- fluidPage(
 
 server <- function(input, output, session) {
 
-  # Get current playlist (pre-computed)
+  # Playlist length the visitor chose ("standard" or "long")
+  playlist_length <- reactive({
+    l <- input$playlist_length %||% "standard"
+    if (l %in% names(PLAYLIST_LENGTHS)) l else "standard"
+  })
+
+  # Get current playlist (standard: pre-computed; long: made on first use)
   current_playlist <- reactive({
-    ALL_PLAYLISTS[[input$scaling_mode]][[input$selected_period]]
+    get_playlist(playlist_length(), input$scaling_mode, input$selected_period)
   })
 
   # Get current period config
@@ -1025,6 +1057,20 @@ server <- function(input, output, session) {
     selected_idx(1L)
   }, priority = 100)
 
+  # Another playlist length: stay at the same moment in time. The slices line
+  # up (long songs 2k-1 and 2k = standard song k), so standard song k becomes
+  # long song 2k-1 and long song j becomes standard song ceiling(j / 2).
+  # High priority for the same reason as above.
+  shown_length <- reactiveVal("standard")
+  observeEvent(playlist_length(), {
+    old <- shown_length(); new <- playlist_length()
+    if (identical(old, new)) return()
+    shown_length(new)
+    idx <- floor((selected_idx() - 1) * PLAYLIST_LENGTHS[[new]] / PLAYLIST_LENGTHS[[old]]) + 1
+    n <- nrow(current_playlist()$songs)
+    selected_idx(as.integer(max(1, min(n, idx))))
+  }, priority = 100)
+
   # Re-roll the BPM-matched song picks
   observeEvent(input$shuffle, {
     shuffle_counter(shuffle_counter() + 1)
@@ -1044,11 +1090,13 @@ server <- function(input, output, session) {
   })
 
   # BPM-matched song picks for the WHOLE current playlist, recomputed when the
-  # period, scaling mode, or shuffle counter changes. Doing it playlist-wide (not
-  # per-slot) lets us pass each slot the titles already used as `exclude` so a
-  # song never repeats within a period, and the seeded draw stays consistent
-  # across slots. Returns one row per MATCHED slot (song_number + library cols
-  # + how the song was found: match_tol, n_candidates).
+  # period, scaling mode, playlist length or shuffle counter changes. Doing it
+  # playlist-wide (not per-slot) lets us pass each slot the titles already used
+  # as `exclude` so a song never repeats within a period, lets each pick follow
+  # the curve (faster than the song before while CO2 rises), and keeps the
+  # seeded draw consistent across slots. Returns one row per MATCHED slot
+  # (song_number + library cols + how the song was found: match_tol,
+  # n_candidates, trend).
   curated_picks <- reactive({
     pl <- current_playlist()
     if (is.null(pl) || nrow(pl$songs) == 0) return(NULL)
@@ -1088,7 +1136,8 @@ server <- function(input, output, session) {
   observeEvent(input$how_it_works_footer, open_how_it_works())
 
   observeEvent(input$era_info, {
-    show_era_info(input$selected_period, ALL_PLAYLISTS$per_period[[input$selected_period]]$stats)
+    show_era_info(input$selected_period,
+                  get_playlist(playlist_length(), "per_period", input$selected_period)$stats)
   })
 
   # ----- SPOTIFY LOGIN / FULL PLAYER / EXPORT -----
@@ -1302,7 +1351,8 @@ server <- function(input, output, session) {
     uris <- picks_to_spotify_uris(curated_picks())
     per  <- current_period()
     name <- paste0("Beats per Million — ", per$name,
-                   if (input$scaling_mode == "global") " (global scale)" else "")
+                   if (input$scaling_mode == "global") " (global scale)" else "",
+                   if (playlist_length() == "long") " (long)" else "")
     desc <- paste0("CO2 through time as tempo, oldest to youngest. ",
                    length(uris), " songs matched by BPM. Made with Beats per Million.")
     res <- tryCatch(spotify_export_playlist(name, desc, uris, store = sp_store),
@@ -1322,7 +1372,7 @@ server <- function(input, output, session) {
   # Identifies the slot the embedded player was built for; progress events
   # carrying another token (a player that's being torn down) are ignored.
   player_token <- reactive({
-    paste(input$selected_period, input$scaling_mode, selected_idx(),
+    paste(input$selected_period, input$scaling_mode, playlist_length(), selected_idx(),
           shuffle_counter(), sep = "|")
   })
 
@@ -1742,7 +1792,8 @@ server <- function(input, output, session) {
         if (!is.null(cur)) {
           p(class = "np-match",
             tags$b(paste0("This song: ", cur$bpm, " BPM")), " – ",
-            paste0(match_explanation(cur$bpm, song$bpm, cur$match_tol, cur$n_candidates), "."))
+            paste0(match_explanation(cur$bpm, song$bpm, cur$match_tol, cur$n_candidates,
+                                     trend = cur$trend), "."))
         },
         if (nrow(ev)) {
           div(class = "song-events",
@@ -1981,13 +2032,11 @@ server <- function(input, output, session) {
         color = "white",
         fontWeight = "600"
       )
-  }, server = FALSE)   # all rows in the browser (at most ~90): instant sort/filter
+  }, server = FALSE)   # all rows in the browser (at most ~180): instant sort/filter
 
   # Download: the playlist as shown, with the matched songs and their links
   output$download_csv <- downloadHandler(
-    filename = function() {
-      paste0("playlist_", input$selected_period, "_", Sys.Date(), ".csv")
-    },
+    filename = function() playlist_csv_name(input$selected_period, playlist_length()),
     content = function(file) {
       write_csv(playlist_export(current_playlist(), curated_picks()), file, na = "")
     }
