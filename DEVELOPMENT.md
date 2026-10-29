@@ -29,7 +29,8 @@ renv::snapshot()    # later: update renv.lock to match your current library
 source("data-raw/build_co2_data.R")
 ```
 
-- **Mauna Loa** and **Rae 2021** rebuild fully from raw files already in the repo.
+- **Mauna Loa**, **CMIP7** and **Rae 2021** rebuild fully from raw files already
+  in the repo.
 - **Bereiter** needs the raw 800 kyr composite dropped into `data/rawData/`
   (see the script header for the NCEI download). Until then the existing sheet
   is preserved and the script warns, so it still runs end to end.
@@ -78,8 +79,13 @@ issues, faked oEmbed link checks, coverage and gaps), the About text, the
 sharing helpers (`share.R`: link-preview tags, preview image size, the
 *Suggest a song* link, wanted tempo ranges and their file), and the Mauna Loa
 refresh (`refresh_co2.R`: reading NOAA's file, the sanity checks, replacing
-the file only on real changes; the download is faked), the *How it works* /
-*About this era* windows and how each era's CO₂ was measured, the album-cover
+the file only on real changes; the download is faked), the Industrial era
+(`test-industrial.R`: reading the CMIP7 file, the Mauna Loa splice and its
+offset, complete years only, the CE-year playlist), the playlist lengths
+(`test-playlist_length.R`: Long = twice the songs for half the years, slices
+lined up with Standard, CSV names, texts, the library check's Long simulation),
+the *How it works* / *About this era* windows and how each era's CO₂ was
+measured, the album-cover
 cache (`covers.R`, offline with a fake lookup), the playlist helpers (tempo
 *Feel*, which song a point on the curve belongs to, the CSV download), and the
 app's server logic (`test-app_server.R`, via `shiny::testServer()`: a new song
@@ -173,6 +179,9 @@ app's story and the makers (`APP_STORY`, `APP_MAKERS`).
   no "best available" mix any more. A YouTube video that fails mid-session
   (`input$yt_error`) is remembered in `bad_yt()` and, while music is meant to
   play, the playlist moves on to the next song.
+- **SoundCloud is hidden** (`SHOW_SOUNDCLOUD <- FALSE` in `R/config.R`): no
+  *Play via SoundCloud*, no SoundCloud buttons, no SoundCloud lines in *About*.
+  `TRUE` brings it back (*Play via* also needs SoundCloud links in the library).
 - **▶ Play gate (privacy):** nothing in `<head>` comes from another site (fonts
   in `www/fonts/fonts.css`). For embedded players the server renders
   `player_gate(service)` (`R/about.R`) plus the player placeholder in a hidden
@@ -199,7 +208,8 @@ variables. Never commit keys.
 `R/settings.R` detects a server (shinyapps.io / Posit Connect / Shiny Server,
 or `BPM_DEPLOYED=true`) and switches: no fixed port, one Spotify login per
 browser session kept in memory (locally: one login cached on disk, as before),
-*Connect Spotify* only for `?testers` visitors. `deploy/deploy_shinyapps.R`
+*Connect Spotify* as `BPM_SPOTIFY_LOGIN` says (online default: only `?testers`
+visitors; the deploy script now sets `off`, so nobody). `deploy/deploy_shinyapps.R`
 stages only the runtime files and writes the server's `.Renviron`; it refuses
 to deploy if `renv.lock` is missing an imported package or is out of sync.
 See [`LAUNCH.md`](LAUNCH.md).
@@ -252,8 +262,12 @@ get an embed or API key blocked:
   gate.
 - **Official uploads only** for YouTube links (artist, VEVO, "Artist - Topic"
   or label channels).
-- **Non-commercial:** no ads, sponsors or paid features while the app uses
-  these players.
+- **Non-commercial:** no ads, sponsored content, donation buttons or paid
+  features while the app uses these players. Help with hosting costs (a grant,
+  not a paid placement) can be thanked in one plain line in *About* — no
+  sponsor logos, banners or promotion in the app (Spotify Developer Policy
+  IV.2.3 and Widget Terms; YouTube Developer Policies III.G.1; checked
+  28 Oct 2026).
 - Don't add a video/GIF export that combines the plot with the music (Spotify
   forbids synchronising recordings with visual media).
 

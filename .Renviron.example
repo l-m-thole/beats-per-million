@@ -2,7 +2,7 @@
 # .Renviron is git-ignored: never commit real keys. Restart R after editing.
 # Missing keys are fine - that feature/step is skipped.
 
-# Spotify: full in-app player, Save to Spotify, finding Spotify links
+# Spotify: Connect Spotify (in-app player), Save to Spotify, finding Spotify links
 # https://developer.spotify.com/dashboard  (Redirect URI: http://127.0.0.1:4321/)
 SPOTIFY_CLIENT_ID=
 SPOTIFY_CLIENT_SECRET=
@@ -24,7 +24,8 @@ SOUNDCLOUD_CLIENT_SECRET=
 # App settings (optional; see R/settings.R). Locally you need none of these.
 # deploy/deploy_shinyapps.R writes the server's values for you.
 # ---------------------------------------------------------------------------
-# "Play via" choice visitors start with: spotify | youtube | soundcloud
+# "Play via" choice visitors start with: spotify | youtube
+# (soundcloud only once SHOW_SOUNDCLOUD is TRUE in R/config.R)
 # (a playlist only ever plays from that one service)
 # BPM_DEFAULT_PLAYER=spotify
 # Who sees "Connect Spotify": on | testers (only with ?testers in the URL) | off

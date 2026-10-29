@@ -6,10 +6,14 @@
 
 This project converts atmospheric CO₂ concentrations through geological time into "beats per minute" (BPM) values, creating a unique sonic experience of climate change. Lower CO₂ (ice ages) produces slow music; higher CO₂ (hothouse conditions) produces fast, energetic music.
 
-A collaboration between **Martin Wegmann** and **Lena Thöle**.
+A collaboration between **Martin Wegmann** and **Lena Thöle** — a personal,
+non-commercial project.
 
-**▶ Try it (test version):** <https://beatspermillion.shinyapps.io/dance/> —
-Spotify plays 30-second previews; pick *Play via YouTube* for whole songs.
+**▶ Try it:** <https://beatspermillion.shinyapps.io/dance/> — public launch on
+10 Nov 2026 with version 5.0.0 (a preview has run at the same address since
+26 Oct). *Play via Spotify* plays whole songs if you're logged in to Spotify in
+that browser, otherwise 30-second previews; *Play via YouTube* plays whole songs
+without a login.
 
 ---
 
@@ -104,15 +108,16 @@ renv::restore()   # installs the exact package versions from renv.lock
 
 ### 2. (Optional) API keys
 
-The app runs without any keys (YouTube and SoundCloud links play without login).
-Keys are only needed for the full Spotify player, *Save to Spotify* and for
+The app runs without any keys (the Spotify and YouTube players need none).
+Keys are only needed for *Connect Spotify* (the in-app Spotify player), *Save to
+Spotify* and for
 filling song links/BPM automatically. Copy `.Renviron.example` to `.Renviron`,
 fill in the keys you have, and restart R. `.Renviron` is git-ignored — never
 commit it. Details: [`MUSIC_SETUP.md`](MUSIC_SETUP.md).
 
 | Key | Needed for | Lives in | Goes online? |
 |---|---|---|---|
-| `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET` | full Spotify player, *Save to Spotify*, finding Spotify links | your `.Renviron` | only when `SPOTIFY_LOGIN` in the deploy script isn't `"off"` |
+| `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET` | *Connect Spotify* (in-app player), *Save to Spotify*, finding Spotify links | your `.Renviron` | only when `SPOTIFY_LOGIN` in the deploy script isn't `"off"` |
 | `YOUTUBE_API_KEY` | finding YouTube links (enrichment) | your `.Renviron` | never |
 | `GETSONGBPM_KEY` | filling blank BPMs (enrichment); the live app's footer is the required backlink | your `.Renviron` | never |
 | `SOUNDCLOUD_CLIENT_ID`, `SOUNDCLOUD_CLIENT_SECRET` | finding SoundCloud links (optional) | your `.Renviron` | never |
@@ -134,10 +139,11 @@ source("deploy/deploy_shinyapps.R")   # after the one-time setup in LAUNCH.md
 ```
 
 Deploys to shinyapps.io: only the files the app needs, plus a server-only
-settings file (never your enrichment keys). Online, every visitor gets their own
-Spotify login (or none), *Connect Spotify* is only shown via the `?testers`
-link, and *About & privacy* is in the footer. Step-by-step setup, the player
-test table and the launch criteria: [`LAUNCH.md`](LAUNCH.md).
+settings file (never your enrichment keys). Online, *Connect Spotify* is off for
+now (with `SPOTIFY_LOGIN <- "testers"` it shows only via the `?testers` link,
+and every visitor gets their own login), and *About & privacy* is in the
+footer. Setup, deploy, smoke test, library criteria and hosting:
+[`LAUNCH.md`](LAUNCH.md).
 
 **Sharing the link** shows a preview card (title, one line, and
 `www/og-image.png` — the 800,000-year CO₂ curve; tags in `R/share.R`, picture
@@ -146,12 +152,18 @@ from `data-raw/make_og_image.R`). **Suggest a song** in the footer and in
 `SUGGEST_URL` in the deploy script); *About* also lists the tempos the library
 is short of, which the deploy script works out each time (`data/wanted_bpm.csv`).
 
-**Live:** <https://beatspermillion.shinyapps.io/dance/> (shinyapps.io account
-`beatspermillion`, app `dance`; free plan, 25 active hours a month). The online
-settings are at the top of `deploy/deploy_shinyapps.R` — currently
-`DEFAULT_PLAYER = "spotify"` and `SPOTIFY_LOGIN = "off"` (no Spotify login
-online, so Spotify plays 30-s previews; `"testers"` enables the invited-tester
-login via `?testers`). Re-run the script after every change. The deployment
+**Online:** <https://beatspermillion.shinyapps.io/dance/> — preview since
+26 Oct 2026, public launch on 10 Nov 2026 with v5.0.0
+([`LAUNCH.md`](LAUNCH.md#launch-day-10-nov-2026)). shinyapps.io account
+`beatspermillion`, app `dance`; free plan, 25 active hours a month — once they
+are used up the app is unavailable until the next month (see
+[`LAUNCH.md`](LAUNCH.md#hosting-open)). The online settings are at
+the top of `deploy/deploy_shinyapps.R` — currently `DEFAULT_PLAYER = "spotify"`
+and `SPOTIFY_LOGIN = "off"` (no *Connect Spotify* online: Spotify plays whole
+songs for visitors logged in to Spotify in that browser, 30-s previews for
+everyone else; `"testers"` enables the invited-tester login via `?testers`).
+SoundCloud is hidden (`SHOW_SOUNDCLOUD <- FALSE` in `R/config.R`). Re-run the
+script after every change. The deployment
 record in `rsconnect/` is git-ignored. Logs:
 `rsconnect::showLogs(appName = "dance", account = "beatspermillion")`.
 
@@ -195,10 +207,11 @@ climate_playlist/
 ├── .github/workflows/         # tests on every push; monthly Mauna Loa refresh (PR)
 ├── rsconnect/                 # Deployment record (git-ignored)
 ├── data/
-│   ├── co2_data.xlsx          # Processed: 'maunaloa' + 'bereiter2014' sheets
+│   ├── co2_data.xlsx          # Processed: 'maunaloa', 'cmip7' + 'bereiter2014' sheets
 │   ├── song_library.csv       # Your songs + their real BPM (matched at run time)
 │   ├── song_library_enrich_log.csv  # Review log of the last enrichment run
 │   ├── song_covers.csv        # Album-cover addresses (data-raw/fetch_covers.R, also on deploy)
+│   ├── youtube_blocked.csv    # YouTube videos that refused to play here (left out)
 │   ├── wanted_bpm.csv         # Tempos that need songs (made on deploy, git-ignored)
 │   ├── backups/               # Library backups made by the enrichment (git-ignored)
 │   └── rawData/               # Raw CO2 files + provenance README
@@ -212,7 +225,7 @@ climate_playlist/
 ├── tests/testthat/            # Unit tests
 ├── output/                    # Generated playlist templates (+ library_check/, git-ignored)
 ├── .Renviron.example          # Template for API keys and app settings (copy to .Renviron)
-├── LAUNCH.md                  # Going online: setup, player test, launch criteria
+├── LAUNCH.md                  # Going online + running: setup, deploy, smoke test, hosting
 ├── MUSIC_SETUP.md             # Players, keys, song links, troubleshooting
 ├── DEVELOPMENT.md             # renv, data rebuild, tests, platform rules
 ├── LICENSE, LICENSE.md        # MIT (code); data, fonts and music have their own terms
@@ -338,15 +351,19 @@ Saving from Excel is fine (columns can be reordered, extra columns are ignored).
 
 ### Playback
 
-- **One service per playlist.** *Play via* picks Spotify (the default),
-  YouTube or SoundCloud, and the playlist only uses songs that service can
-  play — never a mix (Spotify's and SoundCloud's terms don't allow mixing their
-  music with another service's; see DEVELOPMENT.md). Spotify: the full player
-  after *Connect Spotify* (needs Premium), otherwise 30-s clips. YouTube and
-  SoundCloud: whole songs, no login.
-- **Full songs via Spotify need a one-time *Connect Spotify* login** (Spotify
-  Premium). Until then Spotify only allows 30-s previews, and the app shows a
-  *Connect Spotify to play the full song* button right at the player.
+- **One service per playlist.** *Play via* picks Spotify (the default) or
+  YouTube, and the playlist only uses songs that service can play — never a
+  mix (Spotify's and SoundCloud's terms don't allow mixing their music with
+  another service's; see DEVELOPMENT.md). SoundCloud is built in but hidden for
+  now (`SHOW_SOUNDCLOUD` in `R/config.R`; the library has no SoundCloud links).
+- **Whole songs via Spotify need a Spotify login in that browser** (at
+  open.spotify.com); without one, Spotify's player plays 30-s previews. The app
+  says so at the ▶ Play gate, under the player and in *About*. YouTube plays
+  whole songs without a login.
+- **Connect Spotify** (one-time login, Spotify Premium) switches to the in-app
+  Spotify player and adds *Save to Spotify*. It is on locally; online it is off
+  for now (`SPOTIFY_LOGIN`, see *Put it online*). Where it is on, the app shows
+  a *Connect Spotify to play the full song* button right at the player.
 - If a YouTube video refuses to play (some label videos block other websites),
   the app says why, leaves it out for that visitor and — if music was playing —
   moves on to the next song (never to another service). It is written to
@@ -362,19 +379,23 @@ Saving from Excel is fine (columns can be reordered, extra columns are ignored).
   after you pause (or once a song ended with auto-play off), nothing starts on
   its own. `www/player.js` reports play / pause from every player
   (`input$player_state`).
-- **Play via Spotify** without a login: Spotify's 30-s clips, which auto-play
-  one after another once you've pressed ▶ on the first (songs without a clip
-  are skipped). Connected → whole songs or snippets.
+- **Play via Spotify** without *Connect Spotify*: Spotify's embedded player —
+  whole songs if you're logged in to Spotify in that browser, otherwise 30-s
+  clips — auto-plays one song after another once you've pressed ▶ on the first
+  (songs that don't start are skipped after 8 s). Connected → the in-app
+  player, whole songs or snippets.
 - **Song length:** *Whole song* (default) or *30-s snippets* — a quick run
   through a period so you really hear the tempo climb. Snippets start at the
   beginning, at 0:30 (skip the intro, default) or in the middle of the song,
-  and auto-advance just like whole songs. Works with Spotify (connected),
-  YouTube and SoundCloud; you can switch mid-song.
+  and auto-advance just like whole songs. Works with YouTube and with Spotify
+  (connected, or logged in to Spotify in that browser); you can switch mid-song.
 - **➕ Save to Spotify** saves the current period's songs (oldest → youngest)
-  as a private playlist in your Spotify account.
+  as a private playlist in your Spotify account (needs *Connect Spotify*, so
+  it isn't online for now).
 - **Settings, no code changes:** the player visitors start with
   (`BPM_DEFAULT_PLAYER`) and who sees *Connect Spotify* (`BPM_SPOTIFY_LOGIN`:
-  everyone locally, only `?testers` visitors online) — see `.Renviron.example`.
+  everyone locally; online whatever the deploy script sets, now nobody) — see
+  `.Renviron.example`.
   `?player=youtube` in the URL picks a player directly.
 
 Setup of keys, the Spotify developer app and sharing with a colleague:
@@ -385,14 +406,15 @@ Setup of keys, the Spotify developer app and sharing with a colleague:
 Opening the page contacts no one but the app's own server: the fonts are
 served from `www/fonts/` (no Google Fonts), and no code from Spotify, YouTube
 or SoundCloud is in the page. Instead of a player, the Listen panel first
-shows **▶ Play via Spotify** (or YouTube / SoundCloud) with two lines on what
-that service then receives (your IP address, its cookies; for YouTube also its
-Terms of Service). Pressing it loads that service's player and starts the
+shows **▶ Play via Spotify** (or YouTube) with a short note on what that
+service then receives (your IP address, its cookies; for YouTube also its Terms
+of Service; for Spotify also the login note). Pressing it loads that service's
+player and starts the
 song; the OK lasts until the page is reloaded. YouTube only starts a song by
 itself while its player is on screen (on phones the page scrolls back to it).
 (Not in YouTube's `youtube-nocookie.com` mode: there YouTube refused 22 of 23
 songs in a test.)
-The Spotify SDK is only loaded after a Spotify login, and album covers only
+The Spotify SDK is only loaded after *Connect Spotify*, and album covers only
 when you switch them on. The texts live in `R/about.R` (`player_gate()` and
 *About & privacy*); the loading in `www/player.js`.
 
@@ -465,14 +487,19 @@ Rate limit: 3,000 requests per hour.
 
 The code is released under the MIT License — © 2026 Lena Thöle and Martin
 Wegmann, see [`LICENSE.md`](LICENSE.md). The CO₂ data (NOAA; Bereiter et al. 2015
-and Rae et al. 2021 via NOAA's paleo archive, CC0 — please cite them), the fonts
-(SIL Open Font License) and the music the app plays keep their own terms.
+and Rae et al. 2021 via NOAA's paleo archive, CC0; the CMIP7 record, Nicholls
+et al. 2025, CC BY 4.0 — please cite them), the fonts (SIL Open Font License)
+and the music the app plays keep their own terms.
 
 ---
 
 ## 🙏 Acknowledgments
 
 - Charles David Keeling for beginning the Mauna Loa CO₂ record in 1958
+- Zebedee Nicholls, Malte Meinshausen and colleagues (Climate Resource) for the
+  CMIP7 historical CO₂ record
 - The ice core drilling teams at EPICA, Vostok, and other Antarctic sites
 - The paleoclimate community for developing CO₂ proxy methods
 - [GetSongBPM](https://getsongbpm.com) for song tempo (BPM) data
+- Claude, Anthropic's AI assistant, for help with writing the code (the authors
+  are Lena Thöle and Martin Wegmann)

@@ -25,8 +25,9 @@ SOFTWARE.
 The MIT License covers the code. It does not cover:
 
 - the CO₂ data in `data/` (NOAA GML; Bereiter et al. 2015 and Rae et al. 2021
-  via the NOAA World Data Service for Paleoclimatology, CC0 - please cite them,
-  see README.md),
+  via the NOAA World Data Service for Paleoclimatology, CC0; the CMIP7
+  historical CO₂ record, Nicholls et al. 2025 on Zenodo, CC BY 4.0 - please
+  cite them, see README.md),
 - the fonts in `www/fonts/` (SIL Open Font License 1.1, see the OFL-*.txt files),
 - the music, album covers and videos the app links to and embeds (they belong to
   the artists and labels and are played through Spotify's, YouTube's and

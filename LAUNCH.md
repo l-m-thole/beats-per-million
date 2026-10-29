@@ -1,40 +1,63 @@
-# Launch checklist — Beats per Million
+# Launch & running — Beats per Million
 
-How to get the app online as a test version now, test the players, and launch
-once the song library is ready. Steps 1–3 take about 20 minutes and only need
-doing once; after that a re-deploy is one line.
+How the app goes online and stays there. The one-time setup is done (steps 0,
+1 and 5; step 2 only matters for *Connect Spotify*). A re-deploy is one line
+(step 3), followed by a short smoke test (step 4).
 
-**Current plan:** personal project · test version on shinyapps.io · Spotify
-login off for now (invited testers later) · test Spotify vs YouTube, then pick
-the default player.
+**Now:** personal, non-commercial project · **public launch on Tue 10 Nov 2026
+with v5.0.0** · a preview has run at <https://beatspermillion.shinyapps.io/dance/>
+since 26 Oct (now v4.1.1; shinyapps.io free plan) · Spotify is the default
+player, *Connect Spotify* is off online · SoundCloud is hidden
+(`SHOW_SOUNDCLOUD` in `R/config.R`).
 
-## Status (15 Oct 2026)
+## Status (29 Oct 2026)
 
-- [x] Launch prep + Spotify snippets merged into `main` (v3.3.0), pushed
-- [x] `renv.lock` complete (`httr2`, `openssl`)
-- [x] shinyapps.io account `beatspermillion`, app `dance` deployed:
-      <https://beatspermillion.shinyapps.io/dance/>
-- [x] Keys in your local `.Renviron`: Spotify ID + secret, YouTube, GetSongBPM
-- [x] Live app shows the gmail contact, no Spotify login, Spotify as default
-      player (checked 7 Oct, 14:08)
-- [x] v3.4.0–v3.6.0 (link previews, *Suggest a song*, tester feedback, legal &
-      privacy fixes, YouTube fix) merged into `main`, pushed and deployed;
-      tests on GitHub green (14 Oct)
-- [x] GitHub allows Actions to create pull requests (14 Oct). Mauna Loa data
-      runs through Sep 2026; from now on `refresh-co2` opens a PR on the 9th
-      of each month → merge it, re-deploy
-- [x] *About & privacy* read through (14 Oct)
-- [x] Platform rules guarded by `tests/testthat/test-platform_rules.R`
-- [ ] Merge `feature/match-3-5-10` (v3.7.0: songs are matched within ±3 BPM
-      first, then ±5 and ±10 — Martin's idea), push, re-deploy
-- [ ] Player test with friends (step 4) — running since 14 Oct → set
-      `DEFAULT_PLAYER`
-- [ ] Send the link to yourself in WhatsApp/Signal to see the preview card
-- [ ] Library (step 6): links for 70 rows (mostly one enrichment run), ~5 more
-      songs at 60–69 and 1 at 145–150 BPM, swap 3 unofficial + 3 blocked
-      YouTube uploads
-- [ ] Spotify tester login (optional): `SPOTIFY_LOGIN <- "testers"`, step 2,
-      re-deploy
+- [x] **Preview, 26 Oct 2026 — v4.0.0:** seven eras (new: Industrial,
+      1850–today, from CMIP7), library fixes, SoundCloud hidden, CMIP7
+      citation, year labels, Spotify login note; link shared with friends.
+- [x] **v4.1.0 (27 Oct):** *Playlist length* Standard / Long (2× songs); songs
+      follow the curve (a faster song when the tempo rises).
+- [x] **v4.1.1 (27 Oct):** *🖼 Show album covers* moved onto the CO₂ plot;
+      test fixed for Shiny 1.14. Pushed and deployed (the preview online now).
+- [x] **v4.1.2 (29 Oct):** docs brought up to date (README, LAUNCH,
+      DEVELOPMENT, MUSIC_SETUP, LICENSE); no app changes, no deploy needed.
+- [x] Online settings (`deploy/deploy_shinyapps.R`): `DEFAULT_PLAYER = "spotify"`,
+      `SPOTIFY_LOGIN = "off"`, `CONTACT` = the gmail address. shinyapps.io
+      *Instance Idle Timeout*: 5 min (26 Oct).
+- [x] Song library READY for Spotify and YouTube (step 6).
+- [ ] **v5.0.0: release on Mon 9 Nov, public launch on Tue 10 Nov 2026** (see
+      *Launch day* below).
+- [ ] Long-term hosting: decide before Posit moves free accounts on
+      28 Jan 2027 (see *Hosting*).
+- [ ] Optional: ~30 more songs, mostly 60–74 BPM, so *Long* playlists match as
+      tightly as Standard ones (step 6).
+
+## Launch day (10 Nov 2026)
+
+Version 5.0.0 waits on Lena's local branch `release/v5.0.0` (not on GitHub):
+`DESCRIPTION` says 5.0.0, and the README and this file are updated for the
+release. It goes out on Mon 9 Nov; the public launch is Tue 10 Nov.
+
+Before 9 Nov:
+
+- [ ] Hosting for November decided — the free 25 hours last a day or two of
+      real use (see *Hosting*).
+- [ ] Library check READY (step 6).
+
+Mon 9 Nov — release v5.0.0:
+
+- [ ] Merge the monthly Mauna Loa pull request (`refresh-co2`, opened that
+      morning), if NOAA has posted October by then.
+- [ ] Merge `release/v5.0.0` into `main`, deploy (step 3, runs the tests) and
+      smoke test on a desktop and a phone (step 4).
+- [ ] Push `main` and the tag `v5.0.0`.
+
+Tue 10 Nov — public launch:
+
+- [ ] Share the plain link (not `?testers`).
+
+Keep an eye on the active hours (shinyapps.io dashboard) and the logs
+(*Good to know*), especially in the first days.
 
 ---
 
@@ -78,8 +101,8 @@ At [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard) �
 2. *User Management*: add the Spotify email of each tester (max. 5 accounts in
    development mode). Full songs in the app also need **their** Spotify Premium.
 
-Skip this step if you'd rather have no Spotify login online: set
-`SPOTIFY_LOGIN <- "off"` in the deploy script.
+Only needed for *Connect Spotify* online (`SPOTIFY_LOGIN <- "testers"` or
+`"on"` in the deploy script). It is `"off"` for now, so this can wait.
 
 ## 3. Deploy (2 min, repeat after every change)
 
@@ -87,48 +110,39 @@ Skip this step if you'd rather have no Spotify login online: set
 source("deploy/deploy_shinyapps.R")
 ```
 
-It checks everything, uploads only the files the app needs plus a server-only
-`.Renviron` (app settings + Spotify keys — never your YouTube, GetSongBPM or
-SoundCloud keys), and prints the links:
+It checks everything (the tests too), uploads only the files the app needs
+plus a server-only `.Renviron` (app settings, plus the Spotify keys only while
+a Spotify login is on — never your YouTube, GetSongBPM or SoundCloud keys), and
+prints the links:
 
 | Link | For |
 |---|---|
-| `…/dance/` | everyone (no Spotify login shown) |
-| `…/dance/?testers` | your ≤ 5 testers: shows *Connect Spotify* and *Save to Spotify* |
+| `…/dance/` | everyone (no *Connect Spotify*) |
+| `…/dance/?testers` | your ≤ 5 testers: shows *Connect Spotify* and *Save to Spotify* (only with `SPOTIFY_LOGIN <- "testers"`) |
 | `…/dance/?player=youtube` | opens with *Play via YouTube* (handy for testing) |
 | `…/dance/?about` | opens *About & privacy* (use as privacy-policy link) |
 
 Re-run the same line after changing code or `data/song_library.csv`.
 
-## 4. Test the players, then decide (30–45 min)
+## 4. Smoke test after a deploy (5 min)
 
-Open the links on each device (and ask the friends testing since 14 Oct) and
-fill in the table: ✓ works, ✗ doesn't,
-**30s** = only a preview, **stops** = doesn't go on to the next song.
-Press **▶ Play via …** once on the first song (nothing from Spotify / YouTube
-loads before that), then let it run into the second and third.
+Open the plain link on a desktop and a phone, and once with `?player=youtube`:
 
-| Device / browser | A. Spotify, not logged in | B. Spotify, logged in at open.spotify.com in the same browser | C. YouTube (`?player=youtube`) | D. Tester (`?testers` → Connect Spotify) |
-|---|---|---|---|---|
-| Mac – Chrome | | | | |
-| Mac – Safari | | | | |
-| Mac – Firefox | | | | |
-| iPhone – Safari | | | | |
-| Android – Chrome | | | | |
+- all 7 era buttons show a plot and a playlist; *Playlist length: Long*
+  doubles the songs and keeps your place in time;
+- **▶ Play via Spotify**: song 1 plays (the whole song if you're logged in to
+  Spotify in that browser, otherwise 30 s), runs into song 2 by itself, and the
+  ball moves along the CO₂ curve;
+- the same with **▶ Play via YouTube** (pressing Play accepts YouTube's terms);
+- *About this era*, *💡 How it works* and *About & privacy* open; the footer
+  shows the data sources (incl. CMIP7), the GetSongBPM link and *Suggest a
+  song*.
 
-For each cell, check: does it **play**, **whole song or 30 s**, does it
-**auto-advance**, does the **ball move** on the CO₂ curve.
-
-**Then decide** (one line in `deploy/deploy_shinyapps.R`, re-deploy):
-
-- B gives whole songs and keeps going on most desktops → keep
-  `DEFAULT_PLAYER <- "spotify"`.
-- Only YouTube plays whole songs and keeps going → `DEFAULT_PLAYER <- "youtube"`
-  — the YouTube pool is nearly as complete as Spotify's now (step 6).
-- Auto-advance stops on phones for every player → tell Claude: the fix is to
-  reuse one player per page instead of rebuilding it for every song.
-
-Write the decision in the project notes, so the library work can follow it.
+**Player decision (26 Oct):** Spotify stays the default — whole songs for
+visitors logged in to Spotify, 30-s previews for everyone else, with a login
+note at the ▶ Play gate, under the player and in *About*; YouTube is one click
+away under *Play via*. If auto-advance ever stops on phones for every player,
+the fix is to reuse one player per page instead of rebuilding it for every song.
 
 ## 5. GetSongBPM key (10 min) — after step 3
 
@@ -161,69 +175,47 @@ every slot gets a song within ±3 BPM · at least 3 songs within ±3 BPM per slo
 ±3 BPM is the matcher's first window (`MATCH_TOLS` in `R/config.R`); when it
 has no unused song it widens to ±5, then ±10 BPM.
 
-Status on 15 Oct 2026 (309 songs; matching ±3 → ±5 → ±10):
+Status on 27 Oct 2026 (348 songs, all with a Spotify link, 342 with a YouTube
+link; `data/youtube_blocked.csv` is empty):
 
-- **70 songs have no link yet** (incl. the 41 new rows at the end of the file)
-  → run `data-raw/enrich_song_library.R` again.
-- **Spotify pool:** 377 of 385 slots get a song within ±3 BPM; 8 need a wider
-  window (3 of them beyond ±5). Add about **1 song at 60–64, 4 at 65–69 and
-  1 at 145–150 BPM**.
-- **YouTube pool:** 367 of 385 within ±3; 18 need a wider window (14 beyond
-  ±5). Add about **4 songs at 60–64, 5 at 65–69 and 2 at 145–150 BPM** with a
-  YouTube link.
-- **15 songs are outside 60–150 BPM** (13 on 14 Oct) — see below.
-
-Status on 14 Oct 2026 (268 songs; link check run the same day):
-
-- **29 songs have no link at all** → run `data-raw/enrich_song_library.R` on
-  your Mac (it needs your keys), then check its log for rows to fill by hand:
-  - 18 new songs from Martin (*Straight Up* … *Alone*, end of the file);
-  - 9 old rows whose typos are fixed now (14 Oct): Another One Bites the Dust,
-    Dirt Off Your Shoulder, Whole Lotta Love, Fleetwood Mac, You Know I'm No
-    Good, Call Your Girlfriend (Robyn), Since U Been Gone (Kelly Clarkson),
-    Labrinth, Tom Rosenthal;
-  - 2 to check by hand: *Back In The Mudd*, *How Do You Love Me Now*.
-- **Spotify pool: nearly there.** 3 of 385 slots fall back; add about
-  **1 song at 60–64 and 1 at 65–69 BPM**.
-- **YouTube pool: close too** — 13 of 385 slots fall back (127 on 7 Oct); add
-  about **3 songs at 60–64 and 4 at 65–69 BPM** with a YouTube link.
-- **Links:** all 446 work. Three YouTube links are fan uploads — swap them for
-  the artist's own, VEVO or "- Topic" upload: *Jailhouse Rock*, *From Eden*
-  (lyric video), *Layla* (pick the same version as the Spotify link).
-  *Nightcall* and *Händerna Mot Himlen* come from the labels (Record Makers,
-  Razzia Records) and are marked "label upload".
-- **3 YouTube videos refuse other sites** (`data/youtube_blocked.csv`):
-  *Arsonist's Lullabye*, *Take Me To Church* (Hozier), *Against All Odds*
-  (Phil Collins) → try another upload, e.g. the "- Topic" one.
-- **13 songs are outside 60–150 BPM** — probably half/double time;
-  `issues.csv` suggests the value (e.g. *Jailhouse Rock* 169 → 84.5). Decide
-  the felt tempo per song.
-- Duplicates removed (14 Oct): the second *Thunderstruck* (kept the 133 BPM row
-  with both links) and the second *She Wants To Move*.
+- **READY** for Spotify and YouTube: all 409 standard slots get a song within
+  ±3 BPM, with at least 3 to choose from.
+- **Long playlists** (information only, Spotify pool): 86–100 % of the slots
+  within ±3 BPM, depending on era and shuffle (Early Humans and Cenozoic are
+  the thinnest). About 30 more songs would close the gaps: 60–64 BPM +6,
+  65–69 +11, 70–74 +5, 75–79 +4, 80–84 +2, 100–104 +2.
 - *Global* scaling can't be fully covered by any library: on the global scale
   every ice-core era sits at ~60–66 BPM, so those playlists drift to faster
   songs. Expected, not a launch criterion.
 
-## 7. Go public
+## Hosting (open)
 
-- [x] `CONTACT` set, *About & privacy* read through (`?about`, 14 Oct) — it is
-      a reasonable starting text for a personal project, not legal advice.
-- [ ] `DEFAULT_PLAYER` set from step 4; library check says READY.
-- [ ] Library check with `CHECK_LINKS <- TRUE`: no broken links (✓ 14 Oct) and
-      no YouTube uploads from unofficial channels left (3 to swap, step 6; or
-      checked by hand: "label upload" in the notes).
-- [x] The platform rules in [`DEVELOPMENT.md`](DEVELOPMENT.md#platform-rules--privacy-keep-these)
-      still hold (one service per playlist, nothing third-party before ▶ Play,
-      non-commercial, no video export with the music) — the tripwire test
-      checks them on every push.
-- [ ] Re-deploy, then share the plain link (keep `?testers` for testers).
+- **Now:** shinyapps.io **Free**, 25 active hours a month. The instance counts
+  while it's up: listening keeps it up (`player.js` reports progress about
+  twice a second), then it sleeps after the 5-min idle timeout. When the hours
+  are used up, visitors see "application not available" until the next month.
+  For the launch month that's a day or two of real use — decide the plan
+  before the release on 9 Nov.
+- **Coming:** Posit is moving shinyapps.io into Posit Connect Cloud. Free
+  accounts move automatically on **28 Jan 2027** (Connect Cloud Free: 20 usage
+  credits a month, public GitHub repos only); Starter and Basic on
+  31 Mar 2027 — don't cancel a paid shinyapps.io plan before then, or its
+  price is lost. Old shinyapps.io links redirect.
+- **Options checked (Oct 2026):** a paid plan (shinyapps.io Starter USD 13 a
+  month = 100 h, Basic USD 49 = 500 h; yearly billing is cheaper); a server or
+  platform from a partner (Shiny Server, Posit Connect or Docker); free
+  container hosts such as Render (sleeps after 15 min, ~1 min to wake up);
+  Shinylive, i.e. the app running in the browser (works unchanged, but the
+  first load takes ~45 s on a desktop and 2–3 min on a phone). Help with
+  hosting costs stays a plain thank-you in *About* — see the platform rules in
+  [`DEVELOPMENT.md`](DEVELOPMENT.md#platform-rules--privacy-keep-these).
 
 ## Good to know
 
 - **Active hours:** the free plan has 25 a month. The app is "active" while
-  anyone has it open (plus 15 min), so one hour of listening ≈ one active hour,
-  however many people listen at once. Check usage in the shinyapps.io
-  dashboard; upgrade if a launch needs more.
+  anyone has it open (plus the idle timeout, 5 min since 26 Oct), so one hour
+  of listening ≈ one active hour, however many people listen at once. Check
+  usage in the shinyapps.io dashboard; more under *Hosting*.
 - **Logs:** `rsconnect::showLogs(appName = "dance", account = "beatspermillion")`.
 - **Blocked YouTube videos** found by visitors are remembered only until the
   server restarts or you re-deploy; the link check (`CHECK_LINKS <- TRUE`)

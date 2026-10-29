@@ -25,12 +25,14 @@ with a similar BPM. **Play via** picks ONE service for the whole playlist, and
 only songs with a link for that service are used (Spotify's and SoundCloud's
 terms don't allow mixing their music with another service's):
 
-- **Spotify**: full songs after you click *Connect Spotify* (needs Spotify
-  Premium), otherwise 30-s clips — press ▶ on the first song; after that the
-  clips play one after another.
+- **Spotify** (the default): full songs if you're logged in to Spotify in that
+  browser (at open.spotify.com), otherwise 30-s clips — press ▶ on the first
+  song; after that the songs play one after another. *Connect Spotify* (needs
+  Spotify Premium; locally, or for invited testers online) switches to the
+  in-app player.
 - **YouTube**: full songs, no login needed.
-- **SoundCloud**: full songs, no login needed (only offered once the library
-  has SoundCloud links).
+- **SoundCloud**: built in but hidden for now (`SHOW_SOUNDCLOUD` in
+  `R/config.R`); it also needs SoundCloud links in the library.
 
 Nothing from these services loads before you press **▶ Play via …** in the
 Listen panel (privacy: the page itself contacts no one else). Pressing it
@@ -43,19 +45,21 @@ playlist. A newly selected song (Previous / Next, a click in the playlist or on
 the plot, another era) starts by itself only while music is playing — after a
 pause nothing starts on its own. If a YouTube video won't play here, the app
 leaves it out from then on and moves on to the next song. Under the player
-there is always an *Open in* Spotify, YouTube and SoundCloud button: the song
-itself if it has a link, otherwise a search (🔎) on that site.
+there is always an *Open in* Spotify and YouTube button (SoundCloud too, once
+it's switched on): the song itself if it has a link, otherwise a search (🔎) on
+that site.
 
 **Song length** switches between *Whole song* and *30-s snippets* (start at
 the beginning, at 0:30 or in the middle). Snippets auto-advance too, so a whole
-period plays as a fast "tempo ramp". With Play via Spotify and *no* login, the
-app plays Spotify's own 30-s clips back to back (press ▶ on the first one;
-songs without a clip are skipped after 8 s). With *Connect Spotify* you choose
-where the 30 s start (beginning / 0:30 / middle) and can switch to whole songs.
+period plays as a fast "tempo ramp". With Play via Spotify and *not* logged in
+to Spotify, the app plays Spotify's own 30-s clips back to back (press ▶ on the
+first one; songs that don't start are skipped after 8 s). Logged in to Spotify
+in that browser, or with *Connect Spotify*, you choose where the 30 s start
+(beginning / 0:30 / middle) and can switch to whole songs.
 
-**➕ Save to Spotify** (next to 📥 CSV) saves the current period's songs as a
-private playlist in your Spotify account. It doesn't open anything; you get a
-notification with a link.
+**➕ Save to Spotify** (next to 📥 CSV, only with *Connect Spotify*) saves the
+current period's songs as a private playlist in your Spotify account. It
+doesn't open anything; you get a notification with a link.
 
 ## 3. API keys
 
@@ -91,8 +95,10 @@ Lena the **email address of your Spotify account**; she adds it in the
 [Spotify dashboard](https://developer.spotify.com/dashboard) → the app →
 *User Management* (max. 5 people). The full in-app player also needs **your**
 account to have Spotify Premium; without Premium, YouTube still plays full
-songs. On the **online** version, open the app with `?testers` at the end of
-the address to see *Connect Spotify* (see [`LAUNCH.md`](LAUNCH.md)).
+songs. On the **online** version *Connect Spotify* is off for now
+(`SPOTIFY_LOGIN <- "off"` in the deploy script); with `"testers"` you'd open
+the app with `?testers` at the end of the address to see it (see
+[`LAUNCH.md`](LAUNCH.md)).
 
 **Your own YouTube key (optional, free):**
 [console.cloud.google.com](https://console.cloud.google.com) → create a
@@ -175,24 +181,26 @@ The app opens in your normal browser on `http://127.0.0.1:4321`. It has to be
 the browser, because the Spotify player doesn't work in RStudio's Viewer.
 
 To get full Spotify songs, click **Connect Spotify** in the *Listen* panel and
-log in. You only need to do that once; the login is remembered.
+log in (Premium). You only need to do that once; the login is remembered.
+Being logged in to Spotify at open.spotify.com in that browser also gives whole
+songs, without *Connect Spotify*.
 
 ## Troubleshooting
 
 | What you see | What to do |
 |---|---|
-| Only 30-second previews | That's Spotify without a login. Pick *Play via YouTube* for whole songs, or connect Spotify (Premium). To get a song into the YouTube playlists, add its `youtube_url` (re-run the enrichment the next day if the YouTube quota ran out). |
+| Only 30-second previews | That's Spotify without a login: log in to Spotify at open.spotify.com in the same browser and reload, or pick *Play via YouTube* for whole songs (locally or as a tester: *Connect Spotify*, Premium). To get a song into the YouTube playlists, add its `youtube_url` (re-run the enrichment the next day if the YouTube quota ran out). |
 | Next song does not start | Tick *Auto-play the next song when one ends*, and press ▶ once on the first song (browsers block sound until you click). |
 | A song started although I had stopped | Shouldn't happen any more (3.5.0): after a pause, only ▶ starts the music. |
 | Pressing play opens Spotify | That song has no 30-s clip; Spotify's widget sends you to Spotify. During auto-play such songs are skipped. |
 | "INVALID_CLIENT: Invalid redirect URI" | In the Spotify dashboard, the Redirect URI must be exactly `http://127.0.0.1:4321/` (locally) and, for the online version, the app's address, `https://beatspermillion.shinyapps.io/dance/`. |
-| No *Connect Spotify* button online | By design: online it only shows with `?testers` at the end of the address. |
+| No *Connect Spotify* button online | By design: it's off online for now (`SPOTIFY_LOGIN <- "off"`). With `"testers"` it only shows with `?testers` at the end of the address. |
 | Spotify says 403 / "user not registered" | Ask Lena to add your Spotify email under *User Management*. |
 | "needs a Spotify Premium account" | The full player needs Premium; use YouTube links instead. |
 | "YouTube daily quota used up" | Normal; run the script again tomorrow. |
 | "BPM (GetSongBPM) skipped: set GETSONGBPM_KEY" | Add the key to `.Renviron` and restart R. |
 | "GetSongBPM refused the request (HTTP 401/403)" | Key not activated yet (check the email) or suspended — check the backlink is still public. |
-| "YouTube can't play this song here: …" | The app moves on to the next song (never to another service). Once a YouTube song has played in that browser, the refused video is listed in `data/youtube_blocked.csv`, so it's left out next time. Some label videos block other websites; Spotify (connected) is the reliable way to get full songs. To use YouTube for that song anyway, paste a different official `youtube_url` (e.g. the artist's "- Topic" upload) and remove its line from `youtube_blocked.csv`. |
+| "YouTube can't play this song here: …" | The app moves on to the next song (never to another service). Once a YouTube song has played in that browser, the refused video is listed in `data/youtube_blocked.csv`, so it's left out next time. Some label videos block other websites; Spotify (logged in, or connected) is the reliable way to get full songs. To use YouTube for that song anyway, paste a different official `youtube_url` (e.g. the artist's "- Topic" upload) and remove its line from `youtube_blocked.csv`. |
 | "YouTube refused 3 songs in a row" | The playlist stops instead of skipping through everything, and nothing is written to `youtube_blocked.csv`. Usually the browser (ad or privacy blocker), the network, or a YouTube change — try another browser or *Play via Spotify*. |
-| Spotify plays only 30 s | You're not connected: click **Connect Spotify to play the full song** (one-time login, Premium). After login the panel says "✓ Spotify connected". |
+| Spotify plays only 30 s | Not logged in to Spotify in this browser — see *Only 30-second previews*. Where *Connect Spotify* is shown (locally, testers), click **Connect Spotify to play the full song** (one-time login, Premium); after login the panel says "✓ Spotify connected". |
 | Keys are `FALSE` in the check above | `.Renviron` must be in the project folder; restart R after editing it. |
