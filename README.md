@@ -8,10 +8,10 @@ This project converts atmospheric CO₂ concentrations through geological time i
 
 A collaboration between **Martin Wegmann** and **Lena Thöle** — a personal project.
 
-**▶ Try it:** <https://beatspermillion.shinyapps.io/dance/> — public launch on
-10 Nov 2026 with version 5.0.0 (a preview has run at the same address since
-26 Oct). *Play via Spotify* plays whole songs if you're logged in to Spotify in
-that browser, otherwise 30-second previews; *Play via YouTube* plays whole songs
+**▶ Try it:** <https://beatspermillion.shinyapps.io/dance/> — version 5.0.0,
+public launch on 10 Nov 2026 (a preview ran at the same address from 26 Oct).
+*Play via Spotify* plays whole songs if you're logged in to Spotify in that
+browser, otherwise 30-second previews; *Play via YouTube* plays whole songs
 without a login.
 
 ---
@@ -151,12 +151,11 @@ from `data-raw/make_og_image.R`). **Suggest a song** in the footer and in
 `SUGGEST_URL` in the deploy script); *About* also lists the tempos the library
 is short of, which the deploy script works out each time (`data/wanted_bpm.csv`).
 
-**Online:** <https://beatspermillion.shinyapps.io/dance/> — preview since
-26 Oct 2026, public launch on 10 Nov 2026 with v5.0.0
+**Online (v5.0.0):** <https://beatspermillion.shinyapps.io/dance/> — public
+launch on 10 Nov 2026, preview from 26 Oct
 ([`LAUNCH.md`](LAUNCH.md#launch-day-10-nov-2026)). shinyapps.io account
-`beatspermillion`, app `dance`; free plan, 25 active hours a month — once they
-are used up the app is unavailable until the next month (see
-[`LAUNCH.md`](LAUNCH.md#hosting-open)). The online settings are at
+`beatspermillion`, app `dance`; Basic plan from 10 Nov 2026 (500 active hours
+a month; free: 25) — see [`LAUNCH.md`](LAUNCH.md#hosting). The online settings are at
 the top of `deploy/deploy_shinyapps.R` — currently `DEFAULT_PLAYER = "spotify"`
 and `SPOTIFY_LOGIN = "off"` (no *Connect Spotify* online: Spotify plays whole
 songs for visitors logged in to Spotify in that browser, 30-s previews for
