@@ -6,8 +6,7 @@
 
 This project converts atmospheric CO₂ concentrations through geological time into "beats per minute" (BPM) values, creating a unique sonic experience of climate change. Lower CO₂ (ice ages) produces slow music; higher CO₂ (hothouse conditions) produces fast, energetic music.
 
-A collaboration between **Martin Wegmann** and **Lena Thöle** — a personal,
-non-commercial project.
+A collaboration between **Martin Wegmann** and **Lena Thöle** — a personal project.
 
 **▶ Try it:** <https://beatspermillion.shinyapps.io/dance/> — public launch on
 10 Nov 2026 with version 5.0.0 (a preview has run at the same address since
@@ -248,7 +247,7 @@ climate_playlist/
 ### Industrial Era (1850–Present)
 - **Source:** CMIP7 historical greenhouse-gas concentrations, CR-CMIP-1-0-0
   (Climate Resource), annual global-mean CO₂ 1750–2022 —
-  `data/rawData/co2_1750-2022.csv` (from Martin). The era starts in 1850, where
+  `data/rawData/co2_1750-2022.csv`. The era starts in 1850, where
   CMIP historical model runs start.
 - **URL:** https://doi.org/10.5281/zenodo.14892947
 - **Citation:** Nicholls, Z., Meinshausen, M., Pflüger, M. & Lewis, J. (2025). *CMIP GHG Forcing* (v1.0.0). Zenodo. https://doi.org/10.5281/zenodo.14892947
@@ -501,5 +500,4 @@ and the music the app plays keep their own terms.
 - The ice core drilling teams at EPICA, Vostok, and other Antarctic sites
 - The paleoclimate community for developing CO₂ proxy methods
 - [GetSongBPM](https://getsongbpm.com) for song tempo (BPM) data
-- Claude, Anthropic's AI assistant, for help with writing the code (the authors
-  are Lena Thöle and Martin Wegmann)
+- Claude, Anthropic's AI assistant, for help with writing the code
