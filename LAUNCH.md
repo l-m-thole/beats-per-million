@@ -8,7 +8,7 @@ How the app goes online and stays there. The one-time setup is done (steps 0,
 <https://beatspermillion.shinyapps.io/dance/> since Tue 10 Nov 2026, public
 launch the same day (preview from 26 Oct) · shinyapps.io **Basic** plan from
 10 Nov (500 active hours a month), paid by us for two months · public repo
-<https://github.com/l-m-thole/climate_playlist> · Spotify is the default
+<https://github.com/l-m-thole/beats-per-million> · Spotify is the default
 player, *Connect Spotify* is off online · SoundCloud is hidden
 (`SHOW_SOUNDCLOUD` in `R/config.R`).
 

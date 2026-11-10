@@ -13,7 +13,7 @@ Description: Converts atmospheric CO2 concentrations through geological time int
     measurements, the CMIP7 historical CO2 record (1850 on), the 800 kyr Antarctic ice-core composite, and Cenozoic marine
     proxies.
 URL: https://beatspermillion.shinyapps.io/dance/,
-    https://github.com/l-m-thole/climate_playlist
+    https://github.com/l-m-thole/beats-per-million
 License: MIT + file LICENSE
 Encoding: UTF-8
 Imports:

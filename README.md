@@ -1,6 +1,6 @@
 # 🌍 Beats per Million — Dance While You Can
 
-[![tests](https://github.com/l-m-thole/climate_playlist/actions/workflows/tests.yml/badge.svg)](https://github.com/l-m-thole/climate_playlist/actions/workflows/tests.yml)
+[![tests](https://github.com/l-m-thole/beats-per-million/actions/workflows/tests.yml/badge.svg)](https://github.com/l-m-thole/beats-per-million/actions/workflows/tests.yml)
 
 **Translating Earth's Climate History into Music**
 
