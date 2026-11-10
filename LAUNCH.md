@@ -4,13 +4,15 @@ How the app goes online and stays there. The one-time setup is done (steps 0,
 1 and 5; step 2 only matters for *Connect Spotify*). A re-deploy is one line
 (step 3), followed by a short smoke test (step 4).
 
-**Now:** personal, non-commercial project · **public launch on Tue 10 Nov 2026
-with v5.0.0** · a preview has run at <https://beatspermillion.shinyapps.io/dance/>
-since 26 Oct (now v4.1.1; shinyapps.io free plan) · Spotify is the default
+**Now:** personal, non-commercial project · **v5.0.0** online at
+<https://beatspermillion.shinyapps.io/dance/> since Tue 10 Nov 2026, public
+launch the same day (preview from 26 Oct) · shinyapps.io **Basic** plan from
+10 Nov (500 active hours a month), paid by us for two months · public repo
+<https://github.com/l-m-thole/climate_playlist> · Spotify is the default
 player, *Connect Spotify* is off online · SoundCloud is hidden
 (`SHOW_SOUNDCLOUD` in `R/config.R`).
 
-## Status (29 Oct 2026)
+## Status (10 Nov 2026)
 
 - [x] **Preview, 26 Oct 2026 — v4.0.0:** seven eras (new: Industrial,
       1850–today, from CMIP7), library fixes, SoundCloud hidden, CMIP7
@@ -18,39 +20,43 @@ player, *Connect Spotify* is off online · SoundCloud is hidden
 - [x] **v4.1.0 (27 Oct):** *Playlist length* Standard / Long (2× songs); songs
       follow the curve (a faster song when the tempo rises).
 - [x] **v4.1.1 (27 Oct):** *🖼 Show album covers* moved onto the CO₂ plot;
-      test fixed for Shiny 1.14. Pushed and deployed (the preview online now).
+      test fixed for Shiny 1.14. Pushed and deployed.
 - [x] **v4.1.2 (29 Oct):** docs brought up to date (README, LAUNCH,
       DEVELOPMENT, MUSIC_SETUP, LICENSE); no app changes, no deploy needed.
 - [x] Online settings (`deploy/deploy_shinyapps.R`): `DEFAULT_PLAYER = "spotify"`,
       `SPOTIFY_LOGIN = "off"`, `CONTACT` = the gmail address. shinyapps.io
       *Instance Idle Timeout*: 5 min (26 Oct).
 - [x] Song library READY for Spotify and YouTube (step 6).
-- [ ] **v5.0.0: release on Mon 9 Nov, public launch on Tue 10 Nov 2026** (see
-      *Launch day* below).
-- [ ] Long-term hosting: decide before Posit moves free accounts on
-      28 Jan 2027 (see *Hosting*).
+- [x] **shinyapps.io Basic from Tue 10 Nov 2026:** 500 active hours a month,
+      paid by us for two months, with instance settings to match (see
+      *Hosting*).
+- [x] **v5.0.0 released, Tue 10 Nov 2026** (tag `v5.0.0`); GitHub repo public.
+- [ ] **Public launch, Tue 10 Nov 2026** (see *Launch day* below).
+- [ ] **Decide in December** (before Basic renews on 10 Jan 2027): back to
+      Free, or keep Basic (see *Hosting*).
 - [ ] Optional: ~30 more songs, mostly 60–74 BPM, so *Long* playlists match as
       tightly as Standard ones (step 6).
 
 ## Launch day (10 Nov 2026)
 
-Version 5.0.0 waits on Lena's local branch `release/v5.0.0` (not on GitHub):
-`DESCRIPTION` says 5.0.0, and the README and this file are updated for the
-release. It goes out on Mon 9 Nov; the public launch is Tue 10 Nov.
+Version 5.0.0 was released on Tue 10 Nov from the branch `release/v5.0.0`
+(planned for Mon 9 Nov); the public launch is the same day.
 
-Before 9 Nov:
+Before the release:
 
-- [ ] Hosting for November decided — the free 25 hours last a day or two of
-      real use (see *Hosting*).
-- [ ] Library check READY (step 6).
+- [x] Hosting decided: shinyapps.io Basic for two months, paid by us (see
+      *Hosting*).
+- [x] Library check READY (step 6).
 
-Mon 9 Nov — release v5.0.0:
+Tue 10 Nov — release v5.0.0:
 
-- [ ] Merge the monthly Mauna Loa pull request (`refresh-co2`, opened that
-      morning), if NOAA has posted October by then.
-- [ ] Merge `release/v5.0.0` into `main`, deploy (step 3, runs the tests) and
+- [x] Upgrade the shinyapps.io account to Basic (monthly) and set the app's
+      instance settings (see *Hosting*).
+- [x] Merge the monthly Mauna Loa pull request (`refresh-co2`), if NOAA had
+      posted October by then.
+- [x] Merge `release/v5.0.0` into `main`, deploy (step 3, runs the tests) and
       smoke test on a desktop and a phone (step 4).
-- [ ] Push `main` and the tag `v5.0.0`.
+- [x] Push `main` and the tag `v5.0.0`; make the GitHub repo public.
 
 Tue 10 Nov — public launch:
 
@@ -156,8 +162,8 @@ the required backlink.
 
 Checked on 7 Oct: the link is in the plain HTML served at that address, so a
 link checker can see it. If they still don't accept it, use a public page
-instead: make the GitHub repo public (the README has a GetSongBPM section) or a
-one-page GitHub Pages / Quarto site with the link.
+instead: the GitHub repo, public since 10 Nov 2026 (the README has a
+GetSongBPM section), or a one-page GitHub Pages / Quarto site with the link.
 
 ## 6. Get the library ready (ongoing)
 
@@ -188,14 +194,35 @@ link; `data/youtube_blocked.csv` is empty):
   every ice-core era sits at ~60–66 BPM, so those playlists drift to faster
   songs. Expected, not a launch criterion.
 
-## Hosting (open)
+## Hosting
 
-- **Now:** shinyapps.io **Free**, 25 active hours a month. The instance counts
-  while it's up: listening keeps it up (`player.js` reports progress about
-  twice a second), then it sleeps after the 5-min idle timeout. When the hours
-  are used up, visitors see "application not available" until the next month.
-  For the launch month that's a day or two of real use — decide the plan
-  before the release on 9 Nov.
+- **Plan (from 10 Nov 2026):** shinyapps.io **Basic**, USD 49 a month (plus
+  VAT if charged), paid by us for two months. 500 active hours per billing
+  cycle (Free 25, Starter 100). The cycle started with the upgrade on 10 Nov;
+  it renews on 10 Dec and 10 Jan 2027. A downgrade or cancellation takes
+  effect at once, with no partial refund.
+- **App settings** (shinyapps.io → *Applications* → `dance` → *Settings*):
+  instance size **xlarge** (2 GB, room for three R processes); under
+  *Advanced*, **Max Worker Processes 3** and **Instance Load Factor 100 %**, so
+  a second instance only starts when the first one is full; *Instance Idle
+  Timeout* 5 min. Keep it to one instance (no *Add instance*).
+- **Active hours** count per instance while it's up — not per worker or per
+  visitor. Listening keeps it up (`player.js` reports progress about twice a
+  second), then it sleeps after the 5-min idle timeout. Every extra instance
+  counts its own hours. One instance busy around the clock uses the 500 hours
+  in ~21 days. On Free, visitors see "application not available" once the
+  hours are used up; Posit's current pages don't say what happens on a paid
+  plan (older ones mentioned an overage charge), so check the usage every few
+  days, especially in the first week.
+- **After the two months — decide in December** (before the 10 Jan renewal):
+  - *Back to Free:* first set the instance size back to *large* (or smaller)
+    and Max Worker Processes to 1 — the downgrade is refused while the app
+    uses paid settings — then *Account → Billing* → Free. Free accounts move
+    to Connect Cloud on 28 Jan 2027 (see *Coming*).
+  - *Keep Basic* (e.g. if PAGES or the Oeschger Centre help with the costs):
+    nothing to do; it moves to Connect Cloud *Enhanced* on 31 Mar 2027 and
+    keeps its price through the 2029 renewal. Cancelling a paid plan loses
+    that price.
 - **Coming:** Posit is moving shinyapps.io into Posit Connect Cloud. Free
   accounts move automatically on **28 Jan 2027** (Connect Cloud Free: 20 usage
   credits a month, public GitHub repos only); Starter and Basic on
@@ -212,10 +239,12 @@ link; `data/youtube_blocked.csv` is empty):
 
 ## Good to know
 
-- **Active hours:** the free plan has 25 a month. The app is "active" while
-  anyone has it open (plus the idle timeout, 5 min since 26 Oct), so one hour
-  of listening ≈ one active hour, however many people listen at once. Check
-  usage in the shinyapps.io dashboard; more under *Hosting*.
+- **Active hours:** Basic has 500 per billing cycle (Free 25). The app is
+  "active" while anyone has it open (plus the idle timeout, 5 min since
+  26 Oct), so one hour of listening ≈ one active hour per instance, however
+  many people listen at once. Check usage in the shinyapps.io dashboard, or
+  in R: `rsconnect::showUsage(appName = "dance", account = "beatspermillion",
+  from = "7d", interval = "1d")`; more under *Hosting*.
 - **Logs:** `rsconnect::showLogs(appName = "dance", account = "beatspermillion")`.
 - **Blocked YouTube videos** found by visitors are remembered only until the
   server restarts or you re-deploy; the link check (`CHECK_LINKS <- TRUE`)

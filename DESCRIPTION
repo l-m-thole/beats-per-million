@@ -1,6 +1,6 @@
 Package: climatePlaylists
 Title: Beats per Million - Dance While You Can
-Version: 4.1.2
+Version: 5.0.0
 Authors@R: c(
     person("Martin", "Wegmann", role = "aut",
 	   comment = c(ORCID = "0000-0002-5294-2978")),
